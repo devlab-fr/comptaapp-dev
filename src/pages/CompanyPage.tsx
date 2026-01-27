@@ -1,0 +1,1503 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { HOME_RECENT_LIMIT } from '../constants';
+import AppHeader from '../components/AppHeader';
+
+interface Company {
+  id: string;
+  name: string;
+  country: string;
+}
+
+interface ExpenseSummary {
+  totalTTC: number;
+  totalHT: number;
+  totalTVA: number;
+  count: number;
+  unpaidAmount: number;
+}
+
+interface RevenueSummary {
+  totalTTC: number;
+  totalHT: number;
+  totalTVA: number;
+  count: number;
+}
+
+interface RecentItem {
+  id: string;
+  invoice_date: string;
+  description: string;
+  amount_incl_vat: number;
+}
+
+export default function CompanyPage() {
+  const { companyId } = useParams<{ companyId: string }>();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [company, setCompany] = useState<Company | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0, unpaidAmount: 0 });
+  const [revenueSummary, setRevenueSummary] = useState<RevenueSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0 });
+  const [recentExpenses, setRecentExpenses] = useState<RecentItem[]>([]);
+  const [recentRevenues, setRecentRevenues] = useState<RecentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [hasData, setHasData] = useState(true);
+  const [addingSampleData, setAddingSampleData] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    if (success === 'expense_added') {
+      setSuccessMessage('Dépense ajoutée avec succès');
+      setSearchParams({});
+      loadExpenseSummary();
+      loadRecentExpenses();
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+    } else if (success === 'revenue_added') {
+      setSuccessMessage('Revenu ajouté avec succès');
+      setSearchParams({});
+      loadRevenueSummary();
+      loadRecentRevenues();
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+    } else if (success === 'expense_updated') {
+      setSuccessMessage('Dépense modifiée avec succès');
+      setSearchParams({});
+      loadExpenseSummary();
+      loadRecentExpenses();
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+    } else if (success === 'revenue_updated') {
+      setSuccessMessage('Revenu modifié avec succès');
+      setSearchParams({});
+      loadRevenueSummary();
+      loadRecentRevenues();
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const loadCompany = async () => {
+      if (!companyId) {
+        setError('ID entreprise manquant');
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('companies')
+        .select('id, name, country')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (fetchError) {
+        setError('Erreur de chargement');
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setError('Entreprise introuvable');
+        setLoading(false);
+        return;
+      }
+
+      setCompany(data);
+      setLoading(false);
+    };
+
+    loadCompany();
+  }, [companyId]);
+
+  const loadExpenseSummary = async () => {
+    if (!companyId) return;
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('expense_documents')
+      .select('total_incl_vat, total_excl_vat, total_vat, payment_status')
+      .eq('company_id', companyId)
+      .gte('invoice_date', startDate)
+      .lte('invoice_date', endDate);
+
+    if (data) {
+      const summary = data.reduce(
+        (acc, doc) => ({
+          totalTTC: acc.totalTTC + (Number(doc.total_incl_vat) || 0),
+          totalHT: acc.totalHT + (Number(doc.total_excl_vat) || 0),
+          totalTVA: acc.totalTVA + (Number(doc.total_vat) || 0),
+          count: acc.count + 1,
+          unpaidAmount: acc.unpaidAmount + (doc.payment_status !== 'paid' ? (Number(doc.total_incl_vat) || 0) : 0),
+        }),
+        { totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0, unpaidAmount: 0 }
+      );
+      setExpenseSummary(summary);
+    }
+  };
+
+  const loadRevenueSummary = async () => {
+    if (!companyId) return;
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('revenue_documents')
+      .select('total_incl_vat, total_excl_vat, total_vat')
+      .eq('company_id', companyId)
+      .gte('invoice_date', startDate)
+      .lte('invoice_date', endDate);
+
+    if (data) {
+      const summary = data.reduce(
+        (acc, doc) => ({
+          totalTTC: acc.totalTTC + (Number(doc.total_incl_vat) || 0),
+          totalHT: acc.totalHT + (Number(doc.total_excl_vat) || 0),
+          totalTVA: acc.totalTVA + (Number(doc.total_vat) || 0),
+          count: acc.count + 1,
+        }),
+        { totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0 }
+      );
+      setRevenueSummary(summary);
+    }
+  };
+
+  const loadRecentExpenses = async () => {
+    if (!companyId) return;
+
+    const { data: docs } = await supabase
+      .from('expense_documents')
+      .select('id, invoice_date, total_incl_vat')
+      .eq('company_id', companyId)
+      .order('invoice_date', { ascending: false })
+      .limit(HOME_RECENT_LIMIT);
+
+    if (docs) {
+      const { data: lines } = await supabase
+        .from('expense_lines')
+        .select('document_id, description')
+        .in('document_id', docs.map(d => d.id))
+        .order('line_order');
+
+      const items = docs.map(doc => {
+        const firstLine = lines?.find(l => l.document_id === doc.id);
+        const lineCount = lines?.filter(l => l.document_id === doc.id).length || 0;
+        return {
+          id: doc.id,
+          invoice_date: doc.invoice_date,
+          description: lineCount > 1 ? `${firstLine?.description || 'Sans description'} (+${lineCount - 1})` : firstLine?.description || 'Sans description',
+          amount_incl_vat: doc.total_incl_vat,
+        };
+      });
+      setRecentExpenses(items);
+    }
+  };
+
+  const loadRecentRevenues = async () => {
+    if (!companyId) return;
+
+    const { data: docs } = await supabase
+      .from('revenue_documents')
+      .select('id, invoice_date, total_incl_vat')
+      .eq('company_id', companyId)
+      .order('invoice_date', { ascending: false })
+      .limit(HOME_RECENT_LIMIT);
+
+    if (docs) {
+      const { data: lines } = await supabase
+        .from('revenue_lines')
+        .select('document_id, description')
+        .in('document_id', docs.map(d => d.id))
+        .order('line_order');
+
+      const items = docs.map(doc => {
+        const firstLine = lines?.find(l => l.document_id === doc.id);
+        const lineCount = lines?.filter(l => l.document_id === doc.id).length || 0;
+        return {
+          id: doc.id,
+          invoice_date: doc.invoice_date,
+          description: lineCount > 1 ? `${firstLine?.description || 'Sans description'} (+${lineCount - 1})` : firstLine?.description || 'Sans description',
+          amount_incl_vat: doc.total_incl_vat,
+        };
+      });
+      setRecentRevenues(items);
+    }
+  };
+
+  useEffect(() => {
+    const checkData = async () => {
+      if (!companyId) return;
+
+      const { data: expenseData } = await supabase
+        .from('expense_documents')
+        .select('id')
+        .eq('company_id', companyId)
+        .limit(1);
+
+      const { data: revenueData } = await supabase
+        .from('revenue_documents')
+        .select('id')
+        .eq('company_id', companyId)
+        .limit(1);
+
+      const hasExpenses = !!(expenseData && expenseData.length > 0);
+      const hasRevenues = !!(revenueData && revenueData.length > 0);
+      setHasData(hasExpenses || hasRevenues);
+    };
+
+    checkData();
+  }, [companyId, expenseSummary, revenueSummary]);
+
+  const addSampleData = async () => {
+    if (!companyId) return;
+
+    setAddingSampleData(true);
+    setError(null);
+
+    try {
+      const sampleDate = new Date().toISOString().split('T')[0];
+
+      const expenseCategories = [
+        { categoryId: 'fda1ce59-88be-4490-b2de-60111201a18c', subcategoryId: '5d01d236-219f-46d1-9dd6-7943927f63f8' },
+        { categoryId: '71931a58-3671-4434-81a5-3365842d6ada', subcategoryId: '8cfe0c4b-9e4a-4286-87a3-acc17ac4e0d0' },
+        { categoryId: '3d60f275-1997-4fe3-9197-54a5ab2689cd', subcategoryId: 'f2a2ab25-03a8-418b-9d8c-a8e907c70312' }
+      ];
+
+      const revenueCategories = [
+        { categoryId: 'dacf2bb2-7e84-42ed-bee0-b4072ee47c71', subcategoryId: '2f92fb96-92bb-4e9c-881c-7e16707cb575' },
+        { categoryId: '0d6cabb9-7475-4c0f-b65e-663ebaa09aba', subcategoryId: '6609f72f-0a28-4866-83ad-1319f904f27c' },
+        { categoryId: '900ab9a0-865f-4512-9cbb-e8abe52dd1d7', subcategoryId: '00652d9a-dd4e-425d-b5a4-482de2731879' }
+      ];
+
+      const expensesData = [
+        { ht: 100, tvaRate: 0.20, description: 'Dépense exemple 1 (TVA 20%)' },
+        { ht: 50, tvaRate: 0.10, description: 'Dépense exemple 2 (TVA 10%)' },
+        { ht: 30, tvaRate: 0.00, description: 'Dépense exemple 3 (TVA 0%)' }
+      ];
+
+      for (let i = 0; i < expensesData.length; i++) {
+        const expense = expensesData[i];
+        const tvaAmount = Math.round(expense.ht * expense.tvaRate * 100) / 100;
+        const ttc = Math.round((expense.ht + tvaAmount) * 100) / 100;
+
+        const { data: doc, error: docError } = await supabase
+          .from('expense_documents')
+          .insert({
+            company_id: companyId,
+            invoice_date: sampleDate,
+            total_excl_vat: expense.ht,
+            total_vat: tvaAmount,
+            total_incl_vat: ttc,
+            accounting_status: 'validated',
+            payment_status: 'paid',
+          })
+          .select()
+          .single();
+
+        if (docError || !doc) throw new Error('Erreur insertion dépense');
+
+        await supabase.from('expense_lines').insert({
+          document_id: doc.id,
+          description: expense.description,
+          category_id: expenseCategories[i].categoryId,
+          subcategory_id: expenseCategories[i].subcategoryId,
+          amount_excl_vat: expense.ht,
+          vat_rate: expense.tvaRate,
+          vat_amount: tvaAmount,
+          amount_incl_vat: ttc,
+          line_order: 0,
+        });
+      }
+
+      const revenuesData = [
+        { ht: 300, tvaRate: 0.20, description: 'Revenu exemple 1 (TVA 20%)' },
+        { ht: 120, tvaRate: 0.10, description: 'Revenu exemple 2 (TVA 10%)' },
+        { ht: 80, tvaRate: 0.00, description: 'Revenu exemple 3 (TVA 0%)' }
+      ];
+
+      for (let i = 0; i < revenuesData.length; i++) {
+        const revenue = revenuesData[i];
+        const tvaAmount = Math.round(revenue.ht * revenue.tvaRate * 100) / 100;
+        const ttc = Math.round((revenue.ht + tvaAmount) * 100) / 100;
+
+        const { data: doc, error: docError } = await supabase
+          .from('revenue_documents')
+          .insert({
+            company_id: companyId,
+            invoice_date: sampleDate,
+            total_excl_vat: revenue.ht,
+            total_vat: tvaAmount,
+            total_incl_vat: ttc,
+            accounting_status: 'validated',
+            payment_status: 'paid',
+          })
+          .select()
+          .single();
+
+        if (docError || !doc) throw new Error('Erreur insertion revenu');
+
+        await supabase.from('revenue_lines').insert({
+          document_id: doc.id,
+          description: revenue.description,
+          category_id: revenueCategories[i].categoryId,
+          subcategory_id: revenueCategories[i].subcategoryId,
+          amount_excl_vat: revenue.ht,
+          vat_rate: revenue.tvaRate,
+          vat_amount: tvaAmount,
+          amount_incl_vat: ttc,
+          line_order: 0,
+        });
+      }
+
+      loadExpenseSummary();
+      loadRevenueSummary();
+      loadRecentExpenses();
+      loadRecentRevenues();
+      setSuccessMessage('Données d\'exemple ajoutées avec succès');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      setError('Erreur lors de l\'ajout des données d\'exemple');
+    } finally {
+      setAddingSampleData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (companyId) {
+      loadExpenseSummary();
+      loadRevenueSummary();
+      loadRecentExpenses();
+      loadRecentRevenues();
+    }
+  }, [companyId]);
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8f9fa',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e5e7eb',
+            borderTopColor: '#28a745',
+            borderRadius: '50%',
+            margin: '0 auto 16px',
+            animation: 'spin 0.8s linear infinite',
+          }}></div>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>Chargement...</p>
+        </div>
+        <style>
+          {`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    );
+  }
+
+  if (error || !company) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8f9fa',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#dc2626', marginBottom: '24px', fontSize: '16px' }}>
+            {error || 'Erreur'}
+          </p>
+          <button
+            onClick={() => navigate('/app')}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#3b82f6',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #dbeafe',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Retour à mes entreprises
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <style>{`
+        @media (max-width: 767px) {
+          .dashboard-cards { grid-template-columns: 1fr !important; }
+          .quick-actions-grid { grid-template-columns: 1fr !important; }
+          .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .dashboard-cards { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
+
+        <main style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '32px 24px',
+        }}>
+          {successMessage && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#d1f4e0',
+              border: '1px solid #9ae6b4',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              <span style={{ fontSize: '18px' }}>✓</span>
+              <p style={{
+                margin: 0,
+                color: '#22543d',
+                fontSize: '14px',
+                fontWeight: '500',
+              }}>
+                {successMessage}
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={() => navigate('/app')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#6b7280',
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              marginBottom: '24px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f9fafb';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white';
+            }}
+          >
+            <span>←</span>
+            Retour à mes entreprises
+          </button>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h2 style={{
+              margin: '0 0 4px 0',
+              fontSize: '32px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+            }}>
+              {company.name}
+            </h2>
+            <span style={{
+              display: 'inline-block',
+              padding: '4px 12px',
+              backgroundColor: '#f3f4f6',
+              color: '#6b7280',
+              fontSize: '13px',
+              fontWeight: '500',
+              borderRadius: '6px',
+            }}>
+              {company.country}
+            </span>
+          </div>
+
+          {!hasData && (
+            <div style={{
+              padding: '20px 24px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '12px',
+              border: '2px solid #fbbf24',
+              marginBottom: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '16px',
+            }}>
+              <div>
+                <h4 style={{
+                  margin: '0 0 4px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#92400e',
+                }}>
+                  Aucune donnée détectée
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '13px',
+                  color: '#78350f',
+                  lineHeight: '1.5',
+                }}>
+                  Ajoutez des données d'exemple pour tester les fonctionnalités
+                </p>
+              </div>
+              <button
+                onClick={addSampleData}
+                disabled={addingSampleData}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: 'white',
+                  backgroundColor: addingSampleData ? '#9ca3af' : '#f59e0b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: addingSampleData ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  if (!addingSampleData) {
+                    e.currentTarget.style.backgroundColor = '#d97706';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!addingSampleData) {
+                    e.currentTarget.style.backgroundColor = '#f59e0b';
+                  }
+                }}
+              >
+                {addingSampleData ? 'Ajout en cours...' : 'Ajouter des données d\'exemple'}
+              </button>
+            </div>
+          )}
+
+          <div className="dashboard-cards" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '24px',
+            marginBottom: '32px',
+          }}>
+            <div style={{
+              padding: '28px',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              border: '2px solid #fee2e2',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '36px' }}>📤</div>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: '22px',
+                  fontWeight: '700',
+                  color: '#dc2626',
+                }}>
+                  Dépenses
+                </h3>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                <div style={{
+                  padding: '14px',
+                  backgroundColor: '#fef2f2',
+                  borderRadius: '10px',
+                }}>
+                  <p style={{
+                    margin: '0 0 4px 0',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#991b1b',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    Total TTC
+                  </p>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#dc2626',
+                  }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(expenseSummary.totalTTC)}
+                  </p>
+                </div>
+
+                <div style={{
+                  padding: '14px',
+                  backgroundColor: '#fef2f2',
+                  borderRadius: '10px',
+                }}>
+                  <p style={{
+                    margin: '0 0 4px 0',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#991b1b',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    Nombre
+                  </p>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#dc2626',
+                  }}>
+                    {expenseSummary.count}
+                  </p>
+                </div>
+
+                {expenseSummary.unpaidAmount > 0 && (
+                  <div style={{
+                    padding: '14px',
+                    backgroundColor: '#fef3c7',
+                    borderRadius: '10px',
+                    gridColumn: '1 / -1',
+                  }}>
+                    <p style={{
+                      margin: '0 0 4px 0',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#92400e',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}>
+                      Non payé
+                    </p>
+                    <p style={{
+                      margin: 0,
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#f59e0b',
+                    }}>
+                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(expenseSummary.unpaidAmount)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {recentExpenses.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                  }}>
+                    Dernières dépenses
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {recentExpenses.map((item) => (
+                      <div key={item.id} style={{
+                        padding: '10px 12px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{
+                            margin: '0 0 2px 0',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: '#1f2937',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {item.description}
+                          </p>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '11px',
+                            color: '#6b7280',
+                          }}>
+                            {new Date(item.invoice_date).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <p style={{
+                          margin: 0,
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#dc2626',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.amount_incl_vat)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/expenses`)}
+                  style={{
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'white',
+                    backgroundColor: '#dc2626',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                >
+                  Gérer les dépenses
+                </button>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
+                  style={{
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#dc2626',
+                    backgroundColor: 'white',
+                    border: '2px solid #dc2626',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  Ajouter une dépense
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '28px',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              border: '2px solid #d1fae5',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '36px' }}>📥</div>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: '22px',
+                  fontWeight: '700',
+                  color: '#16a34a',
+                }}>
+                  Revenus
+                </h3>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                <div style={{
+                  padding: '14px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '10px',
+                }}>
+                  <p style={{
+                    margin: '0 0 4px 0',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#15803d',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    Total TTC
+                  </p>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#16a34a',
+                  }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC)}
+                  </p>
+                </div>
+
+                <div style={{
+                  padding: '14px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '10px',
+                }}>
+                  <p style={{
+                    margin: '0 0 4px 0',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#15803d',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    Nombre
+                  </p>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#16a34a',
+                  }}>
+                    {revenueSummary.count}
+                  </p>
+                </div>
+              </div>
+
+              {recentRevenues.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                  }}>
+                    Derniers revenus
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {recentRevenues.map((item) => (
+                      <div key={item.id} style={{
+                        padding: '10px 12px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{
+                            margin: '0 0 2px 0',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: '#1f2937',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {item.description}
+                          </p>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '11px',
+                            color: '#6b7280',
+                          }}>
+                            {new Date(item.invoice_date).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <p style={{
+                          margin: 0,
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#16a34a',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.amount_incl_vat)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/revenues`)}
+                  style={{
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'white',
+                    backgroundColor: '#16a34a',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#15803d'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+                >
+                  Gérer les revenus
+                </button>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/revenues/new`)}
+                  style={{
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#16a34a',
+                    backgroundColor: 'white',
+                    border: '2px solid #16a34a',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  Ajouter un revenu
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+            }}>
+              Actions rapides
+            </h3>
+
+            <div className="quick-actions-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '16px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/ai-scan`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #3b82f6',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#dbeafe';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧠</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#3b82f6',
+                }}>
+                  Scanner un justificatif (IA)
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Extraire automatiquement les informations
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+            }}>
+              Modules comptables
+            </h3>
+
+            <div className="modules-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/tva`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #3b82f6',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#eff6ff';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📊</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#3b82f6',
+                }}>
+                  TVA
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Rapports et synthèses
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/resultat`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #059669',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d1fae5';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📈</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#059669',
+                }}>
+                  Compte de résultat
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Produits et charges
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/bilan`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #7c3aed',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3e8ff';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>⚖️</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#7c3aed',
+                }}>
+                  Bilan
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Actif et passif
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/comptabilite`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #8b5cf6',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f3ff';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📒</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#8b5cf6',
+                }}>
+                  Comptabilité
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Écritures comptables
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+            }}>
+              Rapports & contrôles
+            </h3>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/rapports`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #f97316',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffedd5';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📄</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#f97316',
+                }}>
+                  Rapports
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Documents et exports
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/verification`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #8b5cf6',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ede9fe';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>✓</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#8b5cf6',
+                }}>
+                  Vérification V1
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Contrôle cohérence
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '20px 28px',
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#6b7280',
+            }}>
+              Configuration & aide
+            </h3>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/parametres`)}
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  e.currentTarget.style.borderColor = '#64748b';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚙️</div>
+                <h4 style={{
+                  margin: '0 0 4px 0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                }}>
+                  Paramètres
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '11px',
+                  color: '#9ca3af',
+                  lineHeight: '1.3',
+                }}>
+                  Configuration
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fffbeb';
+                  e.currentTarget.style.borderColor = '#f59e0b';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>⭐</div>
+                <h4 style={{
+                  margin: '0 0 4px 0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                }}>
+                  Abonnement
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '11px',
+                  color: '#9ca3af',
+                  lineHeight: '1.3',
+                }}>
+                  Plans
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/guide`)}
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ecfeff';
+                  e.currentTarget.style.borderColor = '#0891b2';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📖</div>
+                <h4 style={{
+                  margin: '0 0 4px 0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                }}>
+                  Mode d'utilisation
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '11px',
+                  color: '#9ca3af',
+                  lineHeight: '1.3',
+                }}>
+                  Guide
+                </p>
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <style>
+          {`
+            @keyframes pulse {
+              0%, 100% { opacity: 0.6; }
+              50% { opacity: 1; }
+            }
+          `}
+        </style>
+      </div>
+    </>
+  );
+}
