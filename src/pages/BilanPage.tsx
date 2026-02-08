@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -212,24 +213,72 @@ export default function BilanPage() {
         }
       }
 
-      const tresorerie = totalEncaissementsTTC - totalDecaissementsTTC;
-      const resultatHT = produitsHT - chargesHT;
-      const tvaNette = tvaCollectee - tvaDeductible;
+      // Load opening entries (reprise d'ouverture)
+      const { data: openingData } = await supabase
+        .from('opening_entries')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', selectedYear)
+        .maybeSingle();
 
-      const actifTotal = tresorerie;
-      const passifTotal = resultatHT + tvaNette;
+      let openingTresorerie = 0;
+      let openingCreances = 0;
+      let openingDettes = 0;
+      let openingTVA = 0;
+
+      if (openingData) {
+        openingTresorerie = Number(openingData.tresorerie) || 0;
+        openingCreances = Number(openingData.creances_clients) || 0;
+        openingDettes = Number(openingData.dettes_fournisseurs) || 0;
+        const tvaSolde = Number(openingData.tva_solde) || 0;
+        openingTVA = openingData.tva_sens === 'payer' ? tvaSolde : -tvaSolde;
+      }
+
+      // Load catchup totals (rattrapage par totaux)
+      const { data: catchupData } = await supabase
+        .from('catchup_totals')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', selectedYear);
+
+      let catchupProduitsHT = 0;
+      let catchupChargesHT = 0;
+      let catchupTVACollectee = 0;
+      let catchupTVADeductible = 0;
+
+      if (catchupData) {
+        catchupData.forEach((row) => {
+          const ht = Number(row.total_ht) || 0;
+          const tva = Number(row.total_tva) || 0;
+
+          if (row.category_type === 'revenue') {
+            catchupProduitsHT += ht;
+            catchupTVACollectee += tva;
+          } else if (row.category_type === 'expense') {
+            catchupChargesHT += ht;
+            catchupTVADeductible += tva;
+          }
+        });
+      }
+
+      const tresorerie = totalEncaissementsTTC - totalDecaissementsTTC + openingTresorerie;
+      const resultatHT = (produitsHT + catchupProduitsHT) - (chargesHT + catchupChargesHT);
+      const tvaNette = (tvaCollectee + catchupTVACollectee) - (tvaDeductible + catchupTVADeductible) + openingTVA;
+
+      const actifTotal = tresorerie + openingCreances;
+      const passifTotal = resultatHT + tvaNette + openingDettes;
 
       const equilibre = Math.abs(actifTotal - passifTotal) < 0.01;
 
       setBilanData({
         actif: {
           tresorerie: Math.round(tresorerie * 100) / 100,
-          creancesClients: 0,
+          creancesClients: Math.round(openingCreances * 100) / 100,
           autresActifs: 0,
           total: Math.round(actifTotal * 100) / 100,
         },
         passif: {
-          dettesFournisseurs: 0,
+          dettesFournisseurs: Math.round(openingDettes * 100) / 100,
           dettesFiscales: Math.round(tvaNette * 100) / 100,
           resultatExercice: Math.round(resultatHT * 100) / 100,
           total: Math.round(passifTotal * 100) / 100,
@@ -568,33 +617,7 @@ export default function BilanPage() {
           overflowX: 'hidden',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div style={{ marginBottom: '24px' }}>
           <h2
@@ -706,7 +729,7 @@ export default function BilanPage() {
         {!hasData && !loading && (
           <div
             style={{
-              padding: '20px',
+              padding: '80px 32px',
               backgroundColor: 'white',
               borderRadius: '16px',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
@@ -716,8 +739,39 @@ export default function BilanPage() {
               boxSizing: 'border-box',
             }}
           >
-            <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
-              Aucune donnée comptable validée et payée pour l'année {selectedYear}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: '#f3f4f6',
+                marginBottom: '24px',
+              }}
+            >
+              <span style={{ fontSize: '40px' }}>📊</span>
+            </div>
+            <h3
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1a1a1a',
+              }}
+            >
+              Aucune donnée disponible pour le moment
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '16px',
+                color: '#6b7280',
+                lineHeight: '1.5',
+              }}
+            >
+              Ajoutez vos premières opérations pour voir apparaître cette section.
             </p>
           </div>
         )}

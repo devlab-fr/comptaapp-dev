@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../lib/usePlan';
 import { PLANS, PlanTier } from '../lib/plans';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { supabase } from '../lib/supabase';
 
 const isValidStripeUrl = (url: string): boolean => {
@@ -24,6 +25,8 @@ export default function SubscriptionPage() {
   const { effectiveTier } = usePlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ status: number; body: any } | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
 
   console.log('SUBSCRIPTION_PAGE_RENDER', {
     userId: user?.id,
@@ -148,6 +151,70 @@ export default function SubscriptionPage() {
       alert('Erreur lors de la création de la session de paiement');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestStripe = async () => {
+    if (!companyId) {
+      alert('Aucune entreprise sélectionnée');
+      return;
+    }
+
+    setTestLoading(true);
+    setTestResult(null);
+
+    try {
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (!session || !session.access_token) {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError || !refreshData?.session || !refreshData.session.access_token) {
+          setTestResult({ status: 401, body: { error: 'Session expirée' } });
+          setTestLoading(false);
+          return;
+        }
+
+        session = refreshData.session;
+      }
+
+      const token = session.access_token;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      const payload = { planTier: 'PRO', companyId };
+
+      console.log('[DEV_STRIPE_TEST] calling create-checkout-session', { url, payload });
+
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (error) {
+        setTestResult({
+          status: error.status || 500,
+          body: {
+            error: error.message,
+            context: error.context,
+          },
+        });
+      } else {
+        setTestResult({
+          status: 200,
+          body: data,
+        });
+      }
+    } catch (error: any) {
+      setTestResult({
+        status: 500,
+        body: {
+          error: error?.message || 'Exception caught',
+          details: String(error),
+        },
+      });
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -475,6 +542,57 @@ export default function SubscriptionPage() {
                       </span>
                       Documents officiels AG
                     </li>
+                    {tier === 'PRO_PLUS_PLUS' && (
+                      <li style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '14px',
+                        color: '#374151',
+                      }}>
+                        <span style={{
+                          marginRight: '8px',
+                          color: '#28a745',
+                          fontWeight: '700',
+                        }}>
+                          ✓
+                        </span>
+                        Création de factures (PDF)
+                      </li>
+                    )}
+                    {tier === 'FREE' && (
+                      <li style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '14px',
+                        color: '#374151',
+                      }}>
+                        <span style={{
+                          marginRight: '8px',
+                          color: '#28a745',
+                          fontWeight: '700',
+                        }}>
+                          ✓
+                        </span>
+                        Reprise d'historique (option simple)
+                      </li>
+                    )}
+                    {(tier === 'PRO' || tier === 'PRO_PLUS' || tier === 'PRO_PLUS_PLUS') && (
+                      <li style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '14px',
+                        color: '#374151',
+                      }}>
+                        <span style={{
+                          marginRight: '8px',
+                          color: '#28a745',
+                          fontWeight: '700',
+                        }}>
+                          ✓
+                        </span>
+                        Reprise d'historique (options avancées)
+                      </li>
+                    )}
                   </ul>
                 </div>
 
@@ -563,55 +681,100 @@ export default function SubscriptionPage() {
 
         {companyId && (
           <div style={{ textAlign: 'center', marginTop: '32px' }}>
-            <button
-              onClick={() => navigate(`/app/company/${companyId}`)}
-              style={{
-                padding: '10px 24px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#6b7280',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-              }}
-            >
-              Retour au tableau de bord
-            </button>
+            <BackButton to={`/app/company/${companyId}`} label="Retour au tableau de bord" />
           </div>
         )}
 
         {!companyId && (
           <div style={{ textAlign: 'center', marginTop: '32px' }}>
+            <BackButton to="/app" label="Retour à mes entreprises" />
+          </div>
+        )}
+
+        {import.meta.env.DEV && companyId && (
+          <div style={{
+            marginTop: '48px',
+            padding: '24px',
+            backgroundColor: '#fff3cd',
+            borderRadius: '12px',
+            border: '2px solid #ffc107',
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#856404',
+              margin: '0 0 16px 0',
+            }}>
+              Test Stripe (DEV uniquement)
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: '#856404',
+              margin: '0 0 16px 0',
+            }}>
+              Ce bouton appelle create-checkout-session avec le même payload que le flow normal.
+              Le résultat s'affiche ci-dessous au lieu de rediriger.
+            </p>
             <button
-              onClick={() => navigate('/app')}
+              onClick={handleTestStripe}
+              disabled={testLoading}
               style={{
-                padding: '10px 24px',
+                padding: '10px 20px',
                 fontSize: '14px',
-                fontWeight: '500',
-                color: '#6b7280',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: '#ffc107',
+                border: 'none',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: testLoading ? 'not-allowed' : 'pointer',
+                opacity: testLoading ? 0.6 : 1,
                 transition: 'all 0.2s ease',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-              }}
+              onMouseEnter={(e) => !testLoading && (e.currentTarget.style.backgroundColor = '#e0a800')}
+              onMouseLeave={(e) => !testLoading && (e.currentTarget.style.backgroundColor = '#ffc107')}
             >
-              Retour à mes entreprises
+              {testLoading ? 'Test en cours...' : 'Test Stripe (DEV) : create-checkout-session'}
             </button>
+
+            {testResult && (
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <div style={{
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: testResult.status >= 200 && testResult.status < 300 ? '#28a745' : '#dc3545',
+                }}>
+                  Status: {testResult.status}
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '8px',
+                }}>
+                  Body:
+                </div>
+                <pre style={{
+                  fontSize: '12px',
+                  color: '#1a1a1a',
+                  backgroundColor: '#f9fafb',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  overflow: 'auto',
+                  maxHeight: '300px',
+                  margin: 0,
+                  border: '1px solid #e5e7eb',
+                }}>
+                  {JSON.stringify(testResult.body, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
       </main>

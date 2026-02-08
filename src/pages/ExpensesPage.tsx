@@ -3,9 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { StatusBadges } from '../components/StatusBadges';
 import { ActionsDropdown } from '../components/ActionsDropdown';
 import { ExpenseMobileCard } from '../components/ExpenseMobileCard';
+import { useUserRole } from '../lib/useUserRole';
 
 interface ExpenseDocument {
   id: string;
@@ -37,6 +39,7 @@ export default function ExpensesPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { companyId } = useParams<{ companyId: string }>();
+  const { canModify } = useUserRole(companyId);
 
   const [expenses, setExpenses] = useState<ExpenseDocument[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -45,6 +48,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: string | null }>({ show: false, id: null });
   const [showFilters, setShowFilters] = useState(false);
+  const [isDesktop, setIsDesktop] = useState<boolean>(window.innerWidth >= 1024);
 
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -55,6 +59,20 @@ export default function ExpensesPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 10;
+
+  const [showHistoryBanner, setShowHistoryBanner] = useState<boolean>(false);
+
+  useEffect(() => {
+    const bannerDismissed = localStorage.getItem(`history-banner-dismissed-${companyId}`);
+    if (!bannerDismissed) {
+      setShowHistoryBanner(true);
+    }
+  }, [companyId]);
+
+  const dismissHistoryBanner = () => {
+    localStorage.setItem(`history-banner-dismissed-${companyId}`, 'true');
+    setShowHistoryBanner(false);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -80,24 +98,55 @@ export default function ExpensesPage() {
     }
   }, [currentPage]);
 
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadCategories(), loadSubcategories(), loadYears()]);
-    await loadExpenses();
+
+    const categoriesData = await loadCategories();
+    await loadSubcategories();
+    await loadYears();
+
+    await loadExpenses(undefined, categoriesData);
+
     setLoading(false);
   };
 
-  const loadCategories = async () => {
-    const { data } = await supabase
+  const loadCategories = async (): Promise<Category[]> => {
+    const { data, error } = await supabase
       .from('expense_categories')
       .select('id, name')
       .eq('is_active', true)
       .order('sort_order');
-    if (data) setCategories(data);
+
+    if (error) {
+      console.error('LOAD_EXPENSE_CATEGORIES_ERROR', error);
+      setCategories([]);
+      return [];
+    }
+
+    const cats = (data ?? []) as Category[];
+    setCategories(cats);
+    return cats;
   };
 
   const loadSubcategories = async () => {
-    setSubcategories([]);
+    const { data, error } = await supabase
+      .from('expense_subcategories')
+      .select('id, name, category_id')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (!error && data) {
+      setSubcategories(data);
+    } else {
+      console.error('LOAD_EXPENSE_SUBCATEGORIES_ERROR', error);
+      setSubcategories([]);
+    }
   };
 
   const loadYears = async () => {
@@ -120,7 +169,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const loadExpenses = async () => {
+  const loadExpenses = async (subcatsData?: Subcategory[], categoriesData?: Category[]) => {
     if (!companyId) return;
 
     console.log('FETCH_EXPENSES_QUERY', {
@@ -177,6 +226,9 @@ export default function ExpensesPage() {
         .in('document_id', docs.map(d => d.id))
         .order('line_order');
 
+      const subcatsSource = subcatsData ?? subcategories;
+      const categoriesSource = categoriesData ?? categories;
+
       const enriched = docs.map(doc => {
         const docLines = lines?.filter(l => l.document_id === doc.id) || [];
         const firstLine = docLines[0];
@@ -195,8 +247,8 @@ export default function ExpensesPage() {
         let subcategory_id = '';
 
         if (firstLine) {
-          const cat = categories.find((c) => c.id === firstLine.category_id);
-          const subcat = subcategories.find((s) => s.id === firstLine.subcategory_id);
+          const cat = categoriesSource.find((c) => c.id === firstLine.category_id);
+          const subcat = subcatsSource.find((s) => s.id === firstLine.subcategory_id);
           category_name = cat?.name || '';
           subcategory_name = subcat?.name || '';
           category_id = firstLine.category_id;
@@ -312,33 +364,7 @@ export default function ExpensesPage() {
         <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
 
         <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
-          <button
-            onClick={() => navigate(`/app/company/${companyId}`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#6b7280',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              marginBottom: '24px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-          >
-            <span>←</span>
-            Retour
-          </button>
+          <BackButton to={`/app/company/${companyId}`} />
 
           <div style={{ marginBottom: '24px' }}>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '700', color: '#1a1a1a' }}>
@@ -348,6 +374,81 @@ export default function ExpensesPage() {
               Gérez toutes vos dépenses avec filtres et recherche
             </p>
           </div>
+
+          {showHistoryBanner && (
+            <div
+              style={{
+                padding: '16px 20px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div style={{ fontSize: '24px' }}>📥</div>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#1e40af' }}>
+                    Vous avez commencé en cours d'année ?
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#3b82f6' }}>
+                    Configurez la reprise d'historique pour inclure vos soldes d'ouverture dans les rapports annuels.
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/reprise-historique`)}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: 'white',
+                    backgroundColor: '#3b82f6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                  }}
+                >
+                  Configurer
+                </button>
+                <button
+                  onClick={dismissHistoryBanner}
+                  style={{
+                    padding: '8px',
+                    fontSize: '18px',
+                    color: '#6b7280',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    lineHeight: 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dbeafe';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  title="Masquer ce message"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
 
           <div
             style={{
@@ -381,7 +482,7 @@ export default function ExpensesPage() {
               </button>
             </div>
 
-            <div style={{ display: showFilters || window.innerWidth >= 1024 ? 'block' : 'none' }}>
+            <div style={{ display: showFilters || isDesktop ? 'block' : 'none' }}>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
                 <div style={{ flex: '1 1 150px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
@@ -533,44 +634,46 @@ export default function ExpensesPage() {
                   Réinitialiser
                 </button>
 
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => navigate(`/app/company/${companyId}/ai-scan?type=expense`)}
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#3b82f6',
-                      backgroundColor: 'white',
-                      border: '1px solid #3b82f6',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  >
-                    Scanner (IA)
-                  </button>
-                  <button
-                    onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: 'white',
-                      backgroundColor: '#dc2626',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                  >
-                    Ajouter une dépense
-                  </button>
-                </div>
+                {canModify && (
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => navigate(`/app/company/${companyId}/ai-scan?type=expense`)}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#3b82f6',
+                        backgroundColor: 'white',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      Scanner (IA)
+                    </button>
+                    <button
+                      onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: 'white',
+                        backgroundColor: '#dc2626',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                    >
+                      Ajouter une dépense
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -594,40 +697,42 @@ export default function ExpensesPage() {
                 Aucune dépense trouvée
               </h3>
               <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>
-                Commencez par ajouter votre première dépense ou scannez un justificatif.
+                {canModify ? 'Commencez par ajouter votre première dépense ou scannez un justificatif.' : 'Aucune dépense enregistrée pour le moment.'}
               </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => navigate(`/app/company/${companyId}/ai-scan?type=expense`)}
-                  style={{
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#3b82f6',
-                    backgroundColor: 'white',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Scanner (IA)
-                </button>
-                <button
-                  onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
-                  style={{
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: 'white',
-                    backgroundColor: '#dc2626',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Ajouter une dépense
-                </button>
-              </div>
+              {canModify && (
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => navigate(`/app/company/${companyId}/ai-scan?type=expense`)}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#3b82f6',
+                      backgroundColor: 'white',
+                      border: '1px solid #3b82f6',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Scanner (IA)
+                  </button>
+                  <button
+                    onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: 'white',
+                      backgroundColor: '#dc2626',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Ajouter une dépense
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -708,6 +813,7 @@ export default function ExpensesPage() {
                                 onTogglePaid={() => handleTogglePaid(exp.id, exp.payment_status)}
                                 accountingStatus={exp.accounting_status}
                                 paymentStatus={exp.payment_status}
+                                readOnly={!canModify}
                               />
                             </td>
                           </tr>
@@ -780,6 +886,7 @@ export default function ExpensesPage() {
                     onDelete={(id) => setDeleteModal({ show: true, id })}
                     onToggleValidation={(id) => handleToggleValidation(id, exp.accounting_status)}
                     onTogglePaid={(id) => handleTogglePaid(id, exp.payment_status)}
+                    readOnly={!canModify}
                   />
                 ))}
 

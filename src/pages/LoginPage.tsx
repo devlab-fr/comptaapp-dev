@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
@@ -38,6 +38,7 @@ export default function LoginPage() {
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -45,14 +46,26 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = isSignUp
-        ? await signUp(email, password)
-        : await signIn(email, password);
+      if (isSignUp) {
+        const { error, data } = await signUp(email, password);
 
-      if (error) {
-        setError(error.message);
+        if (error) {
+          setError(error.message);
+        } else if (data?.user && !data?.session) {
+          navigate('/check-email', { state: { email } });
+        } else {
+          const redirectTo = searchParams.get('redirect');
+          navigate(redirectTo || '/app');
+        }
       } else {
-        navigate('/app');
+        const { error } = await signIn(email, password);
+
+        if (error) {
+          setError(error.message);
+        } else {
+          const redirectTo = searchParams.get('redirect');
+          navigate(redirectTo || '/app');
+        }
       }
     } catch (err) {
       setError('Une erreur inattendue est survenue');
@@ -83,167 +96,226 @@ export default function LoginPage() {
       backgroundColor: '#f8f9fa',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between',
     }}>
       <div style={{
+        flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
-        flex: 1,
+        padding: '32px 24px',
       }}>
-      <div style={{
-        maxWidth: '440px',
-        width: '100%',
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05)',
-        padding: '48px 40px',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            margin: '0 0 8px 0',
-            color: '#1a1a1a',
-          }}>
-            ComptaApp
-          </h1>
-          <p style={{
-            fontSize: '16px',
-            color: '#6b7280',
-            margin: 0,
-          }}>
-            {isSignUp ? 'Créez votre compte' : 'Connectez-vous à votre compte'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label htmlFor="email" style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-            }}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+        <div style={{
+          width: '100%',
+          maxWidth: '420px',
+          padding: '32px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #e5e7eb',
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <img
+              src="/logo_carre_comptaapp_format_png.png"
+              alt="ComptaApp Logo"
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease',
-                outline: 'none',
-                boxSizing: 'border-box',
+                width: '64px',
+                height: '64px',
+                margin: '0 auto 14px',
+                display: 'block',
               }}
-              onFocus={(e) => e.target.style.borderColor = '#28a745'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
             />
+            <h1 style={{
+              margin: '0 0 8px 0',
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+            }}>
+              {isSignUp ? 'Créer un compte' : 'Connexion'}
+            </h1>
+            <p style={{
+              margin: '12px 0 0 0',
+              color: '#0a0a0a',
+              fontSize: '16px',
+              fontWeight: '650',
+              lineHeight: '1.4',
+              textAlign: 'center',
+            }}>
+              La gestion comptable de votre entreprise, enfin claire et centralisée.
+            </p>
+            <p style={{
+              margin: '12px auto 0 auto',
+              color: '#4b5563',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              textAlign: 'center',
+              maxWidth: '360px',
+            }}>
+              ComptaApp accompagne les entreprises dans le pilotage,
+              l'organisation et la collaboration autour de leurs données financières.
+            </p>
+            <div style={{
+              margin: '24px 0',
+              padding: '20px',
+              backgroundColor: '#f8fdf9',
+              borderRadius: '12px',
+              border: '1px solid #d1f4dd',
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: '#15803d',
+                  fontSize: '14px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>✔</span>
+                  <span>Données financières centralisées</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: '#15803d',
+                  fontSize: '14px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>✔</span>
+                  <span>Collaboration fluide avec vos partenaires</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: '#15803d',
+                  fontSize: '14px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>✔</span>
+                  <span>Paramètres clairs et structurés</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="password" style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-            }}>
-              Mot de passe
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#28a745'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '6px',
-            }}>
-              <p style={{
-                fontSize: '13px',
-                color: '#9ca3af',
-                margin: 0,
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label htmlFor="email" style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
               }}>
-                6 caractères minimum
-              </p>
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowResetModal(true);
-                    setResetEmail(email);
-                    setResetSuccess(false);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#3b82f6',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    padding: 0,
-                  }}
-                >
-                  Mot de passe oublié ?
-                </button>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  fontSize: '15px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#28a745'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+              }}>
+                Mot de passe
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  fontSize: '15px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#28a745'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
+              />
+              {isSignUp && (
+                <p style={{
+                  fontSize: '12px',
+                  color: '#9ca3af',
+                  margin: '6px 0 0 0',
+                }}>
+                  Minimum 6 caractères
+                </p>
               )}
             </div>
           </div>
 
           {error && (
             <div style={{
-              padding: '14px 16px',
+              padding: '12px 16px',
               backgroundColor: '#fef2f2',
               border: '1px solid #fecaca',
               borderRadius: '8px',
               color: '#dc2626',
               fontSize: '14px',
+              marginTop: '16px',
             }}>
               {error}
             </div>
+          )}
+
+          {!isSignUp && (
+            <p style={{
+              margin: '20px 0 0 0',
+              color: '#6b7280',
+              fontSize: '12px',
+              textAlign: 'left',
+            }}>
+              Après connexion, vous accéderez à vos entreprises
+              et à l'ensemble de leurs paramètres.
+            </p>
           )}
 
           <button
             type="submit"
             disabled={loading}
             style={{
-              padding: '14px',
-              fontSize: '16px',
+              width: '100%',
+              padding: '14px 20px',
+              fontSize: '15px',
               fontWeight: '600',
               color: 'white',
               backgroundColor: loading ? '#9ca3af' : '#28a745',
               border: 'none',
               borderRadius: '8px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              marginTop: '8px',
+              opacity: loading ? 0.6 : 1,
+              transition: 'background-color 0.2s ease',
+              marginTop: '16px',
             }}
             onMouseEnter={(e) => {
               if (!loading) e.currentTarget.style.backgroundColor = '#218838';
@@ -252,52 +324,64 @@ export default function LoginPage() {
               if (!loading) e.currentTarget.style.backgroundColor = '#28a745';
             }}
           >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <span style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid white',
-                  borderTopColor: 'transparent',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  animation: 'spin 0.8s linear infinite',
-                }}></span>
-                Chargement...
-              </span>
-            ) : (
-              isSignUp ? 'Créer un compte' : 'Se connecter'
-            )}
+            {loading ? 'Chargement...' : (isSignUp ? 'Créer le compte' : 'Se connecter')}
           </button>
-        </form>
 
-        <div style={{
-          textAlign: 'center',
-          marginTop: '32px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb',
-        }}>
-          <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'color 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
-          >
-            {isSignUp
-              ? 'Déjà un compte ? Se connecter'
-              : 'Pas de compte ? Créer un compte'}
-          </button>
+          <div style={{
+            marginTop: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            alignItems: 'center',
+          }}>
+            {!isSignUp && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetModal(true);
+                  setResetEmail(email);
+                  setResetSuccess(false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '400',
+                  padding: 0,
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+              >
+                Mot de passe oublié ?
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#6b7280',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '400',
+                padding: 0,
+                textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+            >
+              {isSignUp ? 'Déjà un compte ? Se connecter' : 'Créer un compte'}
+            </button>
+          </div>
+        </form>
         </div>
       </div>
 
@@ -323,26 +407,28 @@ export default function LoginPage() {
               backgroundColor: 'white',
               borderRadius: '16px',
               padding: '32px',
-              maxWidth: '440px',
+              maxWidth: '600px',
               width: '100%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '2px solid #e5e7eb',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '700',
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: '600',
               margin: '0 0 8px 0',
               color: '#1a1a1a',
             }}>
               Réinitialiser le mot de passe
-            </h2>
+            </h3>
             <p style={{
               fontSize: '14px',
               color: '#6b7280',
               margin: '0 0 24px 0',
+              lineHeight: '1.5',
             }}>
-              Entrez votre adresse email pour recevoir un lien de réinitialisation.
+              Entrez votre adresse email. Vous recevrez un lien pour créer un nouveau mot de passe.
             </p>
 
             {!resetSuccess ? (
@@ -454,7 +540,6 @@ export default function LoginPage() {
           }
         `}
       </style>
-      </div>
       <Footer />
     </div>
   );

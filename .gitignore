@@ -1,24 +1,2 @@
-# dependencies
-node_modules/
-
-# env
+node_modules
 .env
-.env.local
-.env.*.local
-
-# build
-dist/
-build/
-
-# logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/

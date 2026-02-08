@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
+import AIAssistant from '../components/AIAssistant';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { downloadCSV, generateCSVContent, formatCurrency, formatDate } from '../utils/csvExport';
@@ -221,6 +223,42 @@ export default function ViewTVAPage() {
       let tvaDeductible = 0;
       let tvaCollectee = 0;
 
+      // Load opening entries (reprise d'ouverture)
+      const { data: openingData } = await supabase
+        .from('opening_entries')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', selectedYear)
+        .maybeSingle();
+
+      let openingTVA = 0;
+      if (openingData) {
+        const tvaSolde = Number(openingData.tva_solde) || 0;
+        // If payer: add to debt (positive), if credit: add to deductible (negative)
+        openingTVA = openingData.tva_sens === 'payer' ? tvaSolde : -tvaSolde;
+      }
+
+      // Load catchup totals (rattrapage par totaux)
+      const { data: catchupData } = await supabase
+        .from('catchup_totals')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', selectedYear);
+
+      let catchupTVACollectee = 0;
+      let catchupTVADeductible = 0;
+
+      if (catchupData) {
+        catchupData.forEach((row) => {
+          const tva = Number(row.total_tva) || 0;
+          if (row.category_type === 'revenue') {
+            catchupTVACollectee += tva;
+          } else if (row.category_type === 'expense') {
+            catchupTVADeductible += tva;
+          }
+        });
+      }
+
       const monthlyTVA: Record<number, MonthlyTVA> = {};
       for (let i = 1; i <= 12; i++) {
         monthlyTVA[i] = {
@@ -337,10 +375,14 @@ export default function ViewTVAPage() {
 
       setMonthlyData(Object.values(monthlyTVA));
 
+      const totalTVACollectee = tvaCollectee + catchupTVACollectee;
+      const totalTVADeductible = tvaDeductible + catchupTVADeductible;
+      const totalSoldeTVA = totalTVACollectee - totalTVADeductible + openingTVA;
+
       setTvaData({
-        tvaCollectee: Math.round(tvaCollectee * 100) / 100,
-        tvaDeductible: Math.round(tvaDeductible * 100) / 100,
-        soldeTVA: Math.round((tvaCollectee - tvaDeductible) * 100) / 100,
+        tvaCollectee: Math.round(totalTVACollectee * 100) / 100,
+        tvaDeductible: Math.round(totalTVADeductible * 100) / 100,
+        soldeTVA: Math.round(totalSoldeTVA * 100) / 100,
       });
 
       setLoading(false);
@@ -1202,33 +1244,7 @@ export default function ViewTVAPage() {
           padding: '32px 24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div style={{ marginBottom: '24px' }}>
           <h2
@@ -1335,770 +1351,829 @@ export default function ViewTVAPage() {
           </select>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '24px',
-            marginBottom: '32px',
-          }}
-        >
+        {!loading && tvaData.tvaCollectee === 0 && tvaData.tvaDeductible === 0 ? (
           <div
             style={{
-              padding: '24px',
+              padding: '80px 32px',
               backgroundColor: 'white',
               borderRadius: '16px',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #dbeafe',
+              textAlign: 'center',
             }}
           >
             <div
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: '#f3f4f6',
+                marginBottom: '24px',
               }}
             >
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: '#dbeafe',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                }}
-              >
-                📥
-              </div>
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  TVA Collectée
-                </p>
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: '12px',
-                    color: '#9ca3af',
-                  }}
-                >
-                  Sur vos revenus
-                </p>
-              </div>
+              <span style={{ fontSize: '40px' }}>📊</span>
             </div>
+            <h3
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1a1a1a',
+              }}
+            >
+              Aucune donnée disponible pour le moment
+            </h3>
             <p
               style={{
                 margin: 0,
-                fontSize: '36px',
-                fontWeight: '700',
-                color: loading ? '#9ca3af' : '#1e40af',
+                fontSize: '16px',
+                color: '#6b7280',
+                lineHeight: '1.5',
               }}
             >
-              {loading
-                ? '...'
-                : new Intl.NumberFormat('fr-FR', {
-                    style: 'currency',
-                    currency: 'EUR',
-                  }).format(tvaData.tvaCollectee)}
+              Ajoutez vos premières opérations pour voir apparaître cette section.
             </p>
           </div>
-
-          <div
-            style={{
-              padding: '24px',
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #fecaca',
-            }}
-          >
+        ) : (
+          <>
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '24px',
+                marginBottom: '32px',
               }}
             >
               <div
                 style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: '#fee2e2',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                }}
-              >
-                📤
-              </div>
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  TVA Déductible
-                </p>
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: '12px',
-                    color: '#9ca3af',
-                  }}
-                >
-                  Sur vos dépenses
-                </p>
-              </div>
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '36px',
-                fontWeight: '700',
-                color: loading ? '#9ca3af' : '#dc2626',
-              }}
-            >
-              {loading
-                ? '...'
-                : new Intl.NumberFormat('fr-FR', {
-                    style: 'currency',
-                    currency: 'EUR',
-                  }).format(tvaData.tvaDeductible)}
-            </p>
-          </div>
-
-          <div
-            style={{
-              padding: '24px',
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: `2px solid ${tvaData.soldeTVA >= 0 ? '#d1fae5' : '#fee2e2'}`,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px',
-              }}
-            >
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: tvaData.soldeTVA >= 0 ? '#d1fae5' : '#fee2e2',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                }}
-              >
-                {tvaData.soldeTVA >= 0 ? '💰' : '⚖️'}
-              </div>
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  Solde TVA
-                </p>
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: '12px',
-                    color: '#9ca3af',
-                  }}
-                >
-                  {tvaData.soldeTVA >= 0 ? 'À reverser' : 'Crédit de TVA'}
-                </p>
-              </div>
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '36px',
-                fontWeight: '700',
-                color: loading
-                  ? '#9ca3af'
-                  : tvaData.soldeTVA >= 0
-                  ? '#059669'
-                  : '#dc2626',
-              }}
-            >
-              {loading
-                ? '...'
-                : new Intl.NumberFormat('fr-FR', {
-                    style: 'currency',
-                    currency: 'EUR',
-                  }).format(Math.abs(tvaData.soldeTVA))}
-            </p>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: '32px',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            marginBottom: '32px',
-          }}
-        >
-          <h3
-            style={{
-              margin: '0 0 16px 0',
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1a1a1a',
-            }}
-          >
-            Exports TVA
-          </h3>
-          <p
-            style={{
-              margin: '0 0 24px 0',
-              fontSize: '14px',
-              color: '#6b7280',
-            }}
-          >
-            Téléchargez les données TVA au format CSV pour {selectedYear}
-          </p>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            <div
-              style={{
-                padding: '20px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                backgroundColor: '#f9fafb',
-              }}
-            >
-              <h4
-                style={{
-                  margin: '0 0 8px 0',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1a1a1a',
-                }}
-              >
-                Export Annuel
-              </h4>
-              <p
-                style={{
-                  margin: '0 0 16px 0',
-                  fontSize: '13px',
-                  color: '#6b7280',
-                  lineHeight: '1.5',
-                }}
-              >
-                Total annuel + détail des 12 mois
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
-                  onClick={exportAnnualCSV}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: 'white',
-                    backgroundColor: '#3b82f6',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2563eb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                  }}
-                >
-                  CSV {selectedYear}
-                </button>
-                <button
-                  onClick={exportAnnualPDF}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#3b82f6',
-                    backgroundColor: 'white',
-                    border: '2px solid #3b82f6',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#eff6ff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  PDF {selectedYear}
-                </button>
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: '20px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                backgroundColor: '#f9fafb',
-              }}
-            >
-              <h4
-                style={{
-                  margin: '0 0 8px 0',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1a1a1a',
-                }}
-              >
-                Export Trimestriel
-              </h4>
-              <p
-                style={{
-                  margin: '0 0 12px 0',
-                  fontSize: '13px',
-                  color: '#6b7280',
-                  lineHeight: '1.5',
-                }}
-              >
-                Choisissez un trimestre
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Format CSV</p>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {[1, 2, 3, 4].map(q => (
-                      <button
-                        key={`csv-${q}`}
-                        onClick={() => exportQuarterlyCSV(q)}
-                        style={{
-                          flex: '1 1 calc(50% - 4px)',
-                          padding: '8px 12px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          color: 'white',
-                          backgroundColor: '#3b82f6',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#2563eb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#3b82f6';
-                        }}
-                      >
-                        T{q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Format PDF</p>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {[1, 2, 3, 4].map(q => (
-                      <button
-                        key={`pdf-${q}`}
-                        onClick={() => exportQuarterlyPDF(q)}
-                        style={{
-                          flex: '1 1 calc(50% - 4px)',
-                          padding: '8px 12px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          color: '#3b82f6',
-                          backgroundColor: 'white',
-                          border: '2px solid #3b82f6',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#eff6ff';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                        }}
-                      >
-                        T{q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: '20px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                backgroundColor: '#f9fafb',
-              }}
-            >
-              <h4
-                style={{
-                  margin: '0 0 8px 0',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1a1a1a',
-                }}
-              >
-                Export Mensuel
-              </h4>
-              <p
-                style={{
-                  margin: '0 0 16px 0',
-                  fontSize: '13px',
-                  color: '#6b7280',
-                  lineHeight: '1.5',
-                }}
-              >
-                Voir tableau ci-dessous
-              </p>
-              <div
-                style={{
-                  padding: '8px 12px',
-                  fontSize: '13px',
-                  color: '#6b7280',
+                  padding: '24px',
                   backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  textAlign: 'center',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                  border: '2px solid #dbeafe',
                 }}
               >
-                Action dans le tableau
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: '32px',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          }}
-        >
-          <h3
-            style={{
-              margin: '0 0 24px 0',
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1a1a1a',
-            }}
-          >
-            Détail mensuel
-          </h3>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-              }}
-            >
-              <thead>
-                <tr
+                <div
                   style={{
-                    backgroundColor: '#f9fafb',
-                    borderBottom: '2px solid #e5e7eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
                   }}
                 >
-                  <th
+                  <div
                     style={{
-                      padding: '12px 16px',
-                      textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      backgroundColor: '#dbeafe',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
                     }}
                   >
-                    Mois
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'right',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    TVA Collectée
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'right',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    TVA Déductible
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'right',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Solde
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'center',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Statut
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'center',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyData.map((month) => {
-                  const hasActivity = month.tvaCollectee !== 0 || month.tvaDeductible !== 0;
-                  const isDeclared = month.status === 'declared';
-
-                  return (
-                    <tr
-                      key={month.month}
+                    📥
+                  </div>
+                  <div>
+                    <p
                       style={{
-                        borderBottom: '1px solid #e5e7eb',
-                        backgroundColor: isDeclared ? '#f9fafb' : 'white',
-                        opacity: !hasActivity ? 0.5 : 1,
+                        margin: 0,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
                       }}
                     >
-                      <td
+                      TVA Collectée
+                    </p>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: '12px',
+                        color: '#9ca3af',
+                      }}
+                    >
+                      Sur vos revenus
+                    </p>
+                  </div>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '36px',
+                    fontWeight: '700',
+                    color: loading ? '#9ca3af' : '#1e40af',
+                  }}
+                >
+                  {loading
+                    ? '...'
+                    : new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                      }).format(tvaData.tvaCollectee)}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  padding: '24px',
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                  border: '2px solid #fecaca',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      backgroundColor: '#fee2e2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                    }}
+                  >
+                    📤
+                  </div>
+                  <div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      TVA Déductible
+                    </p>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: '12px',
+                        color: '#9ca3af',
+                      }}
+                    >
+                      Sur vos dépenses
+                    </p>
+                  </div>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '36px',
+                    fontWeight: '700',
+                    color: loading ? '#9ca3af' : '#dc2626',
+                  }}
+                >
+                  {loading
+                    ? '...'
+                    : new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                      }).format(tvaData.tvaDeductible)}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  padding: '24px',
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                  border: `2px solid ${tvaData.soldeTVA >= 0 ? '#d1fae5' : '#fee2e2'}`,
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      backgroundColor: tvaData.soldeTVA >= 0 ? '#d1fae5' : '#fee2e2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                    }}
+                  >
+                    {tvaData.soldeTVA >= 0 ? '💰' : '⚖️'}
+                  </div>
+                  <div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      Solde TVA
+                    </p>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: '12px',
+                        color: '#9ca3af',
+                      }}
+                    >
+                      {tvaData.soldeTVA >= 0 ? 'À reverser' : 'Crédit de TVA'}
+                    </p>
+                  </div>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '36px',
+                    fontWeight: '700',
+                    color: loading
+                      ? '#9ca3af'
+                      : tvaData.soldeTVA >= 0
+                      ? '#059669'
+                      : '#dc2626',
+                  }}
+                >
+                  {loading
+                    ? '...'
+                    : new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                      }).format(Math.abs(tvaData.soldeTVA))}
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '32px',
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                marginBottom: '32px',
+              }}
+            >
+              <h3
+                style={{
+                  margin: '0 0 16px 0',
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1a1a1a',
+                }}
+              >
+                Exports TVA
+              </h3>
+              <p
+                style={{
+                  margin: '0 0 24px 0',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                }}
+              >
+                Téléchargez les données TVA au format CSV pour {selectedYear}
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '20px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    backgroundColor: '#f9fafb',
+                  }}
+                >
+                  <h4
+                    style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                    }}
+                  >
+                    Export Annuel
+                  </h4>
+                  <p
+                    style={{
+                      margin: '0 0 16px 0',
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    Total annuel + détail des 12 mois
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button
+                      onClick={exportAnnualCSV}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: 'white',
+                        backgroundColor: '#3b82f6',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#2563eb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#3b82f6';
+                      }}
+                    >
+                      CSV {selectedYear}
+                    </button>
+                    <button
+                      onClick={exportAnnualPDF}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#3b82f6',
+                        backgroundColor: 'white',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      PDF {selectedYear}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '20px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    backgroundColor: '#f9fafb',
+                  }}
+                >
+                  <h4
+                    style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                    }}
+                  >
+                    Export Trimestriel
+                  </h4>
+                  <p
+                    style={{
+                      margin: '0 0 12px 0',
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    Choisissez un trimestre
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Format CSV</p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {[1, 2, 3, 4].map(q => (
+                          <button
+                            key={`csv-${q}`}
+                            onClick={() => exportQuarterlyCSV(q)}
+                            style={{
+                              flex: '1 1 calc(50% - 4px)',
+                              padding: '8px 12px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#3b82f6',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#2563eb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#3b82f6';
+                            }}
+                          >
+                            T{q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Format PDF</p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {[1, 2, 3, 4].map(q => (
+                          <button
+                            key={`pdf-${q}`}
+                            onClick={() => exportQuarterlyPDF(q)}
+                            style={{
+                              flex: '1 1 calc(50% - 4px)',
+                              padding: '8px 12px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: '#3b82f6',
+                              backgroundColor: 'white',
+                              border: '2px solid #3b82f6',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#eff6ff';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                          >
+                            T{q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '20px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    backgroundColor: '#f9fafb',
+                  }}
+                >
+                  <h4
+                    style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                    }}
+                  >
+                    Export Mensuel
+                  </h4>
+                  <p
+                    style={{
+                      margin: '0 0 16px 0',
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    Voir tableau ci-dessous
+                  </p>
+                  <div
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Action dans le tableau
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '32px',
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              }}
+            >
+              <h3
+                style={{
+                  margin: '0 0 24px 0',
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1a1a1a',
+                }}
+              >
+                Détail mensuel
+              </h3>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        backgroundColor: '#f9fafb',
+                        borderBottom: '2px solid #e5e7eb',
+                      }}
+                    >
+                      <th
                         style={{
                           padding: '12px 16px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: '#374151',
-                        }}
-                      >
-                        {monthNames[month.month - 1]}
-                      </td>
-                      <td
-                        style={{
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          color: '#1e40af',
-                          textAlign: 'right',
-                          fontWeight: '500',
-                        }}
-                      >
-                        {new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        }).format(month.tvaCollectee)}
-                      </td>
-                      <td
-                        style={{
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          color: '#dc2626',
-                          textAlign: 'right',
-                          fontWeight: '500',
-                        }}
-                      >
-                        {new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        }).format(month.tvaDeductible)}
-                      </td>
-                      <td
-                        style={{
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          color: month.soldeTVA >= 0 ? '#059669' : '#dc2626',
-                          textAlign: 'right',
+                          textAlign: 'left',
+                          fontSize: '13px',
                           fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
                         }}
                       >
-                        {new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        }).format(Math.abs(month.soldeTVA))}
-                      </td>
-                      <td
+                        Mois
+                      </th>
+                      <th
+                        style={{
+                          padding: '12px 16px',
+                          textAlign: 'right',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        TVA Collectée
+                      </th>
+                      <th
+                        style={{
+                          padding: '12px 16px',
+                          textAlign: 'right',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        TVA Déductible
+                      </th>
+                      <th
+                        style={{
+                          padding: '12px 16px',
+                          textAlign: 'right',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Solde
+                      </th>
+                      <th
                         style={{
                           padding: '12px 16px',
                           textAlign: 'center',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
                         }}
                       >
-                        <span
+                        Statut
+                      </th>
+                      <th
+                        style={{
+                          padding: '12px 16px',
+                          textAlign: 'center',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyData.map((month) => {
+                      const hasActivity = month.tvaCollectee !== 0 || month.tvaDeductible !== 0;
+                      const isDeclared = month.status === 'declared';
+
+                      return (
+                        <tr
+                          key={month.month}
                           style={{
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            borderRadius: '12px',
-                            backgroundColor: isDeclared ? '#d1fae5' : '#f3f4f6',
-                            color: isDeclared ? '#065f46' : '#6b7280',
+                            borderBottom: '1px solid #e5e7eb',
+                            backgroundColor: isDeclared ? '#f9fafb' : 'white',
+                            opacity: !hasActivity ? 0.5 : 1,
                           }}
                         >
-                          {isDeclared ? 'Déclarée' : 'Ouverte'}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: '12px 16px',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {hasActivity && (
-                            <>
-                              <button
-                                onClick={() => exportMonthlyCSV(month.month)}
-                                style={{
-                                  padding: '6px 12px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: '#3b82f6',
-                                  backgroundColor: 'white',
-                                  border: '1px solid #bfdbfe',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                CSV
-                              </button>
-                              <button
-                                onClick={() => exportMonthlyPDF(month.month)}
-                                style={{
-                                  padding: '6px 12px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  color: '#3b82f6',
-                                  backgroundColor: 'white',
-                                  border: '1px solid #bfdbfe',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                PDF
-                              </button>
-                              {isDeclared ? (
-                                <button
-                                  onClick={() => markPeriodAsOpen(month.month)}
-                                  style={{
-                                    padding: '6px 12px',
-                                    fontSize: '12px',
-                                    fontWeight: '500',
-                                    color: '#dc2626',
-                                    backgroundColor: 'white',
-                                    border: '1px solid #fecaca',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Rouvrir
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => markPeriodAsDeclared(month.month)}
-                                  style={{
-                                    padding: '6px 12px',
-                                    fontSize: '12px',
-                                    fontWeight: '500',
-                                    color: '#059669',
-                                    backgroundColor: 'white',
-                                    border: '1px solid #d1fae5',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Marquer déclarée
-                                </button>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              color: '#374151',
+                            }}
+                          >
+                            {monthNames[month.month - 1]}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              fontSize: '14px',
+                              color: '#1e40af',
+                              textAlign: 'right',
+                              fontWeight: '500',
+                            }}
+                          >
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: 'EUR',
+                            }).format(month.tvaCollectee)}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              fontSize: '14px',
+                              color: '#dc2626',
+                              textAlign: 'right',
+                              fontWeight: '500',
+                            }}
+                          >
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: 'EUR',
+                            }).format(month.tvaDeductible)}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              fontSize: '14px',
+                              color: month.soldeTVA >= 0 ? '#059669' : '#dc2626',
+                              textAlign: 'right',
+                              fontWeight: '600',
+                            }}
+                          >
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: 'EUR',
+                            }).format(Math.abs(month.soldeTVA))}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <span
+                              style={{
+                                padding: '4px 12px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                borderRadius: '12px',
+                                backgroundColor: isDeclared ? '#d1fae5' : '#f3f4f6',
+                                color: isDeclared ? '#065f46' : '#6b7280',
+                              }}
+                            >
+                              {isDeclared ? 'Déclarée' : 'Ouverte'}
+                            </span>
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              {hasActivity && (
+                                <>
+                                  <button
+                                    onClick={() => exportMonthlyCSV(month.month)}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '12px',
+                                      fontWeight: '500',
+                                      color: '#3b82f6',
+                                      backgroundColor: 'white',
+                                      border: '1px solid #bfdbfe',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    CSV
+                                  </button>
+                                  <button
+                                    onClick={() => exportMonthlyPDF(month.month)}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '12px',
+                                      fontWeight: '500',
+                                      color: '#3b82f6',
+                                      backgroundColor: 'white',
+                                      border: '1px solid #bfdbfe',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    PDF
+                                  </button>
+                                  {isDeclared ? (
+                                    <button
+                                      onClick={() => markPeriodAsOpen(month.month)}
+                                      style={{
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        fontWeight: '500',
+                                        color: '#dc2626',
+                                        backgroundColor: 'white',
+                                        border: '1px solid #fecaca',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Rouvrir
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => markPeriodAsDeclared(month.month)}
+                                      style={{
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        fontWeight: '500',
+                                        color: '#059669',
+                                        backgroundColor: 'white',
+                                        border: '1px solid #d1fae5',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Marquer déclarée
+                                    </button>
+                                  )}
+                                </>
                               )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </main>
+
+      <AIAssistant
+        context="tva"
+        data={{
+          tvaCollectee: tvaData.tvaCollectee,
+          tvaDeductible: tvaData.tvaDeductible,
+          soldeTVA: tvaData.soldeTVA,
+        }}
+        companyId={companyId!}
+      />
 
       {toast.show && (
         <Toast

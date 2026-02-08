@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import { compareVat, getVatAccountDetails, VatComparison, VatAccountDetail } from '../utils/accountingVat';
 import { checkClosureStatus, getAccountingStatements, ClosureStatus, AccountingStatement, ControlStatus } from '../utils/closureControls';
@@ -93,20 +94,7 @@ export function ComptabilitePage() {
         padding: '20px 40px'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <button
-            onClick={() => navigate(`/app/company/${companyId}`)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#6b7280',
-              cursor: 'pointer',
-              fontSize: '14px',
-              marginBottom: '12px',
-              padding: 0,
-            }}
-          >
-            ← Retour
-          </button>
+          <BackButton to={`/app/company/${companyId}`} />
           <h1 style={{
             margin: '0 0 8px 0',
             fontSize: '28px',

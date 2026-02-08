@@ -2,10 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-  apiVersion: "2024-12-18.acacia",
-});
-
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,9 +19,35 @@ const TIER_TO_PRICE: Record<string, string> = {
 };
 
 Deno.serve(async (req: Request) => {
+  console.log("=== CREATE-CHECKOUT-SESSION CALLED ===", {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries()),
+  });
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+
+  const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!stripeSecretKey || stripeSecretKey.trim() === "") {
+    console.log("[STRIPE_DISABLED] missing STRIPE_SECRET_KEY", {
+      ts: new Date().toISOString(),
+      fn: "create-checkout-session",
+    });
+    return new Response(
+      JSON.stringify({ error: "STRIPE_DISABLED", message: "Stripe not configured yet" }),
+      {
+        status: 501,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: "2024-12-18.acacia",
+  });
 
   console.log("EDGE_EXPECTED", {
     SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
@@ -293,9 +315,14 @@ Deno.serve(async (req: Request) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Error creating checkout session:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (e) {
+    console.error("[FUNCTION_ERROR]", {
+      fn: "create-checkout-session",
+      error: e,
+      message: e?.message,
+      stack: e?.stack,
+    });
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: e?.message || "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

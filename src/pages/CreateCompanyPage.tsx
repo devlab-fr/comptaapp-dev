@@ -51,249 +51,169 @@ export default function CreateCompanyPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f8f9fa',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-    }}>
-      <div style={{
-        maxWidth: '540px',
-        width: '100%',
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05)',
-        padding: '48px 40px',
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      <main style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '32px 24px',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 20px',
-          }}>
-            <img
-              src="/comptaapp-icon.png"
-              alt="ComptaApp"
-              width="80"
-              height="80"
-              style={{ borderRadius: '16px' }}
-            />
-          </div>
-          <h1 style={{
-            fontSize: '28px',
-            fontWeight: '700',
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{
             margin: '0 0 8px 0',
+            fontSize: '32px',
+            fontWeight: '700',
             color: '#1a1a1a',
           }}>
             Créer votre entreprise
-          </h1>
+          </h2>
           <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
             margin: 0,
+            color: '#6b7280',
+            fontSize: '16px',
           }}>
             Renseignez les informations de votre entreprise
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label htmlFor="companyName" style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-            }}>
-              Nom de l'entreprise *
-            </label>
-            <input
-              id="companyName"
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-              placeholder="Ex: Ma société"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#28a745'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-          </div>
+        <div style={{
+          padding: '32px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+          border: '2px solid #e5e7eb',
+        }}>
 
-          <div>
-            <label htmlFor="country" style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-            }}>
-              Pays
-            </label>
-            <select
-              id="country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                fontSize: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease',
-                outline: 'none',
-                boxSizing: 'border-box',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#28a745'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="FR">France</option>
-              <option value="BE">Belgique</option>
-              <option value="CH">Suisse</option>
-              <option value="CA">Canada</option>
-            </select>
-          </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div>
+              <label htmlFor="companyName" style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+              }}>
+                Nom de l'entreprise *
+              </label>
+              <input
+                id="companyName"
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                required
+                placeholder="Ex: Ma société"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
 
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '12px',
-            marginBottom: '8px',
-          }}>
-            <div style={{
-              fontSize: '13px',
-              color: '#1e40af',
-              lineHeight: '1.5',
-            }}>
-              Chaque entreprise peut disposer de son propre abonnement
+            <div>
+              <label htmlFor="country" style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+              }}>
+                Pays
+              </label>
+              <select
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="FR">France</option>
+                <option value="BE">Belgique</option>
+                <option value="CH">Suisse</option>
+                <option value="CA">Canada</option>
+              </select>
             </div>
           </div>
 
           {error && (
             <div style={{
-              padding: '14px 16px',
+              padding: '12px 16px',
               backgroundColor: '#fef2f2',
               border: '1px solid #fecaca',
               borderRadius: '8px',
               color: '#dc2626',
               fontSize: '14px',
+              marginTop: '20px',
             }}>
-              <strong>Erreur:</strong> {error}
+              {error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: '600',
-              color: 'white',
-              backgroundColor: loading ? '#9ca3af' : '#28a745',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              marginTop: '8px',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = '#218838';
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = '#28a745';
-            }}
-          >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <span style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid white',
-                  borderTopColor: 'transparent',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  animation: 'spin 0.8s linear infinite',
-                }}></span>
-                Création en cours...
-              </span>
-            ) : (
-              'Créer l\'entreprise'
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/app')}
-            style={{
-              padding: '12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#6b7280',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-          >
-            Annuler
-          </button>
-
-          {error && error.includes('Session expirée') && (
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
               type="button"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/app')}
               style={{
-                padding: '12px',
+                padding: '10px 20px',
                 fontSize: '14px',
-                fontWeight: '600',
-                color: 'white',
-                backgroundColor: '#dc2626',
-                border: 'none',
+                fontWeight: '500',
+                color: '#6b7280',
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
             >
-              Retour au login
+              Annuler
             </button>
-          )}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: loading ? '#9ca3af' : '#28a745',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                transition: 'background-color 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = '#218838';
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = '#28a745';
+              }}
+            >
+              {loading ? 'Création...' : 'Créer l\'entreprise'}
+            </button>
+          </div>
         </form>
-      </div>
-
-      <style>
-        {`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}
-      </style>
+        </div>
+      </main>
     </div>
   );
 }

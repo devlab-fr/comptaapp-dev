@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import BackButton from '../components/BackButton';
 
 interface VerificationData {
   totalExpensesHT: number;
@@ -19,7 +20,6 @@ interface VerificationData {
 }
 
 export default function VerificationV1Page() {
-  const navigate = useNavigate();
   const { companyId } = useParams<{ companyId: string }>();
   const [data, setData] = useState<VerificationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,29 +116,7 @@ export default function VerificationV1Page() {
         }}
       >
         <div style={{ marginBottom: '32px' }}>
-          <button
-            onClick={() => navigate(`/app/company/${companyId}`)}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#667eea',
-              backgroundColor: 'white',
-              border: '2px solid #667eea',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              marginBottom: '24px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f5f3ff';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-          >
-            ← Retour au Dashboard
-          </button>
+          <BackButton to={`/app/company/${companyId}`} label="Retour au Dashboard" />
 
           <h1
             style={{

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { AttachmentUpload } from '../components/AttachmentUpload';
 
 interface Category {
@@ -247,7 +248,7 @@ export default function AddRevenuePage() {
         document_id: document.id,
         description: line.description,
         category_id: line.categoryId,
-        subcategory_id: line.subcategoryId,
+        subcategory_id: line.subcategoryId ? line.subcategoryId : null,
         amount_excl_vat: amountHTNum,
         vat_rate: tvaRateNum,
         vat_amount: tvaAmount,
@@ -405,33 +406,7 @@ export default function AddRevenuePage() {
           padding: '32px 24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div
           style={{
@@ -708,7 +683,6 @@ export default function AddRevenuePage() {
                       <select
                         value={line.subcategoryId}
                         onChange={(e) => updateLine(line.id, 'subcategoryId', e.target.value)}
-                        required
                         disabled={!line.categoryId || !subcategoriesMap[line.categoryId]}
                         style={{
                           width: '100%',
@@ -743,6 +717,7 @@ export default function AddRevenuePage() {
                             ? 'Sélectionnez d\'abord une catégorie'
                             : 'Sélectionnez une sous-catégorie'}
                         </option>
+                        {line.categoryId && <option value="">Aucune sous-catégorie</option>}
                         {line.categoryId &&
                           subcategoriesMap[line.categoryId]?.map((subcat) => (
                             <option key={subcat.id} value={subcat.id}>

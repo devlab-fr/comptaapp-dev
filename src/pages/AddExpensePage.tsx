@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import { AttachmentUpload } from '../components/AttachmentUpload';
 import { useEntitlements } from '../billing/useEntitlements';
@@ -424,33 +425,7 @@ export default function AddExpensePage() {
           padding: '32px 24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div
           style={{

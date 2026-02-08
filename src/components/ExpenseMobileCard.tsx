@@ -18,6 +18,7 @@ interface ExpenseMobileCardProps {
   onDelete: (id: string) => void;
   onToggleValidation?: (id: string) => void;
   onTogglePaid?: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export function ExpenseMobileCard({
@@ -25,7 +26,8 @@ export function ExpenseMobileCard({
   onEdit,
   onDelete,
   onToggleValidation,
-  onTogglePaid
+  onTogglePaid,
+  readOnly = false
 }: ExpenseMobileCardProps) {
   return (
     <div
@@ -99,6 +101,7 @@ export function ExpenseMobileCard({
           onTogglePaid={onTogglePaid ? () => onTogglePaid(expense.id) : undefined}
           accountingStatus={expense.accounting_status}
           paymentStatus={expense.payment_status}
+          readOnly={readOnly}
         />
       </div>
     </div>

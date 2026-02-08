@@ -4,6 +4,12 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { HOME_RECENT_LIMIT } from '../constants';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
+import KPIGraphs from '../components/KPIGraphs';
+import AIAssistant from '../components/AIAssistant';
+import { usePlan } from '../lib/usePlan';
+import { useLegalAcceptance } from '../hooks/useLegalAcceptance';
+import { LegalGateModal } from '../components/legal/LegalGateModal';
 
 interface Company {
   id: string;
@@ -38,6 +44,11 @@ export default function CompanyPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { canUse } = usePlan(companyId);
+  const { hasAccepted, loading: legalLoading } = useLegalAcceptance(companyId);
+  const [showLegalGate, setShowLegalGate] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [showFacturesUpsell, setShowFacturesUpsell] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0, unpaidAmount: 0 });
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0 });
@@ -52,6 +63,26 @@ export default function CompanyPage() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handleProtectedAction = (action: () => void) => {
+    if (legalLoading) {
+      return;
+    }
+    if (!hasAccepted('cgu')) {
+      setPendingAction(() => action);
+      setShowLegalGate(true);
+      return;
+    }
+    action();
+  };
+
+  const onCGUAccepted = () => {
+    setShowLegalGate(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
   };
 
   useEffect(() => {
@@ -128,10 +159,9 @@ export default function CompanyPage() {
     if (!companyId) return;
 
     const now = new Date();
-    const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-    const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+    const startDate = `${currentYear}-01-01`;
+    const endDate = `${currentYear}-12-31`;
 
     const { data } = await supabase
       .from('expense_documents')
@@ -159,10 +189,9 @@ export default function CompanyPage() {
     if (!companyId) return;
 
     const now = new Date();
-    const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-    const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+    const startDate = `${currentYear}-01-01`;
+    const endDate = `${currentYear}-12-31`;
 
     const { data } = await supabase
       .from('revenue_documents')
@@ -394,6 +423,16 @@ export default function CompanyPage() {
     }
   }, [companyId]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showFacturesUpsell) {
+        setShowFacturesUpsell(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showFacturesUpsell]);
+
   if (loading) {
     return (
       <div style={{
@@ -439,22 +478,7 @@ export default function CompanyPage() {
           <p style={{ color: '#dc2626', marginBottom: '24px', fontSize: '16px' }}>
             {error || 'Erreur'}
           </p>
-          <button
-            onClick={() => navigate('/app')}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#3b82f6',
-              backgroundColor: '#eff6ff',
-              border: '1px solid #dbeafe',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Retour à mes entreprises
-          </button>
+          <BackButton to="/app" label="Retour à mes entreprises" />
         </div>
       </div>
     );
@@ -470,6 +494,7 @@ export default function CompanyPage() {
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
+          .quick-actions-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -481,6 +506,47 @@ export default function CompanyPage() {
           margin: '0 auto',
           padding: '32px 24px',
         }}>
+          {!legalLoading && !hasAccepted('cgu') && (
+            <div style={{
+              padding: '16px 20px',
+              backgroundColor: '#fef3c7',
+              border: '2px solid #fbbf24',
+              borderRadius: '12px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <span style={{ fontSize: '24px' }}>⚠️</span>
+                <p style={{
+                  margin: 0,
+                  color: '#92400e',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}>
+                  Pour utiliser les fonctionnalités de ComptaApp (dépenses, revenus, factures), vous devez accepter les Conditions Générales d'Utilisation.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowLegalGate(true)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  marginLeft: '16px',
+                }}
+              >
+                Lire et accepter
+              </button>
+            </div>
+          )}
           {successMessage && (
             <div style={{
               padding: '12px 16px',
@@ -504,33 +570,7 @@ export default function CompanyPage() {
             </div>
           )}
 
-          <button
-            onClick={() => navigate('/app')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#6b7280',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              marginBottom: '24px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-          >
-            <span>←</span>
-            Retour à mes entreprises
-          </button>
+          <BackButton to="/app" label="Retour à mes entreprises" />
 
           <div style={{
             padding: '24px 32px',
@@ -804,7 +844,7 @@ export default function CompanyPage() {
                   Gérer les dépenses
                 </button>
                 <button
-                  onClick={() => navigate(`/app/company/${companyId}/expenses/new`)}
+                  onClick={() => handleProtectedAction(() => navigate(`/app/company/${companyId}/expenses/new`))}
                   style={{
                     padding: '12px 20px',
                     fontSize: '14px',
@@ -971,7 +1011,7 @@ export default function CompanyPage() {
                   Gérer les revenus
                 </button>
                 <button
-                  onClick={() => navigate(`/app/company/${companyId}/revenues/new`)}
+                  onClick={() => handleProtectedAction(() => navigate(`/app/company/${companyId}/revenues/new`))}
                   style={{
                     padding: '12px 20px',
                     fontSize: '14px',
@@ -992,6 +1032,18 @@ export default function CompanyPage() {
             </div>
           </div>
 
+          <KPIGraphs companyId={companyId!} />
+
+          <AIAssistant
+            context="synthese"
+            data={{
+              netResult: revenueSummary.totalHT - expenseSummary.totalHT,
+              revenues: revenueSummary.totalHT,
+              expenses: expenseSummary.totalHT,
+            }}
+            companyId={companyId!}
+          />
+
           <div style={{
             padding: '24px 32px',
             backgroundColor: '#f9fafb',
@@ -1010,7 +1062,7 @@ export default function CompanyPage() {
 
             <div className="quick-actions-grid" style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '16px',
             }}>
               <button
@@ -1018,16 +1070,16 @@ export default function CompanyPage() {
                 style={{
                   padding: '20px',
                   backgroundColor: 'white',
-                  border: '2px solid #3b82f6',
+                  border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dbeafe';
+                  e.currentTarget.style.backgroundColor = '#f5f3ff';
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(139, 92, 246, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
@@ -1037,10 +1089,10 @@ export default function CompanyPage() {
               >
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧠</div>
                 <h4 style={{
-                  margin: '0 0 6px 0',
+                  margin: '0 0 8px 0',
                   fontSize: '16px',
                   fontWeight: '600',
-                  color: '#3b82f6',
+                  color: '#7c3aed',
                 }}>
                   Scanner un justificatif (IA)
                 </h4>
@@ -1051,6 +1103,66 @@ export default function CompanyPage() {
                   lineHeight: '1.4',
                 }}>
                   Extraire automatiquement les informations
+                </p>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleProtectedAction(() => {
+                    if (canUse('assistantIA')) {
+                      navigate(`/app/company/${companyId}/factures`);
+                    } else {
+                      setShowFacturesUpsell(true);
+                    }
+                  });
+                }}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #0891b2',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#cffafe';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(8, 145, 178, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📄</div>
+                <h4 style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#0891b2',
+                }}>
+                  Créer des factures
+                  <span style={{
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    backgroundColor: '#0891b2',
+                    color: 'white',
+                    fontSize: '10px',
+                    borderRadius: '4px',
+                    fontWeight: '600',
+                  }}>
+                    PRO++
+                  </span>
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Documents commerciaux PDF
                 </p>
               </button>
             </div>
@@ -1349,140 +1461,187 @@ export default function CompanyPage() {
           </div>
 
           <div style={{
-            padding: '20px 28px',
-            backgroundColor: 'white',
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
             borderRadius: '16px',
-            border: '1px solid #e5e7eb',
+            border: '2px solid #e5e7eb',
             marginBottom: '32px',
           }}>
             <h3 style={{
-              margin: '0 0 16px 0',
-              fontSize: '16px',
+              margin: '0 0 20px 0',
+              fontSize: '18px',
               fontWeight: '600',
-              color: '#6b7280',
+              color: '#1a1a1a',
             }}>
               Configuration & aide
             </h3>
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
             }}>
               <button
                 onClick={() => navigate(`/app/company/${companyId}/parametres`)}
                 style={{
-                  padding: '16px',
+                  padding: '20px',
                   backgroundColor: 'white',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '10px',
+                  border: '2px solid #64748b',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
-                  e.currentTarget.style.borderColor = '#64748b';
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚙️</div>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>⚙️</div>
                 <h4 style={{
-                  margin: '0 0 4px 0',
-                  fontSize: '14px',
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#64748b',
                 }}>
                   Paramètres
                 </h4>
                 <p style={{
                   margin: 0,
-                  fontSize: '11px',
-                  color: '#9ca3af',
-                  lineHeight: '1.3',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
                 }}>
                   Configuration
                 </p>
               </button>
 
               <button
+                onClick={() => navigate(`/app/company/${companyId}/reprise-historique`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #3b82f6',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#eff6ff';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📥</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#3b82f6',
+                }}>
+                  Reprise d'historique
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Soldes d'ouverture
+                </p>
+              </button>
+
+              <button
                 onClick={() => navigate(`/app/company/${companyId}/subscription`)}
                 style={{
-                  padding: '16px',
+                  padding: '20px',
                   backgroundColor: 'white',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '10px',
+                  border: '2px solid #f59e0b',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#fffbeb';
-                  e.currentTarget.style.borderColor = '#f59e0b';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>⭐</div>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>⭐</div>
                 <h4 style={{
-                  margin: '0 0 4px 0',
-                  fontSize: '14px',
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#f59e0b',
                 }}>
                   Abonnement
                 </h4>
                 <p style={{
                   margin: 0,
-                  fontSize: '11px',
-                  color: '#9ca3af',
-                  lineHeight: '1.3',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
                 }}>
-                  Plans
+                  Plans et facturation
                 </p>
               </button>
 
               <button
                 onClick={() => navigate(`/app/company/${companyId}/guide`)}
                 style={{
-                  padding: '16px',
+                  padding: '20px',
                   backgroundColor: 'white',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '10px',
+                  border: '2px solid #0891b2',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ecfeff';
-                  e.currentTarget.style.borderColor = '#0891b2';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📖</div>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>📖</div>
                 <h4 style={{
-                  margin: '0 0 4px 0',
-                  fontSize: '14px',
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#0891b2',
                 }}>
                   Mode d'utilisation
                 </h4>
                 <p style={{
                   margin: 0,
-                  fontSize: '11px',
-                  color: '#9ca3af',
-                  lineHeight: '1.3',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
                 }}>
-                  Guide
+                  Guide de l'application
                 </p>
               </button>
             </div>
@@ -1498,6 +1657,135 @@ export default function CompanyPage() {
           `}
         </style>
       </div>
+
+      {showFacturesUpsell && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={() => setShowFacturesUpsell(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '500px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                Facturation
+              </h2>
+              <button
+                onClick={() => setShowFacturesUpsell(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                Module Factures disponible en Pro++
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>
+                Le module Factures est disponible en Pro++. Passez au plan Pro++ pour y accéder.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setShowFacturesUpsell(false)}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: 'white',
+                    color: '#6b7280',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => {
+                    setShowFacturesUpsell(false);
+                    navigate(`/app/company/${companyId}/subscription`);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1d4ed8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563eb';
+                  }}
+                >
+                  Passer au plan Pro++
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <LegalGateModal
+        companyId={companyId || ''}
+        documentKey="cgu"
+        isOpen={showLegalGate}
+        onClose={() => {
+          setShowLegalGate(false);
+          setPendingAction(null);
+        }}
+        onAccepted={onCGUAccepted}
+      />
     </>
   );
 }

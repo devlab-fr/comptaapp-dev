@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
+import MembersManagement from '../components/MembersManagement';
+import { useUserRole } from '../lib/useUserRole';
 
 interface CompanyData {
   id: string;
@@ -46,6 +49,7 @@ export default function ParametresEntreprisePage() {
   const { companyId } = useParams<{ companyId: string }>();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { canModify, isOwner } = useUserRole(companyId);
 
   const [companyData, setCompanyData] = useState<CompanyData>({
     id: '',
@@ -353,42 +357,16 @@ export default function ParametresEntreprisePage() {
         style={{
           maxWidth: '1200px',
           margin: '0 auto',
-          padding: '32px 24px',
+          padding: '24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} label="Retour au tableau de bord" />
 
-        <div style={{ marginBottom: '32px' }}>
+        <div style={{ marginBottom: '28px' }}>
           <h2
             style={{
-              margin: '0 0 8px 0',
-              fontSize: '32px',
+              margin: '0 0 6px 0',
+              fontSize: '28px',
               fontWeight: '700',
               color: '#1a1a1a',
             }}
@@ -399,52 +377,66 @@ export default function ParametresEntreprisePage() {
             style={{
               margin: 0,
               color: '#6b7280',
-              fontSize: '16px',
+              fontSize: '14px',
             }}
           >
             {companyData.name}
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div
             style={{
-              padding: '32px',
+              padding: '28px',
               backgroundColor: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #e5e7eb',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #e5e7eb',
             }}
           >
             <h3
               style={{
-                margin: '0 0 24px 0',
-                fontSize: '20px',
-                fontWeight: '600',
-                color: '#1a1a1a',
+                margin: '0 0 8px 0',
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#15803d',
               }}
             >
               Informations Entreprise
             </h3>
+            <p
+              style={{
+                margin: '0 0 20px 0',
+                fontSize: '14px',
+                color: '#374151',
+                maxWidth: '700px',
+              }}
+            >
+              Ces informations structurent votre entreprise et peuvent être complétées à tout moment.
+            </p>
 
             {companyData.is_locked && (
               <div
                 style={{
                   padding: '12px 16px',
                   backgroundColor: '#fef3c7',
-                  border: '1px solid #f59e0b',
+                  border: '1px solid #fbbf24',
                   borderRadius: '8px',
-                  marginBottom: '24px',
-                  fontSize: '14px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
                   color: '#92400e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                Les données sont en lecture seule car des écritures comptables validées existent.
+                <span>⚠️</span>
+                <span>Les données sont en lecture seule car des écritures comptables validées existent.</span>
               </div>
             )}
 
             <form onSubmit={handleCompanyUpdate}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
                 <div>
                   <label
                     style={{
@@ -602,7 +594,18 @@ export default function ParametresEntreprisePage() {
                     }}
                   />
                 </div>
+              </div>
 
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#15803d',
+                margin: '32px 0 16px 0',
+              }}>
+                Fiscalité
+              </h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
                 <div>
                   <label
                     style={{
@@ -665,6 +668,44 @@ export default function ParametresEntreprisePage() {
                   </select>
                 </div>
 
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: '14px',
+                    color: '#374151',
+                    maxWidth: '600px',
+                  }}>
+                    Le régime de TVA détermine la manière dont la taxe est calculée et déclarée pour votre entreprise. Ce choix peut être modifié ultérieurement si votre situation évolue.
+                  </p>
+                  <p style={{
+                    margin: '8px 0 0 0',
+                    fontSize: '12px',
+                    color: '#374151',
+                  }}>
+                    Aucun calcul n'est modifié automatiquement sans votre action.
+                  </p>
+                </div>
+              </div>
+
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#15803d',
+                margin: '32px 0 8px 0',
+              }}>
+                Exercice comptable
+              </h4>
+
+              <p style={{
+                margin: '0 0 16px 0',
+                fontSize: '14px',
+                color: '#374151',
+                maxWidth: '600px',
+              }}>
+                L'exercice comptable correspond à la période sur laquelle les résultats de l'entreprise sont calculés.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
                 <div>
                   <label
                     style={{
@@ -722,34 +763,63 @@ export default function ParametresEntreprisePage() {
                     }}
                   />
                 </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: '12px',
+                    color: '#6b7280',
+                  }}>
+                    En général, un exercice comptable dure 12 mois.
+                  </p>
+                  <p style={{
+                    margin: '8px 0 0 0',
+                    fontSize: '12px',
+                    color: '#374151',
+                  }}>
+                    Les dates peuvent être ajustées ultérieurement si nécessaire.
+                  </p>
+                </div>
               </div>
 
               {!companyData.is_locked && (
-                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    type="submit"
-                    disabled={saving}
+                <div style={{ marginTop: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: 'white',
+                        backgroundColor: '#28a745',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        opacity: saving ? 0.6 : 1,
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!saving) e.currentTarget.style.backgroundColor = '#218838';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!saving) e.currentTarget.style.backgroundColor = '#28a745';
+                      }}
+                    >
+                      {saving ? 'Sauvegarde...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                  <p
                     style={{
-                      padding: '12px 24px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: 'white',
-                      backgroundColor: '#3b82f6',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.6 : 1,
-                      transition: 'background-color 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!saving) e.currentTarget.style.backgroundColor = '#2563eb';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!saving) e.currentTarget.style.backgroundColor = '#3b82f6';
+                      marginTop: '8px',
+                      fontSize: '12px',
+                      color: '#374151',
+                      textAlign: 'right',
                     }}
                   >
-                    {saving ? 'Sauvegarde...' : 'Enregistrer'}
-                  </button>
+                    Les modifications sont enregistrées sans impact sur vos données existantes.
+                  </p>
                 </div>
               )}
             </form>
@@ -757,42 +827,53 @@ export default function ParametresEntreprisePage() {
 
           <div
             style={{
-              padding: '32px',
+              padding: '28px',
               backgroundColor: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #e5e7eb',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #e5e7eb',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3
-                style={{
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <h3
+                  style={{
+                    margin: '0 0 8px 0',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#15803d',
+                  }}
+                >
+                  Dirigeants
+                </h3>
+                <p style={{
                   margin: 0,
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1a1a1a',
-                }}
-              >
-                Dirigeants
-              </h3>
+                  fontSize: '14px',
+                  color: '#374151',
+                  maxWidth: '700px',
+                }}>
+                  Les dirigeants représentent les personnes légalement responsables de l'entreprise.
+                </p>
+              </div>
               <button
                 onClick={handleAddDirector}
                 style={{
                   padding: '10px 20px',
                   fontSize: '14px',
-                  fontWeight: '500',
+                  fontWeight: '600',
                   color: 'white',
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: '#28a745',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'background-color 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.06)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.backgroundColor = '#218838';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.backgroundColor = '#28a745';
                 }}
               >
                 Ajouter
@@ -800,9 +881,14 @@ export default function ParametresEntreprisePage() {
             </div>
 
             {directors.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-                Aucun dirigeant enregistré
-              </p>
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ color: '#111', fontSize: '14px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                  Aucun dirigeant enregistré pour le moment.
+                </p>
+                <p style={{ color: '#374151', fontSize: '14px', margin: 0 }}>
+                  Ajoutez les dirigeants pour compléter la structure légale de l'entreprise.
+                </p>
+              </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -900,30 +986,38 @@ export default function ParametresEntreprisePage() {
 
           <div
             style={{
-              padding: '32px',
+              padding: '28px',
               backgroundColor: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #e5e7eb',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #e5e7eb',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
                 <h3
                   style={{
                     margin: '0 0 8px 0',
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: '#1a1a1a',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#15803d',
                   }}
                 >
                   Associés
                 </h3>
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '14px',
+                  color: '#374151',
+                  maxWidth: '700px',
+                }}>
+                  Les associés permettent de structurer la répartition du capital de l'entreprise.
+                </p>
                 {shareholders.length > 0 && (
                   <p
                     style={{
                       margin: 0,
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: '500',
                       color: isCapitalValid ? '#059669' : '#f59e0b',
                     }}
@@ -938,19 +1032,20 @@ export default function ParametresEntreprisePage() {
                 style={{
                   padding: '10px 20px',
                   fontSize: '14px',
-                  fontWeight: '500',
+                  fontWeight: '600',
                   color: 'white',
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: '#28a745',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'background-color 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.06)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.backgroundColor = '#218838';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.backgroundColor = '#28a745';
                 }}
               >
                 Ajouter
@@ -958,9 +1053,14 @@ export default function ParametresEntreprisePage() {
             </div>
 
             {shareholders.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-                Aucun associé enregistré
-              </p>
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ color: '#111', fontSize: '14px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                  Aucun associé enregistré pour le moment.
+                </p>
+                <p style={{ color: '#374151', fontSize: '14px', margin: 0 }}>
+                  Ajoutez les associés si votre entreprise en comporte.
+                </p>
+              </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1050,6 +1150,92 @@ export default function ParametresEntreprisePage() {
                 </table>
               </div>
             )}
+          </div>
+
+          <div
+            style={{
+              padding: '28px',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <h3
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#15803d',
+              }}
+            >
+              Membres et accès
+            </h3>
+            <p
+              style={{
+                margin: '0 0 20px 0',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                maxWidth: '700px',
+              }}
+            >
+              Gérez les accès à votre entreprise et invitez vos collaborateurs ou partenaires à travailler sur les données autorisées.
+            </p>
+            <MembersManagement companyId={companyId || ''} canManageMembers={isOwner || canModify} />
+          </div>
+
+          <div
+            style={{
+              padding: '28px',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <h3
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#15803d',
+              }}
+            >
+              Reprise d'historique
+            </h3>
+            <p
+              style={{
+                margin: '0 0 20px 0',
+                fontSize: '14px',
+                color: '#374151',
+                maxWidth: '700px',
+              }}
+            >
+              Si vous avez souscrit en cours d'année, utilisez cette fonctionnalité pour reprendre vos soldes d'ouverture ou saisir des totaux par catégorie pour la période écoulée.
+            </p>
+            <button
+              onClick={() => navigate(`/app/company/${companyId}/reprise-historique`)}
+              style={{
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: '#3b82f6',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+              }}
+            >
+              Gérer la reprise d'historique →
+            </button>
           </div>
         </div>
       </main>
@@ -1209,12 +1395,19 @@ export default function ParametresEntreprisePage() {
                   style={{
                     padding: '10px 20px',
                     fontSize: '14px',
-                    fontWeight: '500',
+                    fontWeight: '600',
                     color: 'white',
-                    backgroundColor: '#3b82f6',
+                    backgroundColor: '#28a745',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#218838';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#28a745';
                   }}
                 >
                   {editingDirector ? 'Mettre à jour' : 'Ajouter'}
@@ -1369,12 +1562,19 @@ export default function ParametresEntreprisePage() {
                   style={{
                     padding: '10px 20px',
                     fontSize: '14px',
-                    fontWeight: '500',
+                    fontWeight: '600',
                     color: 'white',
-                    backgroundColor: '#3b82f6',
+                    backgroundColor: '#28a745',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#218838';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#28a745';
                   }}
                 >
                   {editingShareholder ? 'Mettre à jour' : 'Ajouter'}

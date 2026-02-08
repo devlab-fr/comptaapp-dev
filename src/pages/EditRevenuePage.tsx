@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { AttachmentUpload } from '../components/AttachmentUpload';
 
 interface Category {
@@ -81,7 +82,7 @@ export default function EditRevenuePage() {
           id: line.id,
           description: line.description,
           categoryId: line.category_id,
-          subcategoryId: line.subcategory_id,
+          subcategoryId: line.subcategory_id ?? '',
           amountHT: line.amount_excl_vat.toString(),
           tvaRate: line.vat_rate.toString(),
         }))
@@ -215,12 +216,6 @@ export default function EditRevenuePage() {
         setSaving(false);
         return;
       }
-
-      if (!line.subcategoryId) {
-        setError(`Ligne ${i + 1}: La sous-catégorie est requise`);
-        setSaving(false);
-        return;
-      }
     }
 
     const totals = calculateTotals();
@@ -253,7 +248,7 @@ export default function EditRevenuePage() {
         document_id: documentId,
         description: line.description,
         category_id: line.categoryId,
-        subcategory_id: line.subcategoryId,
+        subcategory_id: line.subcategoryId ? line.subcategoryId : null,
         amount_excl_vat: amountHTNum,
         vat_rate: tvaRateNum,
         vat_amount: tvaAmount,
@@ -294,33 +289,7 @@ export default function EditRevenuePage() {
           padding: '32px 24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div
           style={{
@@ -598,7 +567,6 @@ export default function EditRevenuePage() {
                       <select
                         value={line.subcategoryId}
                         onChange={(e) => updateLine(line.id, 'subcategoryId', e.target.value)}
-                        required
                         disabled={!line.categoryId || !subcategoriesMap[line.categoryId]}
                         style={{
                           width: '100%',
@@ -633,6 +601,7 @@ export default function EditRevenuePage() {
                             ? "Sélectionnez d'abord une catégorie"
                             : 'Sélectionnez une sous-catégorie'}
                         </option>
+                        {line.categoryId && <option value="">Aucune sous-catégorie</option>}
                         {line.categoryId &&
                           subcategoriesMap[line.categoryId]?.map((subcat) => (
                             <option key={subcat.id} value={subcat.id}>

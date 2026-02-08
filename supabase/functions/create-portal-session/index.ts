@@ -2,10 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-  apiVersion: "2024-12-18.acacia",
-});
-
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -17,11 +13,35 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req: Request) => {
-  console.log("CREATE_PORTAL_SESSION_HANDLER_RUNNING");
+  console.log("=== CREATE-PORTAL-SESSION CALLED ===", {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries()),
+  });
 
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+
+  const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!stripeSecretKey || stripeSecretKey.trim() === "") {
+    console.log("[STRIPE_DISABLED] missing STRIPE_SECRET_KEY", {
+      ts: new Date().toISOString(),
+      fn: "create-portal-session",
+    });
+    return new Response(
+      JSON.stringify({ error: "STRIPE_DISABLED", message: "Stripe not configured yet" }),
+      {
+        status: 501,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: "2024-12-18.acacia",
+  });
 
   try {
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -111,9 +131,14 @@ Deno.serve(async (req: Request) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("CREATE_PORTAL_SESSION_ERROR", err);
-    return new Response(JSON.stringify({ ok: false, step: "EXCEPTION", error: err.message }), {
+  } catch (e) {
+    console.error("[FUNCTION_ERROR]", {
+      fn: "create-portal-session",
+      error: e,
+      message: e?.message,
+      stack: e?.stack,
+    });
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: e?.message || "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

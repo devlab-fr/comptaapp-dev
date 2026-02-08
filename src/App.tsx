@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ScrollToTop from './components/ScrollToTop';
 import LoginPage from './pages/LoginPage';
 import AppPage from './pages/AppPage';
 import CreateCompanyPage from './pages/CreateCompanyPage';
@@ -29,15 +30,24 @@ import MentionsLegalesPage from './pages/MentionsLegalesPage';
 import CguPage from './pages/CguPage';
 import CgvPage from './pages/CgvPage';
 import ConfidentialitePage from './pages/ConfidentialitePage';
+import AcceptInvitationPage from './pages/AcceptInvitationPage';
+import FacturesPage from './pages/FacturesPage';
+import CreateFacturePage from './pages/CreateFacturePage';
+import ViewFacturePage from './pages/ViewFacturePage';
+import HistoryImportPage from './pages/HistoryImportPage';
+import CheckEmailPage from './pages/CheckEmailPage';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/check-email" element={<CheckEmailPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/accept-invitation/:token" element={<AcceptInvitationPage />} />
           <Route path="/legal/mentions-legales" element={<MentionsLegalesPage />} />
           <Route path="/legal/cgu" element={<CguPage />} />
           <Route path="/legal/cgv" element={<CgvPage />} />
@@ -163,6 +173,14 @@ export default function App() {
             }
           />
           <Route
+            path="/app/company/:companyId/reprise-historique"
+            element={
+              <ProtectedRoute>
+                <HistoryImportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/app/company/:companyId/guide"
             element={
               <ProtectedRoute>
@@ -183,6 +201,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ComptabilitePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/company/:companyId/factures"
+            element={
+              <ProtectedRoute>
+                <FacturesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/company/:companyId/factures/create"
+            element={
+              <ProtectedRoute>
+                <CreateFacturePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/company/:companyId/factures/:factureId"
+            element={
+              <ProtectedRoute>
+                <ViewFacturePage />
               </ProtectedRoute>
             }
           />

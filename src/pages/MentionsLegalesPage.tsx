@@ -1,43 +1,54 @@
-import { Link } from 'react-router-dom';
-import Footer from '../components/Footer';
+import LegalPageLayout from '../components/legal/LegalPageLayout';
 
 export default function MentionsLegalesPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 flex-1">
-        <div className="mb-6">
-          <Link to="/" className="text-blue-600 hover:text-blue-800 text-sm">
-            ← Retour à l'accueil
-          </Link>
-        </div>
+    <LegalPageLayout title="Mentions légales">
+      <h2>Éditeur du site</h2>
+      <p>SHOPTOO FZ-LLC<br />
+      Free Zone Limited Liability Company (FZ-LLC)</p>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Mentions légales</h1>
+      <p><strong>Adresse :</strong><br />
+      FBC51082<br />
+      Compass Building<br />
+      Al Shohada Road<br />
+      Al Hamra Industrial Zone – FZ<br />
+      Ras Al Khaimah<br />
+      United Arab Emirates</p>
 
-          <div className="prose prose-gray max-w-none space-y-4 text-gray-700">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Éditeur</h2>
-              <p>SHOPTOO (société basée aux Émirats Arabes Unis)</p>
-            </div>
+      <p><strong>Autorité d'enregistrement :</strong><br />
+      Ras Al Khaimah Economic Zone (RAKEZ)</p>
 
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Contact</h2>
-              <p>[à compléter]</p>
-            </div>
+      <p><strong>Licences :</strong></p>
+      <ul>
+        <li>General Trading Licence n° 7004612</li>
+        <li>E-Commerce Licence n° 45001414</li>
+      </ul>
 
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Hébergement</h2>
-              <p>Supabase</p>
-            </div>
+      <p><strong>Activités autorisées :</strong></p>
+      <ul>
+        <li>General Trading</li>
+        <li>Products and Services E-Trading</li>
+      </ul>
 
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Responsabilité</h2>
-              <p>L'éditeur met à disposition un logiciel SaaS. L'utilisateur reste seul responsable de l'usage, des données saisies et des déclarations réalisées.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <Footer />
-    </div>
+      <p><strong>Email de contact :</strong><br />
+      manager.s.ram@gmail.com</p>
+
+      <h2>Représentant légal</h2>
+      <p>Le représentant légal de la société SHOPTOO FZ-LLC.</p>
+
+      <h2>Hébergement</h2>
+      <p>Le site est hébergé par :<br />
+      Supabase, Inc.<br />
+      970 Toa Payoh North #07-04<br />
+      Singapore 318992</p>
+
+      <h2>Propriété intellectuelle</h2>
+      <p>L'ensemble des contenus présents sur ce site (textes, images, logos, éléments graphiques, vidéos, logiciels, etc.) est la propriété exclusive de SHOPTOO FZ-LLC ou de ses partenaires.<br />
+      Toute reproduction, représentation, modification, diffusion ou exploitation, totale ou partielle, sans autorisation écrite préalable est strictement interdite.</p>
+
+      <h2>Droit applicable et juridiction</h2>
+      <p>Les présentes mentions légales sont régies par le droit des Émirats Arabes Unis.<br />
+      Tout litige relatif à leur interprétation ou à leur exécution relève de la compétence exclusive des tribunaux des Émirats Arabes Unis.</p>
+    </LegalPageLayout>
   );
 }

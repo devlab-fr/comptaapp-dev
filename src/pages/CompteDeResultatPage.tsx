@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
+import AIAssistant from '../components/AIAssistant';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { downloadCSV, generateCSVContent, formatCurrency } from '../utils/csvExport';
@@ -181,14 +183,17 @@ export default function CompteDeResultatPage() {
 
         if (expenseLines) {
           const categoryIds = [...new Set(expenseLines.map(l => l.category_id))];
+          const subcategoryIds = [...new Set(expenseLines.map(l => l.subcategory_id).filter(Boolean))];
 
           const { data: categories } = await supabase
-            .from('categories')
+            .from('expense_categories')
             .select('id, name')
-            .eq('category_type', 'expense')
             .in('id', categoryIds);
 
-          const subcategories: any[] = [];
+          const { data: subcategories } = await supabase
+            .from('expense_subcategories')
+            .select('id, name')
+            .in('id', subcategoryIds);
 
           const catMap = new Map(categories?.map(c => [c.id, c.name]) || []);
           const subCatMap = new Map(subcategories?.map(s => [s.id, s.name]) || []);
@@ -259,6 +264,75 @@ export default function CompteDeResultatPage() {
           });
         }
       }
+
+      // Load catchup totals (rattrapage par totaux)
+      const { data: catchupData } = await supabase
+        .from('catchup_totals')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', selectedYear);
+
+      let catchupProduitsHT = 0;
+      let catchupChargesHT = 0;
+
+      if (catchupData) {
+        for (const row of catchupData) {
+          const ht = Number(row.total_ht) || 0;
+
+          if (row.category_type === 'revenue') {
+            catchupProduitsHT += ht;
+
+            // Load category name
+            const { data: revCat } = await supabase
+              .from('revenue_categories')
+              .select('name')
+              .eq('id', row.category_id)
+              .maybeSingle();
+
+            const key = `catchup_${row.category_id}`;
+            const existing = produitsMap.get(key);
+
+            if (existing) {
+              existing.totalHT += ht;
+            } else {
+              produitsMap.set(key, {
+                categoryId: row.category_id,
+                categoryName: revCat?.name || 'Rattrapage',
+                subcategoryId: '',
+                subcategoryName: 'Reprise historique',
+                totalHT: ht,
+              });
+            }
+          } else if (row.category_type === 'expense') {
+            catchupChargesHT += ht;
+
+            // Load category name
+            const { data: expCat } = await supabase
+              .from('expense_categories')
+              .select('name')
+              .eq('id', row.category_id)
+              .maybeSingle();
+
+            const key = `catchup_${row.category_id}`;
+            const existing = chargesMap.get(key);
+
+            if (existing) {
+              existing.totalHT += ht;
+            } else {
+              chargesMap.set(key, {
+                categoryId: row.category_id,
+                categoryName: expCat?.name || 'Rattrapage',
+                subcategoryId: '',
+                subcategoryName: 'Reprise historique',
+                totalHT: ht,
+              });
+            }
+          }
+        }
+      }
+
+      produitsHT += catchupProduitsHT;
+      chargesHT += catchupChargesHT;
 
       const chargesArray = Array.from(chargesMap.values()).sort((a, b) => b.totalHT - a.totalHT);
       const produitsArray = Array.from(produitsMap.values()).sort((a, b) => b.totalHT - a.totalHT);
@@ -573,33 +647,7 @@ export default function CompteDeResultatPage() {
           padding: '32px 24px',
         }}
       >
-        <button
-          onClick={() => navigate(`/app/company/${companyId}`)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#6b7280',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '24px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <span>←</span>
-          Retour
-        </button>
+        <BackButton to={`/app/company/${companyId}`} />
 
         <div style={{ marginBottom: '24px' }}>
           <h2
@@ -938,7 +986,7 @@ export default function CompteDeResultatPage() {
         {!hasData && !loading && (
           <div
             style={{
-              padding: '32px',
+              padding: '80px 32px',
               backgroundColor: 'white',
               borderRadius: '16px',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
@@ -946,8 +994,39 @@ export default function CompteDeResultatPage() {
               marginBottom: '32px',
             }}
           >
-            <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
-              Aucune donnée comptable validée et payée pour l'année {selectedYear}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: '#f3f4f6',
+                marginBottom: '24px',
+              }}
+            >
+              <span style={{ fontSize: '40px' }}>📄</span>
+            </div>
+            <h3
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1a1a1a',
+              }}
+            >
+              Aucune donnée disponible pour le moment
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '16px',
+                color: '#6b7280',
+                lineHeight: '1.5',
+              }}
+            >
+              Ajoutez vos premières opérations pour voir apparaître cette section.
             </p>
           </div>
         )}
@@ -1375,6 +1454,16 @@ export default function CompteDeResultatPage() {
           </>
         )}
       </main>
+
+      <AIAssistant
+        context="compte-resultat"
+        data={{
+          produitsHT: resultatData.produitsHT,
+          chargesHT: resultatData.chargesHT,
+          resultatHT: resultatData.resultatHT,
+        }}
+        companyId={companyId!}
+      />
 
       {toast.show && (
         <Toast

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { StatusBadges } from '../components/StatusBadges';
 import { ActionsDropdown } from '../components/ActionsDropdown';
 import { RevenueMobileCard } from '../components/RevenueMobileCard';
@@ -36,6 +37,7 @@ export default function RevenuesPage() {
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: string | null }>({ show: false, id: null });
   const [showFilters, setShowFilters] = useState(false);
+  const [isDesktop, setIsDesktop] = useState<boolean>(window.innerWidth >= 1024);
 
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -69,6 +71,12 @@ export default function RevenuesPage() {
       loadRevenues();
     }
   }, [currentPage]);
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -266,33 +274,7 @@ export default function RevenuesPage() {
         <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
 
         <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
-          <button
-            onClick={() => navigate(`/app/company/${companyId}`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#6b7280',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              marginBottom: '24px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-          >
-            <span>←</span>
-            Retour
-          </button>
+          <BackButton to={`/app/company/${companyId}`} />
 
           <div style={{ marginBottom: '24px' }}>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '700', color: '#1a1a1a' }}>
@@ -335,7 +317,7 @@ export default function RevenuesPage() {
               </button>
             </div>
 
-            <div style={{ display: showFilters || window.innerWidth >= 1024 ? 'block' : 'none' }}>
+            <div style={{ display: showFilters || isDesktop ? 'block' : 'none' }}>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
                 <div style={{ flex: '1 1 150px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>

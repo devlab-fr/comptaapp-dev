@@ -2,13 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-  apiVersion: "2024-12-18.acacia",
-});
-
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,15 +11,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, stripe-signature",
 };
 
-const PRICE_TO_TIER: Record<string, string> = {
-  [Deno.env.get("STRIPE_PRICE_PRO") || ""]: "PRO",
-  [Deno.env.get("STRIPE_PRICE_PRO_PLUS") || ""]: "PRO_PLUS",
-  [Deno.env.get("STRIPE_PRICE_PRO_PP") || ""]: "PRO_PLUS_PLUS",
-};
-
 Deno.serve(async (req: Request) => {
   const traceId = crypto.randomUUID?.() ?? String(Date.now());
-  console.log("TRACE_ID", traceId);
+  console.log("=== stripe-webhook CALLED ===", {
+    ts: new Date().toISOString(),
+    traceId,
+    method: req.method,
+    url: req.url,
+  });
 
   if (req.method === "GET") {
     return new Response("ok", { status: 200 });
@@ -33,6 +27,56 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+
+  const key = (Deno.env.get("STRIPE_SECRET_KEY") ?? "").trim();
+  const webhookSecret = (Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "").trim();
+
+  console.log("=== stripe-webhook INIT CHECK ===", {
+    ts: new Date().toISOString(),
+    hasKey: !!key,
+    hasWebhookSecret: !!webhookSecret,
+    traceId,
+  });
+
+  if (!key) {
+    console.log("[STRIPE_DISABLED] missing STRIPE_SECRET_KEY", {
+      ts: new Date().toISOString(),
+      fn: "stripe-webhook",
+      traceId,
+    });
+    return new Response(
+      JSON.stringify({ error: "STRIPE_DISABLED", message: "Stripe not configured yet", traceId }),
+      {
+        status: 501,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  if (!webhookSecret) {
+    console.log("[STRIPE_DISABLED] missing STRIPE_WEBHOOK_SECRET", {
+      ts: new Date().toISOString(),
+      fn: "stripe-webhook",
+      traceId,
+    });
+    return new Response(
+      JSON.stringify({ error: "STRIPE_DISABLED", message: "Stripe webhook secret not configured", traceId }),
+      {
+        status: 501,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  const stripe = new Stripe(key, {
+    apiVersion: "2024-12-18.acacia",
+  });
+
+  const PRICE_TO_TIER: Record<string, string> = {
+    [Deno.env.get("STRIPE_PRICE_PRO") || ""]: "PRO",
+    [Deno.env.get("STRIPE_PRICE_PRO_PLUS") || ""]: "PRO_PLUS",
+    [Deno.env.get("STRIPE_PRICE_PRO_PP") || ""]: "PRO_PLUS_PLUS",
+  };
 
   try {
     const signature = req.headers.get("stripe-signature");

@@ -13,23 +13,44 @@ export default function AuthCallbackPage() {
 
   const handleCallback = async () => {
     try {
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        console.error('Auth callback error:', error);
-        setError(error.message);
-        setTimeout(() => navigate('/login'), 3000);
-        return;
-      }
-
       const type = searchParams.get('type');
+      const code = searchParams.get('code');
 
       if (type === 'recovery') {
         navigate('/reset-password');
-      } else if (data.session) {
-        navigate('/app');
+        return;
+      }
+
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          console.error('Auth callback error (code exchange):', error);
+          setError(error.message);
+          setTimeout(() => navigate('/login'), 3000);
+          return;
+        }
+
+        if (data.session) {
+          navigate('/app');
+        } else {
+          navigate('/login');
+        }
       } else {
-        navigate('/login');
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Auth callback error:', error);
+          setError(error.message);
+          setTimeout(() => navigate('/login'), 3000);
+          return;
+        }
+
+        if (data.session) {
+          navigate('/app');
+        } else {
+          navigate('/login');
+        }
       }
     } catch (err) {
       console.error('Unexpected callback error:', err);

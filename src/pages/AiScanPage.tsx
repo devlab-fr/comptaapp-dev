@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { scanReceipt, AiScanResult, formatConfidence, formatSuggestedType, Category } from '../utils/aiScanReceipt';
+import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import { supabase } from '../lib/supabase';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -336,14 +337,6 @@ export function AiScanPage() {
     setUploadedReceipt(null);
   };
 
-  const handleGoBack = () => {
-    if (companyId) {
-      navigate(`/app/company/${companyId}`);
-    } else {
-      navigate(-1);
-    }
-  };
-
   const handleScan = async () => {
     if (!file) return;
 
@@ -461,27 +454,7 @@ export function AiScanPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-        <button
-          onClick={handleGoBack}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: 'white',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-        >
-          ← Retour
-        </button>
+        <BackButton />
 
         <button
           onClick={handleNewScan}

@@ -2,38 +2,84 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 text-sm text-gray-600">
+    <footer style={{
+      backgroundColor: '#f9fafb',
+      borderTop: '1px solid #e5e7eb',
+      marginTop: 'auto',
+      padding: '24px 16px',
+    }}>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '20px',
+          fontSize: '13px',
+          color: '#374151',
+          flexWrap: 'wrap',
+        }}>
           <Link
             to="/legal/mentions-legales"
-            className="hover:text-gray-900 transition-colors"
+            style={{
+              color: '#374151',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#15803d'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#374151'}
           >
             Mentions légales
           </Link>
-          <span className="hidden sm:inline text-gray-300">•</span>
+          <span style={{ color: '#d1d5db' }}>•</span>
           <Link
             to="/legal/cgu"
-            className="hover:text-gray-900 transition-colors"
+            style={{
+              color: '#374151',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#15803d'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#374151'}
           >
             CGU
           </Link>
-          <span className="hidden sm:inline text-gray-300">•</span>
+          <span style={{ color: '#d1d5db' }}>•</span>
           <Link
             to="/legal/cgv"
-            className="hover:text-gray-900 transition-colors"
+            style={{
+              color: '#374151',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#15803d'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#374151'}
           >
             CGV
           </Link>
-          <span className="hidden sm:inline text-gray-300">•</span>
+          <span style={{ color: '#d1d5db' }}>•</span>
           <Link
             to="/legal/confidentialite"
-            className="hover:text-gray-900 transition-colors"
+            style={{
+              color: '#374151',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#15803d'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#374151'}
           >
             Confidentialité
           </Link>
         </div>
-        <div className="text-center text-xs text-gray-500 mt-4">
+        <div style={{
+          textAlign: 'center',
+          fontSize: '12px',
+          color: '#6b7280',
+          marginTop: '12px',
+        }}>
           © {new Date().getFullYear()} ComptaApp - SHOPTOO
         </div>
       </div>

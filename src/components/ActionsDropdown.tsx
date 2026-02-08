@@ -7,6 +7,7 @@ interface ActionsDropdownProps {
   onTogglePaid?: () => void;
   accountingStatus?: string;
   paymentStatus?: string;
+  readOnly?: boolean;
 }
 
 export function ActionsDropdown({
@@ -15,7 +16,8 @@ export function ActionsDropdown({
   onToggleValidation,
   onTogglePaid,
   accountingStatus = 'draft',
-  paymentStatus = 'unpaid'
+  paymentStatus = 'unpaid',
+  readOnly = false
 }: ActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -32,6 +34,10 @@ export function ActionsDropdown({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
+
+  if (readOnly) {
+    return null;
+  }
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
