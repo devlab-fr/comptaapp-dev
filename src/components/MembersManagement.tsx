@@ -52,15 +52,12 @@ export default function MembersManagement({ companyId, canManageMembers }: Membe
 
       if (error) throw error;
 
-      const membersWithEmails = await Promise.all(
-        (data || []).map(async (member) => {
-          const { data: userData } = await supabase.auth.admin.getUserById(member.user_id);
-          return {
-            ...member,
-            user_email: userData?.user?.email,
-          };
-        })
-      );
+      const membersWithEmails = (data || []).map((member) => {
+        return {
+          ...member,
+          user_email: undefined,
+        };
+      });
 
       setMembers(membersWithEmails);
     } catch (err) {
@@ -219,7 +216,7 @@ export default function MembersManagement({ companyId, canManageMembers }: Membe
                 >
                   <div>
                     <div style={{ fontWeight: showMaskedEmail ? '600' : '500', color: showMaskedEmail ? '#111' : '#1a1a1a', marginBottom: '4px' }}>
-                      {member.user_email || 'Email masqué (compte propriétaire)'}
+                      {member.user_email || '-'}
                     </div>
                     {isOwner && showMaskedEmail ? (
                       <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>

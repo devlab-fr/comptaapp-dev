@@ -33,14 +33,16 @@ export default function VerificationV1Page() {
         .select('total_excl_vat, total_vat, total_incl_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
         .select('total_excl_vat, total_vat, total_incl_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const totalExpensesHT = expenseDocs?.reduce((acc, doc) => acc + (Number(doc.total_excl_vat) || 0), 0) || 0;
       const totalExpensesTVA = expenseDocs?.reduce((acc, doc) => acc + (Number(doc.total_vat) || 0), 0) || 0;

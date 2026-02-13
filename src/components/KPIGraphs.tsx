@@ -63,6 +63,7 @@ export default function KPIGraphs({ companyId }: KPIGraphsProps) {
         .select('total_excl_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
+        .eq('is_test', false)
         .gte('invoice_date', startDate)
         .lte('invoice_date', endDate),
       supabase
@@ -70,6 +71,7 @@ export default function KPIGraphs({ companyId }: KPIGraphsProps) {
         .select('total_excl_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
+        .eq('is_test', false)
         .gte('invoice_date', startDate)
         .lte('invoice_date', endDate),
     ]);
@@ -96,6 +98,7 @@ export default function KPIGraphs({ companyId }: KPIGraphsProps) {
       .select('id')
       .eq('company_id', companyId)
       .eq('accounting_status', 'validated')
+      .eq('is_test', false)
       .gte('invoice_date', startDate)
       .lte('invoice_date', endDate);
 

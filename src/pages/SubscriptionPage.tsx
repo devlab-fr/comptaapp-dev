@@ -6,6 +6,18 @@ import { PLANS, PlanTier } from '../lib/plans';
 import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { supabase } from '../lib/supabase';
+import { useCurrentCompany } from '../lib/useCurrentCompany';
+
+// Preuve version runtime (anti-cache)
+console.log('SUBSCRIPTIONPAGE_BUILD_ID', 'build_2026-02-11_a');
+
+// DEV: Log + cleanup Service Workers (anti-cache)
+if (import.meta.env.DEV) {
+  navigator.serviceWorker?.getRegistrations?.().then(regs => {
+    console.log('SW_REGISTRATIONS', regs.map(r => r.scope));
+    regs.forEach(r => r.unregister().then(() => console.log('SW_UNREGISTERED', r.scope)));
+  });
+}
 
 const isValidStripeUrl = (url: string): boolean => {
   try {
@@ -21,16 +33,23 @@ const isValidStripeUrl = (url: string): boolean => {
 export default function SubscriptionPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { companyId } = useParams<{ companyId: string }>();
+  const { companyId: paramsCompanyId } = useParams<{ companyId: string }>();
+  const currentCompanyId = useCurrentCompany();
   const { effectiveTier } = usePlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ status: number; body: any } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ targetTier: PlanTier; isDowngrade: boolean } | null>(null);
+
+  // Priorité: params.companyId puis currentCompanyId
+  const companyId = paramsCompanyId ?? currentCompanyId;
 
   console.log('SUBSCRIPTION_PAGE_RENDER', {
     userId: user?.id,
-    companyId,
+    paramsCompanyId,
+    currentCompanyId,
+    finalCompanyId: companyId,
     effectiveTier,
     displayedPlanName: PLANS[effectiveTier].name,
   });
@@ -40,9 +59,26 @@ export default function SubscriptionPage() {
     navigate('/login');
   };
 
-  const handleUpgrade = async (targetTier: PlanTier) => {
+  const TIER_RANK: Record<PlanTier, number> = {
+    FREE: 0,
+    PRO: 1,
+    PRO_PLUS: 2,
+    PRO_PLUS_PLUS: 3,
+  };
+
+  const handleUpgrade = (targetTier: PlanTier) => {
+    console.log('UPGRADE_CLICK', { targetTier, currentTier: effectiveTier });
+
     if (targetTier === 'FREE') return;
 
+    const currentRank = TIER_RANK[effectiveTier] ?? 0;
+    const targetRank = TIER_RANK[targetTier] ?? 0;
+    const isDowngrade = targetRank < currentRank;
+
+    setConfirmAction({ targetTier, isDowngrade });
+  };
+
+  const proceedWithCheckout = async (targetTier: PlanTier) => {
     console.log('CHECKOUT_START', {
       routeCompanyId: companyId,
       targetTier,
@@ -55,6 +91,7 @@ export default function SubscriptionPage() {
       return;
     }
 
+    setConfirmAction(null);
     setLoading(true);
     try {
       let { data: { session } } = await supabase.auth.getSession();
@@ -135,6 +172,18 @@ export default function SubscriptionPage() {
       }
 
       if (data?.url) {
+        // Si upgrade/downgrade/noop ou URL interne, rediriger directement sans validation Stripe
+        const isInternalRedirect = data.mode === 'upgrade' || data.mode === 'downgrade' || data.mode === 'noop' ||
+          data.url.startsWith('/') ||
+          data.url.startsWith(window.location.origin);
+
+        if (isInternalRedirect) {
+          console.log('INTERNAL_REDIRECT', { mode: data.mode, url: data.url.slice(0, 80) });
+          window.location.href = data.url;
+          return;
+        }
+
+        // Checkout initial : validation Stripe requise
         if (!isValidStripeUrl(data.url)) {
           console.warn('STRIPE_BAD_URL', { url: data.url });
           alert('URL de paiement invalide');
@@ -221,60 +270,45 @@ export default function SubscriptionPage() {
   const handleManageSubscription = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      // Compute validated companyId just before invoke
+      const validatedCompanyId = paramsCompanyId || currentCompanyId || null;
 
-      console.log("PORTAL_TOKEN_PREFIX", token?.slice(0, 10), "isJwt", token?.split(".")?.length === 3);
-
-      if (!token) {
-        alert('Session invalide - reconnectez-vous');
-        console.error("PORTAL_NO_TOKEN");
+      if (!validatedCompanyId) {
+        console.error('PORTAL_MISSING_COMPANY_ID', { paramsCompanyId, currentCompany: currentCompanyId });
+        alert('CompanyId introuvable. Impossible de gérer l\'abonnement.');
+        setLoading(false);
         return;
       }
 
-      const callPortal = async (accessToken: string) => {
-        return await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({}),
-          }
-        );
-      };
+      // 5) Premier appel avec validatedCompanyId
+      let { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: { companyId: validatedCompanyId }
+      });
 
-      let res = await callPortal(token);
-
-      if (res.status === 401) {
+      // 6) Retry avec le MÊME validatedCompanyId (pas de recalcul)
+      if (error?.message?.includes('401') || error?.message?.includes('JWT')) {
         console.warn("PORTAL_401_RETRY_REFRESH");
         const { data: refreshed } = await supabase.auth.refreshSession();
-        const newToken = refreshed?.session?.access_token;
 
-        console.log("PORTAL_NEW_TOKEN_PREFIX", newToken?.slice(0, 10), "isJwt", newToken?.split(".")?.length === 3);
-
-        if (!newToken) {
+        if (!refreshed?.session) {
           alert('Impossible de rafraîchir la session - reconnectez-vous');
           console.error("PORTAL_NO_NEW_TOKEN_AFTER_REFRESH");
+          setLoading(false);
           return;
         }
 
-        res = await callPortal(newToken);
+        ({ data, error } = await supabase.functions.invoke('create-portal-session', {
+          body: { companyId: validatedCompanyId }
+        }));
       }
 
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("PORTAL_ERROR", res.status, errText);
-        alert(`Erreur ${res.status}: ${errText.slice(0, 120)}`);
+      if (error) {
+        console.error("PORTAL_ERROR", error);
+        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
         return;
       }
 
-      const data = await res.json();
-
-      if (data.ok && data.url) {
+      if (data?.url) {
         if (!isValidStripeUrl(data.url)) {
           console.warn('STRIPE_BAD_URL', { url: data.url });
           alert('URL de portail invalide');
@@ -343,7 +377,23 @@ export default function SubscriptionPage() {
           {tiers.map((tier) => {
             const plan = PLANS[tier];
             const isCurrentPlan = effectiveTier === tier;
-            const isHigherTier = plan.rank > PLANS[effectiveTier].rank;
+
+            const currentRank = TIER_RANK[effectiveTier] ?? -1;
+            const targetRank = TIER_RANK[tier] ?? -1;
+            const isUpgrade = targetRank > currentRank;
+            const isDowngrade = targetRank < currentRank && targetRank > 0;
+
+            if (import.meta.env.DEV) {
+              console.log('PLAN_CARD', {
+                currentTier: effectiveTier,
+                targetTier: tier,
+                currentRank,
+                targetRank,
+                isCurrentPlan,
+                isUpgrade,
+                isDowngrade,
+              });
+            }
 
             return (
               <div
@@ -596,7 +646,26 @@ export default function SubscriptionPage() {
                   </ul>
                 </div>
 
-                {!isCurrentPlan && isHigherTier && (
+                {isCurrentPlan && (
+                  <button
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '12px 24px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#6b7280',
+                      backgroundColor: '#f3f4f6',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'not-allowed',
+                    }}
+                  >
+                    Plan actuel
+                  </button>
+                )}
+
+                {!isCurrentPlan && isUpgrade && (
                   <button
                     onClick={() => handleUpgrade(tier)}
                     disabled={loading}
@@ -620,33 +689,38 @@ export default function SubscriptionPage() {
                   </button>
                 )}
 
-                {isCurrentPlan && (
+                {!isCurrentPlan && isDowngrade && (
                   <button
-                    disabled
+                    onClick={() => handleUpgrade(tier)}
+                    disabled={loading}
                     style={{
                       width: '100%',
                       padding: '12px 24px',
                       fontSize: '16px',
                       fontWeight: '600',
-                      color: '#6b7280',
-                      backgroundColor: '#f3f4f6',
+                      color: 'white',
+                      backgroundColor: '#6c757d',
                       border: 'none',
                       borderRadius: '8px',
-                      cursor: 'not-allowed',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.6 : 1,
+                      transition: 'all 0.2s ease',
                     }}
+                    onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#5a6268')}
+                    onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#6c757d')}
                   >
-                    Plan actuel
+                    {loading ? 'Chargement...' : `Passer à ${plan.name}`}
                   </button>
                 )}
 
-                {!isCurrentPlan && !isHigherTier && (
+                {!isCurrentPlan && !isUpgrade && !isDowngrade && tier === 'FREE' && (
                   <div style={{
                     padding: '12px 24px',
                     textAlign: 'center',
                     color: '#6b7280',
                     fontSize: '14px',
                   }}>
-                    Plan inférieur
+                    Plan gratuit
                   </div>
                 )}
               </div>
@@ -843,6 +917,105 @@ export default function SubscriptionPage() {
             >
               Compris
             </button>
+          </div>
+        </>
+      )}
+
+      {confirmAction && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+            }}
+            onClick={() => setConfirmAction(null)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '90%',
+              zIndex: 1001,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              margin: '0 0 16px 0',
+            }}>
+              Confirmation
+            </h3>
+            <p style={{
+              fontSize: '16px',
+              color: '#4a5568',
+              lineHeight: '1.6',
+              margin: '0 0 24px 0',
+            }}>
+              {confirmAction.isDowngrade ? (
+                <>
+                  Vous allez passer à <strong>{PLANS[confirmAction.targetTier].name}</strong> en fin de période (pas immédiat). Continuer ?
+                </>
+              ) : (
+                <>
+                  Vous allez passer à <strong>{PLANS[confirmAction.targetTier].name}</strong>. La facturation peut être immédiate au prorata. Continuer ?
+                </>
+              )}
+            </p>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => setConfirmAction(null)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#4a5568',
+                  backgroundColor: '#e2e8f0',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#cbd5e0'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => proceedWithCheckout(confirmAction.targetTier)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: 'white',
+                  backgroundColor: '#28a745',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+              >
+                Continuer
+              </button>
+            </div>
           </div>
         </>
       )}

@@ -134,6 +134,7 @@ export async function calculateManagementVat(
       .eq('company_id', companyId)
       .eq('accounting_status', 'validated')
       .eq('payment_status', 'paid')
+      .eq('is_test', false)
       .gte('invoice_date', `${fiscalYear}-01-01`)
       .lte('invoice_date', `${fiscalYear}-12-31`);
 
@@ -143,6 +144,7 @@ export async function calculateManagementVat(
       .eq('company_id', companyId)
       .eq('accounting_status', 'validated')
       .eq('payment_status', 'paid')
+      .eq('is_test', false)
       .gte('invoice_date', `${fiscalYear}-01-01`)
       .lte('invoice_date', `${fiscalYear}-12-31`);
 

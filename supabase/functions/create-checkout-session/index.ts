@@ -9,7 +9,8 @@ const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info, Content-Type, Authorization, Apikey, X-Client-Info",
+  "Access-Control-Max-Age": "86400",
 };
 
 const TIER_TO_PRICE: Record<string, string> = {
@@ -18,17 +19,24 @@ const TIER_TO_PRICE: Record<string, string> = {
   PRO_PLUS_PLUS: Deno.env.get("STRIPE_PRICE_PRO_PP") || "",
 };
 
+const TIER_RANK: Record<string, number> = {
+  FREE: 0,
+  PRO: 1,
+  PRO_PLUS: 2,
+  PRO_PLUS_PLUS: 3,
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   console.log("=== CREATE-CHECKOUT-SESSION CALLED ===", {
     timestamp: new Date().toISOString(),
     method: req.method,
     url: req.url,
     headers: Object.fromEntries(req.headers.entries()),
   });
-
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
 
   const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeSecretKey || stripeSecretKey.trim() === "") {
@@ -99,10 +107,52 @@ Deno.serve(async (req: Request) => {
       console.warn("EXPECTED_URL_PARSE_FAILED", e);
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
     const admin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { planTier, companyId } = await req.json();
+    console.log("CHECKOUT_REQUEST_PARAMS_EARLY", { planTier, companyId });
+
+    const projectRef = (() => {
+      try {
+        const host = new URL(supabaseUrl).host;       // ex: lmbxmluyggwvvjpyvlnt.supabase.co
+        return host.split(".")[0] || "invalid";
+      } catch {
+        return "invalid";
+      }
+    })();
+
+    console.log("AUTH_ENV_CHECK", {
+      supabaseUrl,
+      projectRef,
+      anonKey: supabaseAnonKey ? "set" : "missing",
+      authHeaderPresent: !!authHeader,
+      tokenPrefix: token ? token.substring(0, 12) : "missing",
+      tokenParts: token ? token.split(".").length : 0,
+      issFromToken: iss || null,
+      issProjectRef: issProjectRef || null,
+      expectedProjectRef: expectedProjectRef || null,
+    });
+
+    if (projectRef !== "lmbxmluyggwvvjpyvlnt") {
+      console.error("AUTH_PROJECT_MISMATCH", { projectRef, expected: "lmbxmluyggwvvjpyvlnt" });
+      return new Response(JSON.stringify({
+        error: "AUTH_PROJECT_MISMATCH",
+        projectRef,
+        expected: "lmbxmluyggwvvjpyvlnt",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     console.log("CHECKOUT_AUTH_USER", {
       hasUser: !!user,
       userId: user?.id || "none",
@@ -134,7 +184,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("CHECKOUT_USER_AUTHENTICATED", { userId: user.id, email: user.email });
 
-    const { planTier, companyId } = await req.json();
     console.log("CHECKOUT_REQUEST_PARAMS", { planTier, companyId, userId: user.id });
 
     if (!companyId) {
@@ -148,15 +197,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const priceId = TIER_TO_PRICE[planTier];
+    const normalizedTarget = (planTier || "").toUpperCase();
+    const priceId = TIER_TO_PRICE[normalizedTarget];
 
-    if (!priceId) {
-      console.error("CHECKOUT_INVALID_PLAN", { planTier });
-      return new Response(JSON.stringify({ error: "Invalid plan" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log("CHECKOUT_PRICE_MAPPING", {
+      planTierRaw: planTier,
+      planTierNormalized: normalizedTarget,
+      STRIPE_PRICE_PRO: Deno.env.get("STRIPE_PRICE_PRO") ? "set" : "missing",
+      STRIPE_PRICE_PRO_PLUS: Deno.env.get("STRIPE_PRICE_PRO_PLUS") ? "set" : "missing",
+      STRIPE_PRICE_PRO_PP: Deno.env.get("STRIPE_PRICE_PRO_PP") ? "set" : "missing",
+      resolvedPriceId: priceId ? `${priceId.substring(0, 12)}...` : "missing",
+    });
 
     const { data: membership } = await admin
       .from("memberships")
@@ -224,13 +275,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    console.log("CHECKOUT_CTX", {
+      companyId,
+      hasCompanyCustomer: !!company.stripe_customer_id,
+    });
+
     let customerId = company.stripe_customer_id;
 
     if (!customerId) {
       const stripeCustomer = await stripe.customers.create({
         email: user.email,
         name: company.name,
-        metadata: { companyId },
+        metadata: { company_id: companyId },
       });
       customerId = stripeCustomer.id;
 
@@ -239,35 +295,60 @@ Deno.serve(async (req: Request) => {
         .update({ stripe_customer_id: customerId })
         .eq("id", companyId);
 
-      console.log("STRIPE_CUSTOMER_CREATED", { customerId, companyId, companyName: company.name });
+      console.log("COMPANY_CUSTOMER_CREATED", {
+        companyId,
+        customerSuffix: customerId.slice(-4),
+      });
     }
 
-    const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+    let origin = req.headers.get("origin") ?? new URL(req.url).origin;
+
+    // Stripe n'accepte pas les URLs localhost, utiliser l'URL publique en développement
+    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      const publicUrl = Deno.env.get("APP_URL") || Deno.env.get("PUBLIC_APP_URL");
+      if (publicUrl) {
+        console.log("CHECKOUT_LOCALHOST_DETECTED", {
+          originalOrigin: origin,
+          replacedWith: publicUrl,
+        });
+        origin = publicUrl;
+      } else {
+        console.warn("CHECKOUT_LOCALHOST_WITHOUT_FALLBACK", {
+          origin,
+          note: "Set APP_URL env var for local development",
+        });
+      }
+    }
 
     if (
       existingSubscription?.stripe_subscription_id &&
       (existingSubscription.status === "active" || existingSubscription.status === "trialing")
     ) {
-      console.log("CHECKOUT_UPGRADE_FLOW", {
+      console.log("PORTAL_FOR_EXISTING_SUB", {
         companyId,
-        planTier: existingSubscription.plan_tier,
-        status: existingSubscription.status,
-        customerId,
+        customerSuffix: customerId.slice(-4),
+        subscriptionSuffix: existingSubscription.stripe_subscription_id.slice(-4),
       });
+
+      const returnUrl = `${origin}/app/company/${companyId}/subscription`;
 
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${origin}/app/company/${companyId}/subscription`,
+        return_url: returnUrl,
       });
 
-      console.log("STRIPE_PORTAL_SESSION_CREATED", {
-        portalSessionId: portalSession.id,
-        customerId,
+      console.log("PORTAL_REDIRECT_FOR_CHANGE", {
         companyId,
+        sessionId: portalSession.id,
         url: portalSession.url,
+        mode: "portal",
       });
 
-      return new Response(JSON.stringify({ url: portalSession.url, mode: "portal" }), {
+      return new Response(JSON.stringify({
+        url: portalSession.url,
+        mode: "portal",
+        companyId,
+      }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -295,13 +376,22 @@ Deno.serve(async (req: Request) => {
       metadata: {
         user_id: user.id,
         company_id: companyId,
+        plan_tier: normalizedTarget,
       },
       subscription_data: {
         metadata: {
           user_id: user.id,
           company_id: companyId,
+          plan_tier: normalizedTarget,
         },
       },
+    });
+
+    console.log("CHECKOUT_CREATED", {
+      companyId,
+      customerSuffix: customerId.slice(-4),
+      planTier: normalizedTarget,
+      priceSuffix: priceId.slice(-4),
     });
 
     console.log("STRIPE_CHECKOUT_SESSION_CREATED", {

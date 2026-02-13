@@ -154,13 +154,15 @@ export default function ViewTVAPage() {
         .from('expense_documents')
         .select('invoice_date')
         .eq('company_id', companyId)
-        .eq('accounting_status', 'validated');
+        .eq('accounting_status', 'validated')
+        .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
         .select('invoice_date')
         .eq('company_id', companyId)
-        .eq('accounting_status', 'validated');
+        .eq('accounting_status', 'validated')
+        .eq('is_test', false);
 
       const years = new Set<number>();
 
@@ -202,13 +204,15 @@ export default function ViewTVAPage() {
         .from('expense_documents')
         .select('id, invoice_date')
         .eq('company_id', companyId)
-        .eq('accounting_status', 'validated');
+        .eq('accounting_status', 'validated')
+        .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
         .select('id, invoice_date')
         .eq('company_id', companyId)
-        .eq('accounting_status', 'validated');
+        .eq('accounting_status', 'validated')
+        .eq('is_test', false);
 
       const expenseDocsInYear = expenseDocs?.filter((doc) => {
         const year = new Date(doc.invoice_date).getFullYear();

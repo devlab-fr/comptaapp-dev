@@ -112,14 +112,16 @@ export default function BilanPage() {
         .select('invoice_date')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
         .select('invoice_date')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const years = new Set<number>();
 
@@ -155,14 +157,16 @@ export default function BilanPage() {
         .select('id, invoice_date, total_incl_vat, total_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
         .select('id, invoice_date, total_incl_vat, total_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid');
+        .eq('payment_status', 'paid')
+        .eq('is_test', false);
 
       const expenseDocsInYear = expenseDocs?.filter((doc) => {
         const year = new Date(doc.invoice_date).getFullYear();
