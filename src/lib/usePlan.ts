@@ -68,7 +68,6 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
       }
 
       if (!companyId) {
-        console.warn('PLAN_RESOLVE_NO_COMPANY_ID', { userId: user.id, email: user.email });
         setLoading(false);
         return;
       }
@@ -87,8 +86,6 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
         }
 
         if (!data) {
-          console.warn('PLAN_RESOLVE_NO_SUBSCRIPTION_SELFHEAL', { userId: user.id, companyId });
-
           const { error: insertError } = await supabase
             .from('company_subscriptions')
             .insert({
@@ -103,7 +100,6 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
             return;
           }
 
-          console.log('PLAN_SELFHEAL_SUCCESS', { userId: user.id, companyId, plan_tier: 'FREE' });
           setSubscription({
             company_id: companyId,
             plan_tier: 'FREE',
@@ -119,13 +115,6 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
           ...data,
           plan_tier: normalizePlanTierLocal(data.plan_tier),
         } as CompanySubscription;
-        console.log('PLAN_RESOLVE', {
-          userId: user.id,
-          email: user.email,
-          companyId,
-          plan_tier: subscriptionWithNormalized.plan_tier,
-          source: 'company_subscriptions',
-        });
         setSubscription(subscriptionWithNormalized);
         setLoading(false);
       } catch (err) {
@@ -142,7 +131,6 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
   let effectiveTier: PlanTier = 'FREE';
 
   if (shouldApplyDevOverride(user?.email)) {
-    console.warn('DEV_PLAN_OVERRIDE_ACTIVE', { email: user?.email, companyId });
     effectiveTier = 'PRO_PLUS_PLUS';
   } else if (devForcedPlan) {
     effectiveTier = devForcedPlan;

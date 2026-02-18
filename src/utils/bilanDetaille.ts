@@ -623,11 +623,5 @@ export async function exportBilanDetaille(
       fileName,
     });
   } catch (archiveError) {
-    console.warn('ARCHIVE_STORAGE_FAILED', {
-      reportType: 'balance_sheet_detailed',
-      companyId,
-      fiscalYear,
-      error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-    });
   }
 }

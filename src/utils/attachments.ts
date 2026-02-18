@@ -51,11 +51,6 @@ export async function uploadAttachment(
     throw new Error(`Type d'enregistrement non supporté: ${recordType}`);
   }
 
-  console.debug('[uploadAttachment] Payload envoyé à Supabase:', {
-    ...attachmentData,
-    file_path: filePath.split('/').slice(-2).join('/')
-  });
-
   const { error: dbError } = await supabase
     .from('attachments')
     .insert(attachmentData);

@@ -7,6 +7,9 @@ interface PdfHeaderParams {
   vatRegime?: string;
   fiscalYearLabel: string;
   reportTitle: string;
+  fiscalPeriod?: string;
+  declaredAt?: string | null;
+  paymentDate?: string | null;
 }
 
 interface PdfFooterParams {
@@ -36,8 +39,12 @@ export function buildPdfHeader(params: PdfHeaderParams): string {
     siren,
     siret,
     address,
+    vatRegime,
     fiscalYearLabel,
     reportTitle,
+    fiscalPeriod,
+    declaredAt,
+    paymentDate,
   } = params;
 
   const identifiers: string[] = [];
@@ -46,6 +53,12 @@ export function buildPdfHeader(params: PdfHeaderParams): string {
   const identifierLine = identifiers.length > 0 ? identifiers.join(' • ') : '';
 
   const companyFullName = legalForm ? `${companyName} (${legalForm})` : companyName;
+
+  const fiscalInfoLines: string[] = [];
+  if (vatRegime) fiscalInfoLines.push(`Régime TVA : ${vatRegime}`);
+  if (fiscalPeriod) fiscalInfoLines.push(`Période fiscale : ${fiscalPeriod}`);
+  if (declaredAt) fiscalInfoLines.push(`Date de déclaration : ${new Date(declaredAt).toLocaleDateString('fr-FR')}`);
+  if (paymentDate) fiscalInfoLines.push(`Date de paiement : ${new Date(paymentDate).toLocaleDateString('fr-FR')}`);
 
   return `
     <div style="margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
@@ -62,7 +75,12 @@ export function buildPdfHeader(params: PdfHeaderParams): string {
       </div>
       <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #059669;">${fiscalYearLabel}</p>
       ${identifierLine ? `<p style="margin: 0 0 4px 0; font-size: 13px; color: #6b7280;">${identifierLine}</p>` : ''}
-      ${address ? `<p style="margin: 0; font-size: 13px; color: #6b7280;">${address}</p>` : ''}
+      ${address ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">${address}</p>` : ''}
+      ${fiscalInfoLines.length > 0 ? `
+        <div style="margin-top: 12px; padding: 12px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+          ${fiscalInfoLines.map(line => `<p style="margin: 0 0 4px 0; font-size: 13px; color: #1e40af; font-weight: 500;">${line}</p>`).join('')}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -82,15 +100,23 @@ export function buildPdfFooter(params: PdfFooterParams): string {
   return `
     <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6b7280; margin-bottom: 12px;">
-        <div>Généré le ${generatedAt}</div>
+        <div>Date d'édition : ${generatedAt}</div>
         <div style="font-style: italic;">ComptaApp — Document généré automatiquement</div>
         ${pageInfo ? `<div>${pageInfo}</div>` : ''}
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #9ca3af; margin-bottom: 12px;">
-        <div>Version : <span style="font-weight: 600;">${docVersion}</span></div>
-        <div>ID : <span style="font-family: monospace; font-weight: 600;">${docId}</span></div>
+        <div>Version modèle PDF : <span style="font-weight: 600;">${docVersion}</span></div>
+        <div>ID document unique : <span style="font-family: monospace; font-weight: 600;">${docId}</span></div>
       </div>
-      <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-top: 16px;">
+      <div style="background-color: #f0f9ff; border: 1px solid #3b82f6; border-radius: 6px; padding: 12px; margin-top: 16px;">
+        <div style="text-align: center; font-size: 11px; color: #1e40af; margin-bottom: 6px;">
+          <strong>Traçabilité professionnelle</strong>
+        </div>
+        <div style="text-align: center; font-size: 11px; color: #1e40af;">
+          Montants calculés à partir des écritures enregistrées dans l'application à la date d'édition.
+        </div>
+      </div>
+      <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-top: 12px;">
         <div style="text-align: center; font-size: 12px; color: #92400e; font-weight: 600;">
           ⚠ Document informatif — Ne remplace pas un expert-comptable
         </div>
@@ -124,6 +150,43 @@ export function buildFiscalYearLabel(
     return `Exercice ${startDate} → ${endDate}`;
   }
   return `Exercice ${year}`;
+}
+
+export function buildVatBalanceSection(soldeTVA: number, isDeclared: boolean): string {
+  const isPositive = soldeTVA >= 0;
+  const balanceType = isPositive ? 'TVA à payer' : 'Crédit de TVA à reporter';
+  const balanceMessage = isPositive
+    ? 'Montant de TVA à régler à l\'administration fiscale'
+    : 'Crédit de TVA à reporter sur la période suivante';
+
+  const statusText = isDeclared
+    ? (isPositive ? 'Déclarée – TVA à payer' : 'Déclarée – Crédit à reporter')
+    : 'Ouverte';
+
+  return `
+    <div style="margin: 32px 0;">
+      <div style="background-color: ${isPositive ? '#fef3c7' : '#dbeafe'}; border-left: 4px solid ${isPositive ? '#f59e0b' : '#3b82f6'}; padding: 20px; border-radius: 4px;">
+        <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #1a1a1a;">Nature du solde : ${balanceType}</p>
+        <p style="margin: 0 0 12px 0; font-size: 14px; color: #374151;">${balanceMessage}</p>
+        <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong>Statut :</strong> ${statusText}</p>
+      </div>
+    </div>
+  `;
+}
+
+export function buildVatRegime(vatRegimeType?: string): string {
+  if (!vatRegimeType) {
+    return 'Réel mensuel';
+  }
+
+  const regimes: { [key: string]: string } = {
+    'monthly': 'Réel mensuel',
+    'quarterly': 'Réel trimestriel',
+    'simplified': 'Régime simplifié',
+    'annual': 'Réel annuel',
+  };
+
+  return regimes[vatRegimeType] || 'Réel mensuel';
 }
 
 export function buildPdfStyles(): string {

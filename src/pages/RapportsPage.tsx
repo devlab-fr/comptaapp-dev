@@ -305,7 +305,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'exports_pdf', name: 'BilanSimplifie', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -543,7 +542,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'exports_pdf', name: 'BilanDetaille', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -572,7 +570,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'exports_pdf', name: 'TVAAnnuelle', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -715,7 +712,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'liasse_fiscale')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'liasse_fiscale', name: 'LiasseFiscale', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('liasse_fiscale'), 'error');
       return;
     }
@@ -990,7 +986,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'exports_pdf', name: 'CompteResultatDetaille', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -1236,7 +1231,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'exports_pdf', name: 'CompteResultatSimplifie', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -1373,7 +1367,6 @@ export default function RapportsPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'documents_ag')) {
-      console.log('GATING_EXPORT_BLOCKED', { file: 'RapportsPage.tsx', feature: 'documents_ag', name: 'AGReport', plan: entitlements.plan });
       showToast(getFeatureBlockedMessage('documents_ag'), 'error');
       return;
     }
@@ -1589,13 +1582,6 @@ export default function RapportsPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'ag_report',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: String(selectedYear),
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);

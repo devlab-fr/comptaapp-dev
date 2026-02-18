@@ -8,17 +8,6 @@ import BackButton from '../components/BackButton';
 import { supabase } from '../lib/supabase';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
 
-// Preuve version runtime (anti-cache)
-console.log('SUBSCRIPTIONPAGE_BUILD_ID', 'build_2026-02-11_a');
-
-// DEV: Log + cleanup Service Workers (anti-cache)
-if (import.meta.env.DEV) {
-  navigator.serviceWorker?.getRegistrations?.().then(regs => {
-    console.log('SW_REGISTRATIONS', regs.map(r => r.scope));
-    regs.forEach(r => r.unregister().then(() => console.log('SW_UNREGISTERED', r.scope)));
-  });
-}
-
 const isValidStripeUrl = (url: string): boolean => {
   try {
     const parsedUrl = new URL(url);
@@ -45,15 +34,6 @@ export default function SubscriptionPage() {
   // Priorité: params.companyId puis currentCompanyId
   const companyId = paramsCompanyId ?? currentCompanyId;
 
-  console.log('SUBSCRIPTION_PAGE_RENDER', {
-    userId: user?.id,
-    paramsCompanyId,
-    currentCompanyId,
-    finalCompanyId: companyId,
-    effectiveTier,
-    displayedPlanName: PLANS[effectiveTier].name,
-  });
-
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
@@ -67,8 +47,6 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = (targetTier: PlanTier) => {
-    console.log('UPGRADE_CLICK', { targetTier, currentTier: effectiveTier });
-
     if (targetTier === 'FREE') return;
 
     const currentRank = TIER_RANK[effectiveTier] ?? 0;
@@ -79,12 +57,6 @@ export default function SubscriptionPage() {
   };
 
   const proceedWithCheckout = async (targetTier: PlanTier) => {
-    console.log('CHECKOUT_START', {
-      routeCompanyId: companyId,
-      targetTier,
-      urlPath: window.location.pathname,
-    });
-
     if (!companyId) {
       console.error('CHECKOUT_NO_COMPANY_ID', { urlPath: window.location.pathname });
       alert('Aucune entreprise sélectionnée');
@@ -97,7 +69,6 @@ export default function SubscriptionPage() {
       let { data: { session } } = await supabase.auth.getSession();
 
       if (!session || !session.access_token) {
-        console.warn('CHECKOUT_NO_SESSION_TRYING_REFRESH');
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
 
         if (refreshError || !refreshData?.session || !refreshData.session.access_token) {
@@ -113,40 +84,9 @@ export default function SubscriptionPage() {
         }
 
         session = refreshData.session;
-        console.log('CHECKOUT_SESSION_REFRESHED', {
-          hasToken: !!session.access_token,
-          tokenPrefix: session.access_token.substring(0, 10),
-        });
       }
 
       const token = session.access_token;
-
-      let jwtPayload: any = null;
-      try {
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          jwtPayload = JSON.parse(atob(parts[1]));
-          console.log('JWT_ISS_CHECK', {
-            iss: jwtPayload.iss,
-            aud: jwtPayload.aud,
-            exp: jwtPayload.exp,
-            sub: jwtPayload.sub,
-            tokenLen: token.length,
-            supabaseUrlUsed: import.meta.env.VITE_SUPABASE_URL,
-          });
-        }
-      } catch (e) {
-        console.error('JWT_DECODE_FAILED', e);
-      }
-
-      console.log('CHECKOUT_CALLING_EDGE', {
-        hasSession: !!session,
-        hasToken: !!token,
-        tokenPrefix: token.substring(0, 10),
-        companyId,
-        planTier: targetTier,
-        userId: user?.id,
-      });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { planTier: targetTier, companyId },
@@ -178,18 +118,15 @@ export default function SubscriptionPage() {
           data.url.startsWith(window.location.origin);
 
         if (isInternalRedirect) {
-          console.log('INTERNAL_REDIRECT', { mode: data.mode, url: data.url.slice(0, 80) });
           window.location.href = data.url;
           return;
         }
 
         // Checkout initial : validation Stripe requise
         if (!isValidStripeUrl(data.url)) {
-          console.warn('STRIPE_BAD_URL', { url: data.url });
           alert('URL de paiement invalide');
           return;
         }
-        console.log('STRIPE_REDIRECT_CHECKOUT', data.url.slice(0, 50));
         window.location.assign(data.url);
       } else {
         console.error('CHECKOUT_NO_URL', data);
@@ -228,10 +165,7 @@ export default function SubscriptionPage() {
       }
 
       const token = session.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const payload = { planTier: 'PRO', companyId };
-
-      console.log('[DEV_STRIPE_TEST] calling create-checkout-session', { url, payload });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: payload,
@@ -287,7 +221,6 @@ export default function SubscriptionPage() {
 
       // 6) Retry avec le MÊME validatedCompanyId (pas de recalcul)
       if (error?.message?.includes('401') || error?.message?.includes('JWT')) {
-        console.warn("PORTAL_401_RETRY_REFRESH");
         const { data: refreshed } = await supabase.auth.refreshSession();
 
         if (!refreshed?.session) {
@@ -310,11 +243,9 @@ export default function SubscriptionPage() {
 
       if (data?.url) {
         if (!isValidStripeUrl(data.url)) {
-          console.warn('STRIPE_BAD_URL', { url: data.url });
           alert('URL de portail invalide');
           return;
         }
-        console.log("PORTAL_REDIRECT_SUCCESS", data.url.slice(0, 50));
         window.location.assign(data.url);
       } else {
         console.error("PORTAL_NO_URL", data);
@@ -382,18 +313,6 @@ export default function SubscriptionPage() {
             const targetRank = TIER_RANK[tier] ?? -1;
             const isUpgrade = targetRank > currentRank;
             const isDowngrade = targetRank < currentRank && targetRank > 0;
-
-            if (import.meta.env.DEV) {
-              console.log('PLAN_CARD', {
-                currentTier: effectiveTier,
-                targetTier: tier,
-                currentRank,
-                targetRank,
-                isCurrentPlan,
-                isUpgrade,
-                isDowngrade,
-              });
-            }
 
             return (
               <div

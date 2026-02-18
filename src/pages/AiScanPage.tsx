@@ -218,8 +218,6 @@ export function AiScanPage() {
     const filename = `${timestamp}-${originalFilename}`;
     const storagePath = `${companyId}/${scanId}/${filename}`;
 
-    console.log('UPLOAD_RECEIPT_START', { storagePath, fileSize: fileToUpload.size });
-
     const { error } = await supabase.storage
       .from('receipts')
       .upload(storagePath, fileToUpload, {
@@ -236,8 +234,6 @@ export function AiScanPage() {
       .from('receipts')
       .getPublicUrl(storagePath);
 
-    console.log('UPLOAD_RECEIPT_SUCCESS', { storagePath, url: urlData.publicUrl });
-
     return {
       url: urlData.publicUrl,
       storagePath,
@@ -246,12 +242,8 @@ export function AiScanPage() {
   };
 
   const convertPdfToImage = async (file: File): Promise<{ base64: string; mimeType: string; previewUrl: string }> => {
-    console.log('PDF_CONVERSION_START', { fileName: file.name, fileSize: file.size });
-
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    console.log('PDF_LOADED', { numPages: pdf.numPages });
 
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
@@ -273,12 +265,6 @@ export function AiScanPage() {
 
     const dataUrl = canvas.toDataURL('image/png');
     const base64 = dataUrl.split(',')[1];
-
-    console.log('PDF_CONVERSION_SUCCESS', {
-      width: canvas.width,
-      height: canvas.height,
-      base64Length: base64.length
-    });
 
     return {
       base64,
@@ -302,7 +288,6 @@ export function AiScanPage() {
     if (selectedFile.type.startsWith('image/')) {
       const url = URL.createObjectURL(selectedFile);
       setPreviewUrl(url);
-      console.log('IMAGE_FILE_SELECTED', { fileName: selectedFile.name, type: selectedFile.type, size: selectedFile.size });
     } else if (selectedFile.type === 'application/pdf') {
       setConvertingPdf(true);
       setPreviewUrl(null);
@@ -310,7 +295,6 @@ export function AiScanPage() {
         const converted = await convertPdfToImage(selectedFile);
         setPdfConvertedImage({ base64: converted.base64, mimeType: converted.mimeType });
         setPreviewUrl(converted.previewUrl);
-        console.log('PDF_CONVERTED_TO_PNG_OK', { fileName: selectedFile.name, size: selectedFile.size });
       } catch (error) {
         console.error('PDF_CONVERSION_ERROR', error);
         setToast({ message: 'Erreur lors de la conversion du PDF', type: 'error' });
@@ -343,7 +327,6 @@ export function AiScanPage() {
     const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'scan_ocr')) {
-      console.log('GATING_OCR_BLOCKED', { plan: entitlements.plan, feature: 'scan_ocr', blocked: true });
       setToast({ message: getFeatureBlockedMessage('scan_ocr'), type: 'error' });
       return;
     }

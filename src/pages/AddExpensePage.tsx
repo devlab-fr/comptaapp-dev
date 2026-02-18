@@ -95,7 +95,6 @@ export default function AddExpensePage() {
 
       if (!fetchError && data) {
         setSubcategories(data);
-        console.log('SUBCATS_LOADED', { categoryId, count: data.length });
       } else {
         setSubcategories([]);
         if (fetchError) {
@@ -142,12 +141,9 @@ export default function AddExpensePage() {
     const categoryInList = categories.find(c => c.id === categoryId);
 
     if (!categoryInList) {
-      console.warn('INVALID_CATEGORY_ID', { categoryId, prefill: prefillCategoryId, availableCategories: categories.map(c => c.id) });
-
       if (categories.length > 0) {
         validCategoryId = categories[0].id;
         validSubcategoryId = null;
-        console.log('FALLBACK_CATEGORY_USED', { validCategoryId });
       } else {
         setError('Aucune catégorie disponible. Rechargez la page.');
         setLoading(false);
@@ -161,17 +157,6 @@ export default function AddExpensePage() {
 
     const amountTva = Math.round(amountHTNum * tvaRateNum * 100) / 100;
     const amountTtc = Math.round((amountHTNum + amountTva) * 100) / 100;
-
-    console.log('INSERT_EXPENSE_PAYLOAD', {
-      category_id: validCategoryId,
-      subcategory_id: validSubcategoryId || null,
-      company_id: companyId,
-      invoice_date: date,
-      description,
-      amount_ht: amountHTNum,
-      amount_tva: amountTva,
-      amount_ttc: amountTtc
-    });
 
     const getCurrentMonthExpenseCount = async (): Promise<number> => {
       const targetDate = new Date(date);
@@ -189,15 +174,6 @@ export default function AddExpensePage() {
         console.error('COUNT_EXPENSES_ERROR', countError);
         return 0;
       }
-
-      console.log('GATING_MONTHLY_QUOTA', {
-        plan: entitlements.plan,
-        max: entitlements.limits.maxExpensesPerMonth,
-        month: targetDate.toISOString().slice(0, 7),
-        start: firstDayOfMonth.toISOString(),
-        end: firstDayOfNextMonth.toISOString(),
-        monthCount: count || 0
-      });
 
       return count || 0;
     };
@@ -245,8 +221,6 @@ export default function AddExpensePage() {
       return;
     }
 
-    console.log('INSERT_EXPENSE_DOCUMENT_SUCCESS', docData.id);
-
     const lineData = {
       document_id: docData.id,
       description: description,
@@ -258,15 +232,6 @@ export default function AddExpensePage() {
       amount_incl_vat: amountTtc,
       line_order: 0,
     };
-
-    console.log('EXPENSE_LINE_CATEGORY_SOURCE', {
-      table: 'expense_categories',
-      category_id: validCategoryId
-    });
-
-    console.log('INSERT_EXPENSE_LINE_SUBCATEGORY', {
-      subcategory_id: lineData.subcategory_id
-    });
 
     const { data: lineDataResult, error: lineError } = await supabase
       .from('expense_lines')
@@ -285,7 +250,6 @@ export default function AddExpensePage() {
       return;
     }
 
-    console.log('INSERT_EXPENSE_SUCCESS', { documentId: docData.id, lineId: lineDataResult.id });
     setCreatedDocumentId(docData.id);
     setLoading(false);
   };

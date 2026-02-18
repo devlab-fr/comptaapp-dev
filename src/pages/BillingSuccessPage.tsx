@@ -30,11 +30,6 @@ export default function BillingSuccessPage() {
         if (profile) {
           const normalizedTier = normalizePlanTier(profile.plan_tier);
           const planLabel = formatPlanLabel(normalizedTier);
-          console.log('BILLING_SUCCESS_PLAN_LOADED', {
-            planTierRaw: profile.plan_tier,
-            planTierNormalized: normalizedTier,
-            planLabel,
-          });
           setPlan(planLabel);
         }
       } catch (error) {

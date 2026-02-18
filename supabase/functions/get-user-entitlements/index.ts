@@ -61,29 +61,16 @@ const DEFAULT_ENTITLEMENTS = {
 };
 
 Deno.serve(async (req: Request) => {
-  console.log("ENTITLEMENTS_HANDLER_RUNNING");
-
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    console.log("ENTITLEMENTS_EDGE_START", {
-      method: req.method,
-      url: req.url,
-      timestamp: new Date().toISOString(),
-    });
-
     const authHeader = req.headers.get("Authorization");
-    console.log("ENTITLEMENTS_EDGE_AUTH_HEADER", {
-      hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader?.substring(0, 20) || "none",
-    });
 
     if (!authHeader) {
-      console.log("ENTITLEMENTS_EDGE_NO_AUTH", "Missing Authorization header");
-      return new Response(JSON.stringify({ ok: false, step: "NO_AUTH_HEADER" }), {
-        status: 401,
+      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -94,17 +81,9 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    console.log("ENTITLEMENTS_EDGE_USER", {
-      hasUser: !!user,
-      userId: user?.id || "none",
-      userEmail: user?.email || "none",
-      error: userError?.message || null,
-    });
-
     if (userError || !user) {
-      console.warn("ENTITLEMENTS_EDGE_USER_ERROR", "User not authenticated:", userError?.message);
-      return new Response(JSON.stringify({ ok: false, step: "GET_USER", error: userError?.message || "No user" }), {
-        status: 401,
+      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -113,7 +92,6 @@ Deno.serve(async (req: Request) => {
     const companyId = body.companyId;
 
     if (!companyId) {
-      console.warn("ENTITLEMENTS_EDGE_NO_COMPANY_ID", "companyId is required");
       return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -127,15 +105,7 @@ Deno.serve(async (req: Request) => {
       .eq("company_id", companyId)
       .maybeSingle();
 
-    console.log("ENTITLEMENTS_EDGE_SUBSCRIPTION", {
-      userId: user.id,
-      companyId,
-      subscription,
-      error: subscriptionError?.message || null,
-    });
-
     if (subscriptionError || !subscription) {
-      console.warn("ENTITLEMENTS_EDGE_SUBSCRIPTION_ERROR", "Subscription not found or error:", subscriptionError?.message);
       return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -155,21 +125,12 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    console.log("ENTITLEMENTS_EDGE_RESPONSE", {
-      planTierRaw,
-      planTierNormalized: planTier,
-      plan,
-      status,
-      companyId,
-    });
-
     return new Response(JSON.stringify(entitlements), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("ENTITLEMENTS_EDGE_ERROR", err);
-    console.log("ENTITLEMENTS_EDGE_RESPONSE_FALLBACK", DEFAULT_ENTITLEMENTS);
     return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

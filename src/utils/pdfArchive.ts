@@ -50,8 +50,6 @@ export async function savePdfToStorage(params: SavePdfParams): Promise<string> {
 
   const storagePath = `${companyId}/${fiscalYear}/${reportType}/${documentId}.pdf`;
 
-  console.log('UPLOAD PDF - Storage Path:', storagePath);
-
   const { error: uploadError } = await supabase.storage
     .from(PDF_BUCKET)
     .upload(storagePath, blob, {
@@ -67,9 +65,7 @@ export async function savePdfToStorage(params: SavePdfParams): Promise<string> {
   const userId = userData?.user?.id || null;
 
   try {
-    console.log('INSERT pdf_documents - company_id:', companyId, 'document_id:', documentId, 'user_id:', userId);
-
-    const { data: insertData, error: insertError } = await supabase
+    await supabase
       .from('pdf_documents')
       .insert({
         company_id: companyId,
@@ -83,36 +79,8 @@ export async function savePdfToStorage(params: SavePdfParams): Promise<string> {
         file_size: blob.size,
         generated_by: userId,
         version: 'V1',
-      })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      console.warn('ARCHIVE_FAILED_RLS', {
-        table: 'pdf_documents',
-        error: insertError.message,
-        code: insertError.code,
-        userId: userId,
-        companyId: companyId,
-        reportType: reportType,
-        fiscalYear: fiscalYear,
-        periodKey: periodKey,
-        documentId: documentId,
       });
-    } else {
-      console.log('PDF archivé avec succès:', storagePath, 'row_id:', insertData?.id);
-    }
-  } catch (archiveError: any) {
-    console.warn('ARCHIVE_FAILED_RLS', {
-      table: 'pdf_documents',
-      error: archiveError?.message || 'Unknown error',
-      userId: userId,
-      companyId: companyId,
-      reportType: reportType,
-      fiscalYear: fiscalYear,
-      periodKey: periodKey,
-      documentId: documentId,
-    });
+  } catch {
   }
 
   return await getPdfDownloadUrl(storagePath);
@@ -142,8 +110,6 @@ export async function listPdfDocuments(params: {
 }
 
 export async function getPdfDownloadUrl(storagePath: string): Promise<string> {
-  console.log('SIGNING PDF - Bucket:', PDF_BUCKET, 'Path:', storagePath);
-
   const { data, error } = await supabase.storage
     .from(PDF_BUCKET)
     .createSignedUrl(storagePath, 300);
@@ -152,7 +118,6 @@ export async function getPdfDownloadUrl(storagePath: string): Promise<string> {
     throw new Error(`Échec génération URL: ${error.message}`);
   }
 
-  console.log('SIGNING PDF - URL générée avec succès');
   return data.signedUrl;
 }
 

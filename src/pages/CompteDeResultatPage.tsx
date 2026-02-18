@@ -11,8 +11,8 @@ import html2canvas from 'html2canvas';
 import { downloadCSV, generateCSVContent, formatCurrency } from '../utils/csvExport';
 import { buildPdfHeader, buildPdfFooter, buildPdfStyles, formatGeneratedDate, buildFiscalYearLabel, generateDocumentId } from '../utils/pdfTemplate';
 import { savePdfToStorage } from '../utils/pdfArchive';
-import { refreshEntitlements } from '../billing/refreshEntitlements';
-import { hasFeature, getFeatureBlockedMessage, convertEntitlementsPlanToTier } from '../billing/planRules';
+import { useEntitlements } from '../billing/useEntitlements';
+import { convertEntitlementsPlanToTier, hasFeature } from '../billing/planRules';
 
 interface ResultatData {
   produitsHT: number;
@@ -38,6 +38,9 @@ export default function CompteDeResultatPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const entitlements = useEntitlements();
+  const planTier = convertEntitlementsPlanToTier(entitlements.plan);
+  const hasProAccess = hasFeature(planTier, 'transactions_unlimited');
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -146,6 +149,10 @@ export default function CompteDeResultatPage() {
   useEffect(() => {
     const loadResultatData = async () => {
       if (!companyId) return;
+
+      if (!hasProAccess) {
+        return;
+      }
 
       setLoading(true);
 
@@ -362,15 +369,11 @@ export default function CompteDeResultatPage() {
     };
 
     loadResultatData();
-  }, [companyId, selectedYear]);
+  }, [companyId, selectedYear, hasProAccess]);
 
   const exportSimpleCSV = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
-
-    if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
-      showToast(getFeatureBlockedMessage('exports_csv'), 'error');
+    if (!hasProAccess) {
+      showToast('Fonction disponible en version Pro', 'error');
       return;
     }
 
@@ -393,12 +396,8 @@ export default function CompteDeResultatPage() {
   };
 
   const exportDetailedCSV = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
-
-    if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
-      showToast(getFeatureBlockedMessage('exports_csv'), 'error');
+    if (!hasProAccess) {
+      showToast('Fonction disponible en version Pro', 'error');
       return;
     }
 
@@ -434,12 +433,8 @@ export default function CompteDeResultatPage() {
   };
 
   const exportPDF = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
-
-    if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_pdf', blocked: true });
-      showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
+    if (!hasProAccess) {
+      showToast('Fonction disponible en version Pro', 'error');
       return;
     }
 
@@ -472,6 +467,10 @@ export default function CompteDeResultatPage() {
         version: 'V1',
       });
 
+      const resultatLabel = resultatData.resultatHT >= 0 ? 'Résultat bénéficiaire' : 'Résultat déficitaire';
+      const resultatColor = resultatData.resultatHT >= 0 ? '#059669' : '#dc2626';
+      const resultatBgColor = resultatData.resultatHT >= 0 ? '#d1fae5' : '#fee2e2';
+
       const html = `
 <!DOCTYPE html>
 <html>
@@ -483,81 +482,84 @@ export default function CompteDeResultatPage() {
 <body>
   ${header}
 
-  <div class="section-title">Synthèse</div>
+  <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+    <p style="margin: 0; font-size: 13px; color: #1e40af; font-weight: 500;">
+      <strong>Document de gestion interne</strong> — Ce document ne constitue pas un document fiscal officiel.
+    </p>
+  </div>
+
+  <div class="section-title">Produits d'exploitation</div>
   <table>
     <thead>
       <tr>
-        <th>Indicateur</th>
+        <th>Catégorie</th>
         <th class="text-right">Montant HT (EUR)</th>
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td class="font-bold">Total Produits HT</td>
+      ${produitsDetails.length > 0 ? produitsDetails.map(detail => `
+        <tr>
+          <td>${detail.categoryName} - ${detail.subcategoryName}</td>
+          <td class="text-right">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(detail.totalHT)}</td>
+        </tr>
+      `).join('') : `
+        <tr>
+          <td>Ventes et prestations</td>
+          <td class="text-right">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.produitsHT)}</td>
+        </tr>
+      `}
+      <tr style="background-color: #f9fafb; font-weight: 600;">
+        <td class="font-bold">Total des produits</td>
         <td class="text-right highlight-positive">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.produitsHT)}</td>
       </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">Charges d'exploitation</div>
+  <table>
+    <thead>
       <tr>
-        <td class="font-bold">Total Charges HT</td>
-        <td class="text-right highlight-negative">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.chargesHT)}</td>
+        <th>Catégorie</th>
+        <th class="text-right">Montant HT (EUR)</th>
       </tr>
+    </thead>
+    <tbody>
+      ${chargesDetails.length > 0 ? chargesDetails.map(detail => `
+        <tr>
+          <td>${detail.categoryName} - ${detail.subcategoryName}</td>
+          <td class="text-right">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(detail.totalHT)}</td>
+        </tr>
+      `).join('') : `
+        <tr>
+          <td>Achats et charges externes</td>
+          <td class="text-right">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.chargesHT)}</td>
+        </tr>
+      `}
       <tr style="background-color: #f9fafb; font-weight: 600;">
-        <td class="font-bold">Résultat HT</td>
-        <td class="text-right ${resultatData.resultatHT >= 0 ? 'highlight-positive' : 'highlight-negative'}">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.resultatHT)}</td>
+        <td class="font-bold">Total des charges</td>
+        <td class="text-right">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.chargesHT)}</td>
       </tr>
     </tbody>
   </table>
 
-  ${produitsDetails.length > 0 ? `
-  <div class="section-title">Détail des Produits (HT)</div>
+  <div class="section-title">Résultat d'exploitation</div>
   <table>
-    <thead>
-      <tr>
-        <th>Catégorie</th>
-        <th>Sous-catégorie</th>
-        <th class="text-right">Montant HT (EUR)</th>
-      </tr>
-    </thead>
     <tbody>
-      ${produitsDetails.map(item => `
-        <tr>
-          <td>${item.categoryName}</td>
-          <td>${item.subcategoryName}</td>
-          <td class="text-right font-bold">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.totalHT)}</td>
-        </tr>
-      `).join('')}
-      <tr style="background-color: #f9fafb; font-weight: 600; border-top: 2px solid #1a1a1a;">
-        <td colspan="2" class="font-bold">Total Produits HT</td>
-        <td class="text-right font-bold">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.produitsHT)}</td>
+      <tr style="background-color: #f9fafb; font-weight: 600;">
+        <td class="font-bold" style="font-size: 16px;">Résultat de l'exercice ${selectedYear}</td>
+        <td class="text-right" style="font-size: 16px; color: ${resultatColor}; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.resultatHT)}</td>
       </tr>
     </tbody>
   </table>
-  ` : ''}
 
-  ${chargesDetails.length > 0 ? `
-  <div class="section-title">Détail des Charges (HT)</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Catégorie</th>
-        <th>Sous-catégorie</th>
-        <th class="text-right">Montant HT (EUR)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${chargesDetails.map(item => `
-        <tr>
-          <td>${item.categoryName}</td>
-          <td>${item.subcategoryName}</td>
-          <td class="text-right font-bold">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.totalHT)}</td>
-        </tr>
-      `).join('')}
-      <tr style="background-color: #f9fafb; font-weight: 600; border-top: 2px solid #1a1a1a;">
-        <td colspan="2" class="font-bold">Total Charges HT</td>
-        <td class="text-right font-bold">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(resultatData.chargesHT)}</td>
-      </tr>
-    </tbody>
-  </table>
-  ` : ''}
+  <div style="margin: 32px 0;">
+    <div style="background-color: ${resultatBgColor}; border-left: 4px solid ${resultatColor}; padding: 20px; border-radius: 4px;">
+      <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #1a1a1a;">${resultatLabel}</p>
+      <p style="margin: 0; font-size: 14px; color: #374151;">
+        ${resultatData.resultatHT >= 0 ? 'L\'entreprise a dégagé un bénéfice sur l\'exercice.' : 'L\'entreprise présente une perte sur l\'exercice.'}
+      </p>
+    </div>
+  </div>
 
   ${footer}
 </body>
@@ -624,13 +626,6 @@ export default function CompteDeResultatPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'income_statement',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: String(selectedYear),
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);
@@ -639,6 +634,58 @@ export default function CompteDeResultatPage() {
   };
 
   const hasData = resultatData.produitsHT !== 0 || resultatData.chargesHT !== 0;
+
+  if (!hasProAccess) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+          <BackButton to={`/app/company/${companyId}`} />
+
+          <div style={{ marginBottom: '24px' }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '32px', fontWeight: '700', color: '#1a1a1a' }}>
+              Compte de Résultat
+            </h2>
+            <p style={{ margin: 0, fontSize: '16px', color: '#6b7280' }}>
+              Résultat d'exploitation de l'exercice
+            </p>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              padding: '24px',
+              marginTop: '24px',
+            }}
+          >
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: '600', color: '#92400e' }}>
+              Fonction disponible en version PRO
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#92400e' }}>
+              Cette fonctionnalité est disponible à partir de la version Pro.
+            </p>
+            <button
+              onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+              style={{
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Passer à la version PRO
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>

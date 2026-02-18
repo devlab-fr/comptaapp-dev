@@ -14,7 +14,6 @@ export async function refreshEntitlements(): Promise<Entitlements> {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session?.user) {
-      console.log('REFRESH_ENTITLEMENTS: No session, returning free plan');
       return {
         plan: 'free',
         status: 'inactive',
@@ -38,7 +37,6 @@ export async function refreshEntitlements(): Promise<Entitlements> {
     }
 
     if (!profile) {
-      console.warn('REFRESH_ENTITLEMENTS: No profile found, returning free plan');
       return {
         plan: 'free',
         status: 'inactive',
@@ -50,14 +48,6 @@ export async function refreshEntitlements(): Promise<Entitlements> {
     const planTier = normalizePlanTier(planTierRaw);
     const plan = PLAN_TIER_TO_PLAN[planTier] || 'free';
     const status = plan !== 'free' ? 'active' : 'inactive';
-
-    console.log('REFRESH_ENTITLEMENTS_SUCCESS:', {
-      planTierRaw,
-      planTierNormalized: planTier,
-      plan,
-      status,
-      source: profile.plan_source || 'none',
-    });
 
     return {
       plan,

@@ -22,12 +22,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const expectedUrl = import.meta.env.VITE_SUPABASE_URL || '';
     const expectedProjectRef = expectedUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1] || null;
 
-    console.log('SUPABASE_RUNTIME', {
-      url: expectedUrl,
-      projectRef: expectedProjectRef,
-      anonKeyHead: (import.meta.env.VITE_SUPABASE_ANON_KEY || '').slice(0, 8),
-    });
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
         try {
@@ -47,11 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               window.location.href = '/login';
               return;
             }
-
-            console.log('JWT_CHECK_OK', { issProjectRef, expectedProjectRef, match: true });
           }
         } catch (e) {
-          console.warn('JWT_DECODE_FAILED', e);
         }
       }
 
@@ -64,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('PASSWORD_RECOVERY event detected, redirecting to /reset-password');
         window.location.href = '/reset-password';
         return;
       }

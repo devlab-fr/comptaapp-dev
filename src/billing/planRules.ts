@@ -24,14 +24,13 @@ export function normalizePlanTier(input: string | null | undefined): PlanTier {
     return 'PRO_PLUS';
   }
 
-  console.warn('NORMALIZE_PLAN_UNKNOWN', { input, normalized, fallback: 'FREE' });
   return 'FREE';
 }
 
 const FEATURE_PLAN_MATRIX: Record<Feature, PlanTier> = {
   transactions_unlimited: 'PRO',
   exports_csv: 'PRO',
-  exports_pdf: 'PRO_PLUS',
+  exports_pdf: 'PRO',
   reports_advanced: 'PRO_PLUS',
   scan_ocr: 'PRO_PLUS',
   assistant_ia: 'PRO_PLUS_PLUS',
@@ -60,18 +59,6 @@ export function getRequiredPlan(feature: Feature): PlanTier {
 export function hasFeature(planTier: PlanTier, feature: Feature): boolean {
   const requiredPlan = getRequiredPlan(feature);
   const hasAccess = PLAN_RANK[planTier] >= PLAN_RANK[requiredPlan];
-
-  if (!hasAccess) {
-    console.warn('PLAN_DEBUG_BLOCK', {
-      feature,
-      requiredPlan,
-      requiredRank: PLAN_RANK[requiredPlan],
-      currentPlanNormalized: planTier,
-      currentRank: PLAN_RANK[planTier],
-      hasAccess,
-    });
-  }
-
   return hasAccess;
 }
 
@@ -87,6 +74,5 @@ export function getFeatureBlockedMessage(feature: Feature): string {
 
 export function convertEntitlementsPlanToTier(plan: string): PlanTier {
   const normalized = normalizePlanTier(plan);
-  console.log('CONVERT_ENTITLEMENTS_PLAN', { input: plan, output: normalized });
   return normalized;
 }

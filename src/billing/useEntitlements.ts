@@ -16,7 +16,6 @@ let entitlementsCache: Map<string, CacheKey> = new Map();
 
 export function invalidateEntitlementsCache() {
   entitlementsCache.clear();
-  console.log('ENTITLEMENTS_CACHE_INVALIDATED');
 }
 
 export function useEntitlements(): Entitlements {
@@ -36,7 +35,6 @@ export function useEntitlements(): Entitlements {
 
     const fetchEntitlements = async () => {
       if (!companyId) {
-        console.warn('ENTITLEMENTS_NO_COMPANY_ID');
         if (isMounted) {
           setEntitlements(defaultEntitlements);
         }
@@ -45,7 +43,6 @@ export function useEntitlements(): Entitlements {
 
       const cached = entitlementsCache.get(companyId);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
-        console.log('ENTITLEMENTS_CACHE_HIT', { companyId, plan: cached.entitlements.plan });
         setEntitlements(cached.entitlements);
         return;
       }
@@ -61,7 +58,6 @@ export function useEntitlements(): Entitlements {
         }
 
         if (shouldApplyDevOverride(session.user?.email)) {
-          console.warn('DEV_PLAN_OVERRIDE_ACTIVE', { email: session.user?.email, companyId });
           const devEntitlements: Entitlements = {
             plan: 'pro_pp',
             status: 'active',
@@ -86,7 +82,6 @@ export function useEntitlements(): Entitlements {
 
         if (error) {
           const cached = entitlementsCache.get(companyId);
-          console.warn('ENTITLEMENTS_FETCH_FAILED_KEEP_PLAN', { error, keepingCached: !!cached });
           if (isMounted && cached) {
             setEntitlements(cached.entitlements);
           } else if (isMounted) {
@@ -96,12 +91,6 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
-          console.log('ENTITLEMENTS_FETCHED', {
-            companyId,
-            plan: data.plan,
-            status: data.status,
-            source: 'get-user-entitlements',
-          });
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,
@@ -113,7 +102,6 @@ export function useEntitlements(): Entitlements {
         }
       } catch (error) {
         const cached = entitlementsCache.get(companyId);
-        console.warn('ENTITLEMENTS_FETCH_FAILED_KEEP_PLAN', { error, keepingCached: !!cached });
         if (isMounted && cached) {
           setEntitlements(cached.entitlements);
         } else if (isMounted) {

@@ -172,16 +172,6 @@ export default function ExpensesPage() {
   const loadExpenses = async (subcatsData?: Subcategory[], categoriesData?: Category[]) => {
     if (!companyId) return;
 
-    console.log('FETCH_EXPENSES_QUERY', {
-      companyId,
-      selectedYear,
-      selectedMonth,
-      selectedCategory,
-      selectedSubcategory,
-      searchQuery,
-      currentPage
-    });
-
     let query = supabase
       .from('expense_documents')
       .select('*', { count: 'exact' })
@@ -211,13 +201,7 @@ export default function ExpensesPage() {
 
     query = query.range(from, to);
 
-    const { data: docs, error: fetchError } = await query;
-
-    console.log('FETCH_EXPENSES_RESULT', {
-      count: docs?.length ?? 0,
-      totalRecords,
-      error: fetchError
-    });
+    const { data: docs } = await query;
 
     if (docs) {
       const { data: lines } = await supabase

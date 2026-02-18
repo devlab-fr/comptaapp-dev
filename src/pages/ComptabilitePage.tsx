@@ -2271,7 +2271,6 @@ function ClosureTab({ companyId, setToast, entitlements }: { companyId: string; 
             onClick={() => {
               const planTier = convertEntitlementsPlanToTier(entitlements.plan);
               if (!hasFeature(planTier, 'exports_csv')) {
-                console.log('GATING_EXPORT_BLOCKED', { file: 'ComptabilitePage.tsx', feature: 'csv', name: 'ExportCabinet', plan: entitlements.plan });
                 setToast({ message: getFeatureBlockedMessage('exports_csv'), type: 'error' });
                 return;
               }
@@ -2299,7 +2298,6 @@ function ClosureTab({ companyId, setToast, entitlements }: { companyId: string; 
             onClick={() => {
               const planTier = convertEntitlementsPlanToTier(entitlements.plan);
               if (!hasFeature(planTier, 'exports_csv')) {
-                console.log('GATING_EXPORT_BLOCKED', { file: 'ComptabilitePage.tsx', feature: 'csv', name: 'BalanceCSV', plan: entitlements.plan });
                 setToast({ message: getFeatureBlockedMessage('exports_csv'), type: 'error' });
                 return;
               }
@@ -2323,7 +2321,6 @@ function ClosureTab({ companyId, setToast, entitlements }: { companyId: string; 
             onClick={() => {
               const planTier = convertEntitlementsPlanToTier(entitlements.plan);
               if (!hasFeature(planTier, 'exports_csv')) {
-                console.log('GATING_EXPORT_BLOCKED', { file: 'ComptabilitePage.tsx', feature: 'csv', name: 'TVAComptableCSV', plan: entitlements.plan });
                 setToast({ message: getFeatureBlockedMessage('exports_csv'), type: 'error' });
                 return;
               }

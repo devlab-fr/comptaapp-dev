@@ -8,10 +8,10 @@ import Toast from '../components/Toast';
 import AIAssistant from '../components/AIAssistant';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { downloadCSV, generateCSVContent, formatCurrency, formatDate } from '../utils/csvExport';
-import { buildPdfHeader, buildPdfFooter, buildPdfStyles, formatGeneratedDate, buildFiscalYearLabel, generateDocumentId } from '../utils/pdfTemplate';
+import { downloadCSV, generateCSVContentExcelFR, formatCurrencyExcelFR, formatTodayDate } from '../utils/csvExport';
+import { buildPdfHeader, buildPdfFooter, buildPdfStyles, formatGeneratedDate, buildFiscalYearLabel, generateDocumentId, buildVatBalanceSection, buildVatRegime } from '../utils/pdfTemplate';
 import { savePdfToStorage } from '../utils/pdfArchive';
-import { refreshEntitlements } from '../billing/refreshEntitlements';
+import { useEntitlements } from '../billing/useEntitlements';
 import { hasFeature, getFeatureBlockedMessage, convertEntitlementsPlanToTier } from '../billing/planRules';
 
 interface TVAData {
@@ -41,6 +41,7 @@ export default function ViewTVAPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const entitlements = useEntitlements();
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -83,6 +84,9 @@ export default function ViewTVAPage() {
   };
 
   const getYearFromPeriod = (period: any): number | null => {
+    if (period.year !== undefined && period.year !== null) {
+      return period.year;
+    }
     if (period.period_year !== undefined && period.period_year !== null) {
       return period.period_year;
     }
@@ -105,6 +109,9 @@ export default function ViewTVAPage() {
   };
 
   const getMonthFromPeriod = (period: any): number | null => {
+    if (period.month !== undefined && period.month !== null) {
+      return period.month;
+    }
     if (period.period_month !== undefined && period.period_month !== null) {
       return period.period_month;
     }
@@ -115,7 +122,6 @@ export default function ViewTVAPage() {
         try {
           const month = new Date(period[field]).getMonth() + 1;
           if (month >= 1 && month <= 12) {
-            console.log(`VAT_PERIOD_MONTH_DERIVED from ${field}:`, month);
             return month;
           }
         } catch {
@@ -314,9 +320,6 @@ export default function ViewTVAPage() {
       const sample = periodsIntrospect?.[0];
       const keys = Object.keys(sample || {});
 
-      console.log('VAT_PERIODS_SAMPLE_KEYS', keys);
-      console.log('VAT_PERIODS_SAMPLE', sample, introError);
-
       if (introError) {
         console.error('VAT_PERIODS_INTROSPECTION_ERROR', introError);
         console.error('VAT_PERIODS_42703_TRACE', {
@@ -336,7 +339,6 @@ export default function ViewTVAPage() {
       let periods: any[] = [];
 
       if (!sample) {
-        console.log('VAT_PERIODS_EMPTY_TABLE', true);
       } else {
         let q = supabase.from('vat_periods').select('*');
 
@@ -366,8 +368,8 @@ export default function ViewTVAPage() {
         if (year === selectedYear && month && monthlyTVA[month]) {
           monthlyTVA[month].status = period.status as 'open' | 'declared';
           monthlyTVA[month].periodId = period.id;
-          monthlyTVA[month].declaredAt = period.declared_at;
-          monthlyTVA[month].declaredBy = period.declared_by;
+          monthlyTVA[month].declaredAt = period.declared_at || null;
+          monthlyTVA[month].declaredBy = period.declared_by || null;
         }
       });
 
@@ -398,34 +400,70 @@ export default function ViewTVAPage() {
   const markPeriodAsDeclared = async (month: number) => {
     if (!companyId) return;
 
-    const existingPeriod = monthlyData.find(m => m.month === month);
+    const monthNum = Number(month);
+    const yearNum = Number(selectedYear);
+
+    const today = new Date().toISOString().split('T')[0];
+    const declaredDateInput = prompt(
+      `Date de déclaration (format: YYYY-MM-DD)`,
+      today
+    );
+
+    if (!declaredDateInput) {
+      return;
+    }
+
+    let declaredAt: string;
+    try {
+      declaredAt = new Date(declaredDateInput).toISOString();
+    } catch {
+      showToast('Format de date invalide', 'error');
+      return;
+    }
+
+    const existingPeriod = monthlyData.find(m => m.month === monthNum);
 
     if (existingPeriod?.periodId) {
       await supabase
         .from('vat_periods')
         .update({
           status: 'declared',
-          declared_at: new Date().toISOString(),
-          declared_by: user?.id,
+          declared_at: declaredAt,
+          declared_by: (await supabase.auth.getUser()).data.user?.id || null,
         })
         .eq('id', existingPeriod.periodId);
     } else {
-      const nowISO = new Date().toISOString();
+      if (!yearNum || !monthNum || isNaN(yearNum) || isNaN(monthNum)) {
+        console.error('VAT_INSERT_VALIDATION_FAILED', 'year ou month manquants', {
+          selectedYear,
+          month,
+          yearNum,
+          monthNum,
+          existingPeriod
+        });
+        showToast('Période invalide (year/month manquants)', 'error');
+        return;
+      }
+
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id || null;
 
       const candidate1 = {
         company_id: companyId,
-        status: 'declared',
-        declared_at: nowISO,
-        declared_by: user?.id,
+        period_year: yearNum,
+        period_month: monthNum,
+        status: 'declared' as const,
+        declared_at: declaredAt,
+        declared_by: currentUserId,
       };
 
       const candidate2 = {
-        status: 'declared',
-        declared_at: nowISO,
-        declared_by: user?.id,
+        period_year: yearNum,
+        period_month: monthNum,
+        status: 'declared' as const,
+        declared_at: declaredAt,
+        declared_by: currentUserId,
       };
 
-      console.log('VAT_INSERT_ATTEMPT_1', 'Trying with company_id');
       const { error: error1 } = await supabase
         .from('vat_periods')
         .insert(candidate1);
@@ -435,7 +473,6 @@ export default function ViewTVAPage() {
                              (error1.message && error1.message.toLowerCase().includes('does not exist'));
 
         if (isColumnError && error1.message.includes('company_id')) {
-          console.log('VAT_INSERT_ATTEMPT_2', 'company_id column missing, trying fallback without it');
           const { error: error2 } = await supabase
             .from('vat_periods')
             .insert(candidate2);
@@ -444,25 +481,22 @@ export default function ViewTVAPage() {
             console.error('VAT_INSERT_FAILED', error2);
             showToast('Impossible de créer la période', 'error');
             return;
-          } else {
-            console.log('VAT_INSERT_SUCCESS', 'Période créée sans company_id');
           }
         } else {
           console.error('VAT_INSERT_FAILED', error1);
           showToast('Impossible de créer la période', 'error');
           return;
         }
-      } else {
-        console.log('VAT_INSERT_SUCCESS', 'Période créée avec company_id');
       }
     }
 
     const updatedMonthly = monthlyData.map(m =>
-      m.month === month
-        ? { ...m, status: 'declared' as const, declaredAt: new Date().toISOString(), declaredBy: user?.id }
+      m.month === monthNum
+        ? { ...m, status: 'declared' as const, declaredAt }
         : m
     );
     setMonthlyData(updatedMonthly);
+    showToast(`Période déclarée le ${new Date(declaredAt).toLocaleDateString('fr-FR')}`, 'success');
   };
 
   const markPeriodAsOpen = async (month: number) => {
@@ -475,14 +509,12 @@ export default function ViewTVAPage() {
         .from('vat_periods')
         .update({
           status: 'open',
-          declared_at: null,
-          declared_by: null,
         })
         .eq('id', existingPeriod.periodId);
 
       const updatedMonthly = monthlyData.map(m =>
         m.month === month
-          ? { ...m, status: 'open' as const, declaredAt: null, declaredBy: null }
+          ? { ...m, status: 'open' as const }
           : m
       );
       setMonthlyData(updatedMonthly);
@@ -490,11 +522,9 @@ export default function ViewTVAPage() {
   };
 
   const exportMonthlyCSV = async (month: number) => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
       showToast(getFeatureBlockedMessage('exports_csv'), 'error');
       return;
     }
@@ -523,14 +553,14 @@ export default function ViewTVAPage() {
         selectedYear.toString(),
         'Mensuelle',
         monthNames[month - 1],
-        formatCurrency(monthData.tvaCollectee),
-        formatCurrency(monthData.tvaDeductible),
-        formatCurrency(monthData.soldeTVA),
+        formatCurrencyExcelFR(monthData.tvaCollectee),
+        formatCurrencyExcelFR(monthData.tvaDeductible),
+        formatCurrencyExcelFR(monthData.soldeTVA),
         monthData.status === 'declared' ? 'Déclarée' : 'Ouverte',
-        formatDate(monthData.declaredAt || null),
+        formatTodayDate(),
       ]];
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `TVA_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}_${String(month).padStart(2, '0')}.csv`;
 
       downloadCSV(filename, csvContent);
@@ -541,11 +571,9 @@ export default function ViewTVAPage() {
   };
 
   const exportQuarterlyCSV = async (quarter: number) => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
       showToast(getFeatureBlockedMessage('exports_csv'), 'error');
       return;
     }
@@ -562,12 +590,6 @@ export default function ViewTVAPage() {
 
       const allDeclared = quarterMonths.every(m => m.status === 'declared');
       const status = allDeclared ? 'Déclarée' : 'Ouverte';
-
-      const latestDeclaration = allDeclared
-        ? quarterMonths
-            .filter(m => m.declaredAt)
-            .sort((a, b) => new Date(b.declaredAt!).getTime() - new Date(a.declaredAt!).getTime())[0]?.declaredAt
-        : null;
 
       const headers = [
         'Entreprise',
@@ -586,14 +608,14 @@ export default function ViewTVAPage() {
         selectedYear.toString(),
         'Trimestrielle',
         `T${quarter}`,
-        formatCurrency(Math.round(tvaCollectee * 100) / 100),
-        formatCurrency(Math.round(tvaDeductible * 100) / 100),
-        formatCurrency(Math.round(soldeTVA * 100) / 100),
+        formatCurrencyExcelFR(Math.round(tvaCollectee * 100) / 100),
+        formatCurrencyExcelFR(Math.round(tvaDeductible * 100) / 100),
+        formatCurrencyExcelFR(Math.round(soldeTVA * 100) / 100),
         status,
-        formatDate(latestDeclaration || null),
+        formatTodayDate(),
       ]];
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `TVA_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}_Q${quarter}.csv`;
 
       downloadCSV(filename, csvContent);
@@ -604,11 +626,9 @@ export default function ViewTVAPage() {
   };
 
   const exportAnnualCSV = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
       showToast(getFeatureBlockedMessage('exports_csv'), 'error');
       return;
     }
@@ -616,12 +636,6 @@ export default function ViewTVAPage() {
     try {
       const allDeclared = monthlyData.every(m => m.status === 'declared');
       const status = allDeclared ? 'Déclarée' : 'Ouverte';
-
-      const latestDeclaration = allDeclared
-        ? monthlyData
-            .filter(m => m.declaredAt)
-            .sort((a, b) => new Date(b.declaredAt!).getTime() - new Date(a.declaredAt!).getTime())[0]?.declaredAt
-        : null;
 
       const headers = [
         'Entreprise',
@@ -637,16 +651,18 @@ export default function ViewTVAPage() {
 
       const rows: string[][] = [];
 
+      const exportDate = formatTodayDate();
+
       rows.push([
         companyName,
         selectedYear.toString(),
         'Annuelle',
         'Total',
-        formatCurrency(tvaData.tvaCollectee),
-        formatCurrency(tvaData.tvaDeductible),
-        formatCurrency(tvaData.soldeTVA),
+        formatCurrencyExcelFR(tvaData.tvaCollectee),
+        formatCurrencyExcelFR(tvaData.tvaDeductible),
+        formatCurrencyExcelFR(tvaData.soldeTVA),
         status,
-        formatDate(latestDeclaration || null),
+        exportDate,
       ]);
 
       rows.push(['', '', '', '', '', '', '', '', '']);
@@ -657,15 +673,15 @@ export default function ViewTVAPage() {
           selectedYear.toString(),
           'Mensuelle',
           monthNames[month.month - 1],
-          formatCurrency(month.tvaCollectee),
-          formatCurrency(month.tvaDeductible),
-          formatCurrency(month.soldeTVA),
+          formatCurrencyExcelFR(month.tvaCollectee),
+          formatCurrencyExcelFR(month.tvaDeductible),
+          formatCurrencyExcelFR(month.soldeTVA),
           month.status === 'declared' ? 'Déclarée' : 'Ouverte',
-          formatDate(month.declaredAt || null),
+          exportDate,
         ]);
       });
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `TVA_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}_ANNUEL.csv`;
 
       downloadCSV(filename, csvContent);
@@ -676,11 +692,9 @@ export default function ViewTVAPage() {
   };
 
   const exportMonthlyPDF = async (month: number) => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_pdf', blocked: true });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -703,14 +717,20 @@ export default function ViewTVAPage() {
       const generatedAt = formatGeneratedDate();
       const documentId = generateDocumentId(companyId!, selectedYear, `TVA-M${month}`);
 
+      const vatRegime = buildVatRegime(companyData.vat_regime || 'monthly');
+      const fiscalPeriod = `${String(month).padStart(2, '0')}/${selectedYear}`;
+
       const header = buildPdfHeader({
         companyName: companyData.name,
         legalForm: companyData.legal_form,
         siren: companyData.siren,
         siret: companyData.siret,
         address: companyData.address,
+        vatRegime,
         fiscalYearLabel,
         reportTitle: `Synthèse TVA - ${monthNames[month - 1]} ${selectedYear}`,
+        fiscalPeriod,
+        declaredAt: monthData.declaredAt,
       });
 
       const footer = buildPdfFooter({
@@ -756,10 +776,7 @@ export default function ViewTVAPage() {
     </tbody>
   </table>
 
-  <div class="info-box">
-    <strong>Statut :</strong> ${monthData.status === 'declared' ? 'Traitée' : 'Ouverte'}
-    ${monthData.declaredAt ? `<br><strong>Date de traitement :</strong> ${new Date(monthData.declaredAt).toLocaleDateString('fr-FR')}` : ''}
-  </div>
+  ${buildVatBalanceSection(monthData.soldeTVA, monthData.status === 'declared')}
 
   ${footer}
 </body>
@@ -825,13 +842,6 @@ export default function ViewTVAPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'vat_monthly',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: `${selectedYear}-${String(month).padStart(2, '0')}`,
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);
@@ -840,11 +850,9 @@ export default function ViewTVAPage() {
   };
 
   const exportQuarterlyPDF = async (quarter: number) => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_pdf', blocked: true });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -864,7 +872,6 @@ export default function ViewTVAPage() {
       const soldeTVA = tvaCollectee - tvaDeductible;
 
       const allDeclared = quarterMonths.every(m => m.status === 'declared');
-      const status = allDeclared ? 'Déclarée' : 'Ouverte';
 
       showToast('Génération du PDF en cours...', 'success');
 
@@ -872,14 +879,19 @@ export default function ViewTVAPage() {
       const generatedAt = formatGeneratedDate();
       const documentId = generateDocumentId(companyId!, selectedYear, `TVA-Q${quarter}`);
 
+      const vatRegime = buildVatRegime(companyData.vat_regime || 'quarterly');
+      const fiscalPeriod = `T${quarter} ${selectedYear}`;
+
       const header = buildPdfHeader({
         companyName: companyData.name,
         legalForm: companyData.legal_form,
         siren: companyData.siren,
         siret: companyData.siret,
         address: companyData.address,
+        vatRegime,
         fiscalYearLabel,
         reportTitle: `Synthèse TVA - T${quarter} ${selectedYear}`,
+        fiscalPeriod,
       });
 
       const footer = buildPdfFooter({
@@ -949,9 +961,7 @@ export default function ViewTVAPage() {
     </tbody>
   </table>
 
-  <div class="info-box">
-    <strong>Statut trimestre :</strong> ${status}
-  </div>
+  ${buildVatBalanceSection(soldeTVA, allDeclared)}
 
   ${footer}
 </body>
@@ -1017,13 +1027,6 @@ export default function ViewTVAPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'vat_quarterly',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: `${selectedYear}-Q${quarter}`,
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);
@@ -1032,11 +1035,9 @@ export default function ViewTVAPage() {
   };
 
   const exportAnnualPDF = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_pdf', blocked: true });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -1048,7 +1049,6 @@ export default function ViewTVAPage() {
       }
 
       const allDeclared = monthlyData.every(m => m.status === 'declared');
-      const status = allDeclared ? 'Déclarée' : 'Ouverte';
 
       showToast('Génération du PDF en cours...', 'success');
 
@@ -1056,14 +1056,19 @@ export default function ViewTVAPage() {
       const generatedAt = formatGeneratedDate();
       const documentId = generateDocumentId(companyId!, selectedYear, 'TVA-A');
 
+      const vatRegime = buildVatRegime(companyData.vat_regime || 'monthly');
+      const fiscalPeriod = `Année ${selectedYear}`;
+
       const header = buildPdfHeader({
         companyName: companyData.name,
         legalForm: companyData.legal_form,
         siren: companyData.siren,
         siret: companyData.siret,
         address: companyData.address,
+        vatRegime,
         fiscalYearLabel,
-        reportTitle: 'Synthèse TVA Annuelle',
+        reportTitle: 'Récapitulatif TVA Annuel (Document interne non fiscal)',
+        fiscalPeriod,
       });
 
       const footer = buildPdfFooter({
@@ -1090,6 +1095,12 @@ export default function ViewTVAPage() {
 </head>
 <body>
   ${header}
+
+  <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+    <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 500;">
+      <strong>Note importante :</strong> Ce document ne constitue pas une déclaration fiscale officielle (CA3 / CA12). Il s'agit d'un récapitulatif interne à des fins de gestion.
+    </p>
+  </div>
 
   <div class="section-title">Synthèse TVA Annuelle ${selectedYear}</div>
 
@@ -1155,9 +1166,7 @@ export default function ViewTVAPage() {
     `;
   }).join('')}
 
-  <div class="info-box">
-    <strong>Statut annuel :</strong> ${status}
-  </div>
+  ${buildVatBalanceSection(tvaData.soldeTVA, allDeclared)}
 
   ${footer}
 </body>
@@ -1223,13 +1232,6 @@ export default function ViewTVAPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'vat_annual',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: String(selectedYear),
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);
@@ -2069,18 +2071,30 @@ export default function ViewTVAPage() {
                               textAlign: 'center',
                             }}
                           >
-                            <span
-                              style={{
-                                padding: '4px 12px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                borderRadius: '12px',
-                                backgroundColor: isDeclared ? '#d1fae5' : '#f3f4f6',
-                                color: isDeclared ? '#065f46' : '#6b7280',
-                              }}
-                            >
-                              {isDeclared ? 'Déclarée' : 'Ouverte'}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                              <span
+                                style={{
+                                  padding: '4px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  borderRadius: '12px',
+                                  backgroundColor: isDeclared ? '#d1fae5' : '#f3f4f6',
+                                  color: isDeclared ? '#065f46' : '#6b7280',
+                                }}
+                              >
+                                {isDeclared ? 'Déclarée' : 'Ouverte'}
+                              </span>
+                              {isDeclared && month.declaredAt && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#6b7280',
+                                  }}
+                                >
+                                  le {new Date(month.declaredAt).toLocaleDateString('fr-FR')}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td
                             style={{

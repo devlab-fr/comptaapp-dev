@@ -301,7 +301,6 @@ export default function BilanPage() {
     const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
 
     if (!hasFeature(planTier, 'exports_csv')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_csv', blocked: true });
       showToast(getFeatureBlockedMessage('exports_csv'), 'error');
       return;
     }
@@ -341,7 +340,6 @@ export default function BilanPage() {
     const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
-      console.log('GATING_PLAN', { plan: currentEntitlements.plan, feature: 'export_pdf', blocked: true });
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');
       return;
     }
@@ -591,13 +589,6 @@ export default function BilanPage() {
         });
         showToast('PDF archivé avec succès', 'success');
       } catch (archiveError) {
-        console.warn('ARCHIVE_STORAGE_FAILED', {
-          reportType: 'balance_sheet',
-          companyId: companyId!,
-          fiscalYear: selectedYear,
-          periodKey: String(selectedYear),
-          error: archiveError instanceof Error ? archiveError.message : String(archiveError),
-        });
       }
     } catch (error) {
       console.error('Erreur génération PDF:', error);
