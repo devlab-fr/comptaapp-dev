@@ -133,7 +133,33 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        if (userId && subscriptionId) {
+        if (!userId) {
+          console.error("WEBHOOK_MISSING_USER_ID", { traceId, sessionId: session.id, customerId, subscriptionId });
+          return new Response(JSON.stringify({
+            ok: false,
+            traceId,
+            error: "MISSING_USER_ID",
+            message: "user_id is required in checkout session metadata"
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (!companyId) {
+          console.error("WEBHOOK_MISSING_COMPANY_ID", { traceId, sessionId: session.id, userId, customerId, subscriptionId });
+          return new Response(JSON.stringify({
+            ok: false,
+            traceId,
+            error: "MISSING_COMPANY_ID",
+            message: "company_id is required in checkout session metadata for multi-company support"
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (userId && subscriptionId && companyId) {
           const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
           console.log("LINE_ITEMS", { traceId, items: items.data.map(i => i.price?.id) });
 
@@ -174,58 +200,28 @@ Deno.serve(async (req: Request) => {
             });
           }
 
-          if (companyId) {
-            const { data: companySubData, error: companySubError } = await supabase.from("company_subscriptions").update({
-              plan_tier: planTier,
-              stripe_subscription_id: subscriptionId,
-              status: subscription.status,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            }).eq("company_id", companyId).select();
+          const { data: companySubData, error: companySubError } = await supabase.from("company_subscriptions").update({
+            plan_tier: planTier,
+            stripe_subscription_id: subscriptionId,
+            status: subscription.status,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          }).eq("company_id", companyId).select();
 
-            console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", data: companySubData, error: companySubError });
+          console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", companyId, data: companySubData, error: companySubError });
 
-            if (companySubError) {
-              console.error("SUPABASE_DB_ERROR", { traceId, step: "company_subscriptions_update", error: companySubError });
-            }
-          } else {
-            console.warn("LEGACY_FALLBACK_USED", {
-              traceId,
-              subscriptionId,
-              userId,
-              reason: "No company_id in checkout metadata",
+          if (companySubError) {
+            console.error("SUPABASE_DB_ERROR", { traceId, step: "company_subscriptions_update", error: companySubError });
+            return new Response(JSON.stringify({ ok: false, traceId, step: "company_subscriptions_update", error: companySubError }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
-            const { data: membership } = await supabase.from("memberships")
-              .select("company_id")
-              .eq("user_id", userId)
-              .eq("role", "owner")
-              .order("created_at", { ascending: true })
-              .limit(1)
-              .maybeSingle();
-
-            if (membership?.company_id) {
-              console.log("LEGACY_FALLBACK_ASSIGN_TO_FIRST_COMPANY", {
-                traceId,
-                targetCompanyId: membership.company_id,
-                userId,
-                subscriptionId,
-                planTier,
-              });
-              await supabase.from("company_subscriptions").update({
-                plan_tier: planTier,
-                stripe_subscription_id: subscriptionId,
-                status: subscription.status,
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              }).eq("company_id", membership.company_id);
-            } else {
-              console.error("LEGACY_FALLBACK_NO_COMPANY_FOUND", { traceId, userId });
-            }
           }
 
           return new Response(JSON.stringify({
             ok: true,
             traceId,
             userId,
-            companyId: companyId || "legacy",
+            companyId,
             customerId,
             subscriptionId,
             planTier,
@@ -248,6 +244,25 @@ Deno.serve(async (req: Request) => {
 
         console.log("SUBSCRIPTION_UPDATED", { traceId, subscriptionId, companyId, planTier, status: subscription.status });
 
+        if (!companyId) {
+          console.error("WEBHOOK_MISSING_COMPANY_ID", {
+            traceId,
+            subscriptionId,
+            eventId: event.id,
+            eventType: event.type,
+            reason: "No company_id in subscription metadata"
+          });
+          return new Response(JSON.stringify({
+            ok: false,
+            traceId,
+            error: "MISSING_COMPANY_ID",
+            message: "company_id is required in subscription metadata for multi-company support"
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         const { data: subData } = await supabase
           .from("user_subscriptions")
           .select("user_id")
@@ -268,49 +283,26 @@ Deno.serve(async (req: Request) => {
             console.error("SUPABASE_UPSERT_ERROR [user_subscriptions update]", subUpdateError);
           }
 
-          if (companyId) {
-            const { error: companySubUpdateError } = await supabase.from("company_subscriptions").update({
-              plan_tier: planTier,
-              status: subscription.status,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            }).eq("company_id", companyId);
+          const { error: companySubUpdateError } = await supabase.from("company_subscriptions").update({
+            plan_tier: planTier,
+            status: subscription.status,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          }).eq("company_id", companyId);
 
-            console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", error: companySubUpdateError });
+          console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", companyId, error: companySubUpdateError });
 
-            if (companySubUpdateError) {
-              console.error("SUPABASE_UPSERT_ERROR [company_subscriptions update]", companySubUpdateError);
-            }
-          } else {
-            console.warn("LEGACY_FALLBACK_USED", {
+          if (companySubUpdateError) {
+            console.error("SUPABASE_UPSERT_ERROR [company_subscriptions update]", companySubUpdateError);
+            return new Response(JSON.stringify({
+              ok: false,
               traceId,
-              subscriptionId,
-              userId: subData.user_id,
-              reason: "No company_id in subscription metadata (update)",
+              error: "DB_UPDATE_ERROR",
+              step: "company_subscriptions_update",
+              details: companySubUpdateError
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
-            const { data: membership } = await supabase.from("memberships")
-              .select("company_id")
-              .eq("user_id", subData.user_id)
-              .eq("role", "owner")
-              .order("created_at", { ascending: true })
-              .limit(1)
-              .maybeSingle();
-
-            if (membership?.company_id) {
-              console.log("LEGACY_FALLBACK_ASSIGN_TO_FIRST_COMPANY", {
-                traceId,
-                targetCompanyId: membership.company_id,
-                userId: subData.user_id,
-                subscriptionId,
-                planTier,
-              });
-              await supabase.from("company_subscriptions").update({
-                plan_tier: planTier,
-                status: subscription.status,
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              }).eq("company_id", membership.company_id);
-            } else {
-              console.error("LEGACY_FALLBACK_NO_COMPANY_FOUND", { traceId, userId: subData.user_id });
-            }
           }
         }
         break;

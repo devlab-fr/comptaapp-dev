@@ -1,21 +1,21 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
+import { ensureStripeCustomer } from "../_shared/ensureStripeCustomer.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://comptaapp-dev-2n37.bolt.host",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Vary": "Origin",
 };
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -43,60 +43,24 @@ Deno.serve(async (req: Request) => {
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2024-12-18.acacia",
     });
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
-    // SAFE DIAGNOSTIC LOGS
-    const supabaseUrlHost = supabaseUrl ? new URL(supabaseUrl).host : "MISSING";
-    console.log("AUTH_DIAGNOSTIC", {
-      hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader.slice(0, 7),
-      jwtLength: authHeader.length > 7 ? authHeader.length - 7 : 0,
-      jwtFirst10: authHeader.slice(7, 17),
-      SUPABASE_URL_host: supabaseUrlHost,
-      has_SERVICE_ROLE_KEY: !!supabaseServiceKey,
-      has_ANON_KEY: !!supabaseAnonKey,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (!authHeader) {
-      console.error("AUTH_FAIL_NO_HEADER");
-      return new Response(JSON.stringify({ code: 401, message: "NO_AUTHORIZATION_HEADER" }), {
+    if (!token) {
+      console.error("AUTH_FAIL_MISSING_TOKEN");
+      return new Response(JSON.stringify({
+        error: "Missing Authorization Bearer token",
+        debugReason: "JWT_MISSING",
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!authHeader.startsWith("Bearer ")) {
-      console.error("AUTH_FAIL_NO_BEARER_PREFIX");
-      return new Response(JSON.stringify({ code: 401, message: "INVALID_AUTH_FORMAT" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const jwt = authHeader.slice(7).trim();
-
-    if (!jwt) {
-      console.error("AUTH_FAIL_EMPTY_JWT");
-      return new Response(JSON.stringify({ code: 401, message: "EMPTY_JWT" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Create two separate clients
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
 
-    console.log("CLIENTS_CREATED", {
-      adminKeyUsed: "service_role",
-      authKeyUsed: "anon",
-    });
-
-    // Validate user STRICTLY via supabaseAuth
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
 
     console.log("GET_USER_RESULT", {
       hasUser: !!user,
@@ -111,9 +75,10 @@ Deno.serve(async (req: Request) => {
         error: userError?.message,
         status: userError?.status,
       });
+
       return new Response(JSON.stringify({
-        code: 401,
-        message: "Invalid JWT",
+        error: "Invalid JWT",
+        debugReason: userError?.message?.includes("expired") ? "JWT_EXPIRED" : "JWT_INVALID",
         detail: userError?.message || "NO_USER",
       }), {
         status: 401,
@@ -127,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
     if (!companyId) {
       console.error("PORTAL_NO_COMPANY_ID", { userId: user.id });
-      return new Response(JSON.stringify({ ok: false, error: "Missing companyId" }), {
+      return new Response(JSON.stringify({ error: "Missing companyId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -155,7 +120,6 @@ Deno.serve(async (req: Request) => {
         role: membership?.role || "none",
       });
       return new Response(JSON.stringify({
-        ok: false,
         error: "Not authorized for this company",
       }), {
         status: 403,
@@ -163,45 +127,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: company } = await supabaseAdmin
-      .from("companies")
-      .select("stripe_customer_id, name")
-      .eq("id", companyId)
-      .maybeSingle();
-
-    if (!company) {
-      console.error("PORTAL_COMPANY_NOT_FOUND", { companyId });
-      return new Response(JSON.stringify({ ok: false, error: "Company not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("PORTAL_CTX", {
+    const customerId = await ensureStripeCustomer({
+      stripe,
+      supabaseAdmin,
       companyId,
-      hasCompanyCustomer: !!company.stripe_customer_id,
+      userId: user.id,
     });
-
-    let customerId = company.stripe_customer_id;
-
-    if (!customerId) {
-      const stripeCustomer = await stripe.customers.create({
-        email: user.email,
-        name: company.name,
-        metadata: { company_id: companyId },
-      });
-      customerId = stripeCustomer.id;
-
-      await supabaseAdmin
-        .from("companies")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", companyId);
-
-      console.log("COMPANY_CUSTOMER_CREATED", {
-        companyId,
-        customerSuffix: customerId.slice(-4),
-      });
-    }
 
     let origin = req.headers.get("origin") || new URL(req.url).origin;
 

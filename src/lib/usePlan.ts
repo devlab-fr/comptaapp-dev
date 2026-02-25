@@ -35,6 +35,7 @@ interface UsePlanReturn {
   canCreateTransaction: (currentCount: number) => boolean;
   canCreateCompany: (currentCount: number) => boolean;
   loading: boolean;
+  refresh?: () => Promise<void>;
 }
 
 function getDevForcedPlan(): PlanTier | null {
@@ -57,72 +58,71 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
   const [subscription, setSubscription] = useState<CompanySubscription | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadSubscription = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('company_subscriptions')
+        .select('*')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('PLAN_RESOLVE_ERROR', { userId: user.id, companyId, error: error.message });
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        const { error: insertError } = await supabase
+          .from('company_subscriptions')
+          .insert({
+            company_id: companyId,
+            plan_tier: 'FREE',
+            status: 'active',
+          });
+
+        if (insertError) {
+          console.error('PLAN_SELFHEAL_FAILED', { userId: user.id, companyId, error: insertError.message });
+          setLoading(false);
+          return;
+        }
+
+        setSubscription({
+          company_id: companyId,
+          plan_tier: 'FREE',
+          stripe_subscription_id: null,
+          status: 'active',
+          current_period_end: null,
+        });
+        setLoading(false);
+        return;
+      }
+
+      const subscriptionWithNormalized = {
+        ...data,
+        plan_tier: normalizePlanTierLocal(data.plan_tier),
+      } as CompanySubscription;
+      setSubscription(subscriptionWithNormalized);
+      setLoading(false);
+    } catch (err) {
+      console.error('PLAN_RESOLVE_EXCEPTION', { userId: user.id, companyId, error: err });
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     setSubscription(null);
-
-    const loadSubscription = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      if (!companyId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('company_subscriptions')
-          .select('*')
-          .eq('company_id', companyId)
-          .maybeSingle();
-
-        if (error) {
-          console.error('PLAN_RESOLVE_ERROR', { userId: user.id, companyId, error: error.message });
-          setLoading(false);
-          return;
-        }
-
-        if (!data) {
-          const { error: insertError } = await supabase
-            .from('company_subscriptions')
-            .insert({
-              company_id: companyId,
-              plan_tier: 'FREE',
-              status: 'active',
-            });
-
-          if (insertError) {
-            console.error('PLAN_SELFHEAL_FAILED', { userId: user.id, companyId, error: insertError.message });
-            setLoading(false);
-            return;
-          }
-
-          setSubscription({
-            company_id: companyId,
-            plan_tier: 'FREE',
-            stripe_subscription_id: null,
-            status: 'active',
-            current_period_end: null,
-          });
-          setLoading(false);
-          return;
-        }
-
-        const subscriptionWithNormalized = {
-          ...data,
-          plan_tier: normalizePlanTierLocal(data.plan_tier),
-        } as CompanySubscription;
-        setSubscription(subscriptionWithNormalized);
-        setLoading(false);
-      } catch (err) {
-        console.error('PLAN_RESOLVE_EXCEPTION', { userId: user.id, companyId, error: err });
-        setLoading(false);
-      }
-    };
-
     loadSubscription();
   }, [user, companyId]);
 
@@ -155,6 +155,11 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
     return true;
   };
 
+  const refresh = async () => {
+    setLoading(true);
+    await loadSubscription();
+  };
+
   return {
     effectiveTier,
     plan,
@@ -164,6 +169,7 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
     canCreateTransaction,
     canCreateCompany,
     loading,
+    refresh,
   };
 }
 

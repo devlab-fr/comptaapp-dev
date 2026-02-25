@@ -34,6 +34,8 @@ export function useEntitlements(): Entitlements {
     let isMounted = true;
 
     const fetchEntitlements = async () => {
+      console.log('[selected_company_id]', companyId);
+
       if (!companyId) {
         if (isMounted) {
           setEntitlements(defaultEntitlements);
@@ -43,6 +45,7 @@ export function useEntitlements(): Entitlements {
 
       const cached = entitlementsCache.get(companyId);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
+        console.log('[entitlements] CACHE HIT', { companyId, data: cached.entitlements });
         setEntitlements(cached.entitlements);
         return;
       }
@@ -81,6 +84,7 @@ export function useEntitlements(): Entitlements {
         });
 
         if (error) {
+          console.log('[entitlements] ERROR', { companyId, error });
           const cached = entitlementsCache.get(companyId);
           if (isMounted && cached) {
             setEntitlements(cached.entitlements);
@@ -91,6 +95,7 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
+          console.log('[entitlements] FETCH SUCCESS', { companyId, data });
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,

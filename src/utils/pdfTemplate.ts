@@ -264,6 +264,18 @@ export function buildPdfStyles(): string {
         margin: 32px 0;
         font-size: 14px;
       }
+      .page-break-inside-avoid {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .keep-with-next {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+      .page-break-before {
+        page-break-before: always;
+        break-before: page;
+      }
       @media print {
         body {
           padding: 20px;

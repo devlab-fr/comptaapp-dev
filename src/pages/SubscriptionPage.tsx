@@ -7,6 +7,9 @@ import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { supabase } from '../lib/supabase';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
+import DevAuthReset from '../components/DevAuthReset';
+import Toast from '../components/Toast';
+import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
 
 const isValidStripeUrl = (url: string): boolean => {
   try {
@@ -24,12 +27,13 @@ export default function SubscriptionPage() {
   const navigate = useNavigate();
   const { companyId: paramsCompanyId } = useParams<{ companyId: string }>();
   const currentCompanyId = useCurrentCompany();
-  const { effectiveTier } = usePlan();
+  const { effectiveTier, refresh: refreshPlan } = usePlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ status: number; body: any } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ targetTier: PlanTier; isDowngrade: boolean } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Priorité: params.companyId puis currentCompanyId
   const companyId = paramsCompanyId ?? currentCompanyId;
@@ -86,13 +90,30 @@ export default function SubscriptionPage() {
         session = refreshData.session;
       }
 
-      const token = session.access_token;
+      if (!session) {
+        console.error('NO_SESSION');
+        alert('Aucune session active, veuillez vous reconnecter');
+        navigate('/login');
+        return;
+      }
+
+      console.log('CHECKOUT_AUTH_DEBUG', {
+        sessionExists: !!session,
+        accessTokenLength: session.access_token?.length || 0,
+        tokenPreview: session.access_token ? session.access_token.substring(0, 12) + '...' + session.access_token.substring(session.access_token.length - 12) : 'none',
+        expiresAt: session.expires_at,
+        expiresAtDate: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none',
+        userId: session.user?.id || 'none',
+      });
+
+      console.log('CHECKOUT_CALL_DEBUG', {
+        method: 'supabase.functions.invoke',
+        functionName: 'create-checkout-session',
+        body: { planTier: targetTier, companyId },
+      });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { planTier: targetTier, companyId },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (error) {
@@ -101,8 +122,23 @@ export default function SubscriptionPage() {
           context: error.context,
           status: error.status,
         });
+
+        if (error.context?.debug) {
+          console.error('CHECKOUT_DEBUG_FROM_EDGE', error.context.debug);
+        }
+
         if (error.message?.includes('401') || error.message?.includes('Unauthorized') || error.message?.includes('Invalid JWT')) {
-          alert('Session invalide, veuillez vous reconnecter');
+          const debugInfo = error.context?.debug;
+          const debugReason = error.context?.debugReason || debugInfo?.reason || 'UNKNOWN';
+
+          console.error('FULL_DEBUG_INFO', {
+            debugReason,
+            debugInfo,
+            errorMessage: error.message,
+            errorContext: error.context,
+          });
+
+          alert(`Session invalide (${debugReason}).\n\nVeuillez vous reconnecter.\n\nDétails: ${JSON.stringify(debugInfo || {}, null, 2)}`);
           await supabase.auth.signOut();
           navigate('/login');
         } else {
@@ -111,10 +147,21 @@ export default function SubscriptionPage() {
         return;
       }
 
+      if (data?.mode === 'upgrade') {
+        console.log('UPGRADE_MODE_DETECTED', { companyId, plan: data.plan });
+
+        setToast({ message: `Votre abonnement a été mis à niveau vers ${PLANS[data.plan as PlanTier]?.name || data.plan}`, type: 'success' });
+
+        if (refreshPlan) {
+          await refreshPlan();
+        }
+
+        return;
+      }
+
       if (data?.url) {
-        // Si upgrade/downgrade/noop ou URL interne, rediriger directement sans validation Stripe
-        const isInternalRedirect = data.mode === 'upgrade' || data.mode === 'downgrade' || data.mode === 'noop' ||
-          data.url.startsWith('/') ||
+        // Si URL interne, rediriger directement sans validation Stripe
+        const isInternalRedirect = data.url.startsWith('/') ||
           data.url.startsWith(window.location.origin);
 
         if (isInternalRedirect) {
@@ -164,8 +211,26 @@ export default function SubscriptionPage() {
         session = refreshData.session;
       }
 
+      if (!session) {
+        setTestResult({ status: 401, body: { error: 'NO_SESSION' } });
+        setTestLoading(false);
+        return;
+      }
+
       const token = session.access_token;
       const payload = { planTier: 'PRO', companyId };
+
+      const supabaseUrlHost = new URL(import.meta.env.VITE_SUPABASE_URL).host;
+      const projectRef = supabaseUrlHost.split('.')[0];
+
+      console.log('TEST_STRIPE_AUTH_DEBUG', {
+        sessionExists: !!session,
+        accessTokenLength: token.length,
+        userId: session.user?.id || 'none',
+        supabaseUrlHost,
+        projectRef,
+        anonKeyLength: import.meta.env.VITE_SUPABASE_ANON_KEY.length,
+      });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: payload,
@@ -203,60 +268,78 @@ export default function SubscriptionPage() {
 
   const handleManageSubscription = async () => {
     setLoading(true);
-    try {
-      // Compute validated companyId just before invoke
-      const validatedCompanyId = paramsCompanyId || currentCompanyId || null;
 
-      if (!validatedCompanyId) {
-        console.error('PORTAL_MISSING_COMPANY_ID', { paramsCompanyId, currentCompany: currentCompanyId });
-        alert('CompanyId introuvable. Impossible de gérer l\'abonnement.');
-        setLoading(false);
-        return;
-      }
+    const validatedCompanyId = paramsCompanyId || currentCompanyId || null;
 
-      // 5) Premier appel avec validatedCompanyId
-      let { data, error } = await supabase.functions.invoke('create-portal-session', {
-        body: { companyId: validatedCompanyId }
-      });
-
-      // 6) Retry avec le MÊME validatedCompanyId (pas de recalcul)
-      if (error?.message?.includes('401') || error?.message?.includes('JWT')) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-
-        if (!refreshed?.session) {
-          alert('Impossible de rafraîchir la session - reconnectez-vous');
-          console.error("PORTAL_NO_NEW_TOKEN_AFTER_REFRESH");
-          setLoading(false);
-          return;
-        }
-
-        ({ data, error } = await supabase.functions.invoke('create-portal-session', {
-          body: { companyId: validatedCompanyId }
-        }));
-      }
-
-      if (error) {
-        console.error("PORTAL_ERROR", error);
-        alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
-        return;
-      }
-
-      if (data?.url) {
-        if (!isValidStripeUrl(data.url)) {
-          alert('URL de portail invalide');
-          return;
-        }
-        window.location.assign(data.url);
-      } else {
-        console.error("PORTAL_NO_URL", data);
-        alert('Erreur: aucune URL de portail retournée');
-      }
-    } catch (error) {
-      console.error('PORTAL_EXCEPTION', error);
-      alert('Erreur lors de la création de la session portail');
-    } finally {
+    if (!validatedCompanyId) {
+      console.error('PORTAL_MISSING_COMPANY_ID', { paramsCompanyId, currentCompany: currentCompanyId });
+      alert('CompanyId introuvable. Impossible de gérer l\'abonnement.');
       setLoading(false);
+      return;
     }
+
+    const callPortalSession = async (retryCount: number = 0): Promise<void> => {
+      try {
+        await ensureFreshSession();
+
+        console.log('PORTAL_FLOW', { step: 'call_portal', companyId: validatedCompanyId, retryCount });
+
+        const { data, error } = await supabase.functions.invoke('create-portal-session', {
+          body: { companyId: validatedCompanyId },
+        });
+
+        if (error) {
+          console.error('PORTAL_EDGE_ERROR', {
+            message: error.message,
+            context: error.context,
+            status: error.status,
+          });
+
+          const is401 = error.message?.includes('401') || error.message?.includes('Unauthorized') || error.message?.includes('Invalid JWT');
+
+          if (is401 && retryCount === 0) {
+            console.log('PORTAL_FLOW', { step: 'retry_on_401', retryCount: retryCount + 1 });
+            await callPortalSession(1);
+            return;
+          }
+
+          if (is401) {
+            const debugReason = error.context?.debugReason || 'UNKNOWN';
+            alert(`Session invalide (${debugReason}). Veuillez vous reconnecter.`);
+            await supabase.auth.signOut();
+            navigate('/login');
+          } else {
+            alert(`Erreur: ${error.message || 'Impossible de créer la session portail'}`);
+          }
+          return;
+        }
+
+        if (data?.url) {
+          if (!isValidStripeUrl(data.url)) {
+            alert('URL de portail invalide');
+            return;
+          }
+          console.log('PORTAL_FLOW', { step: 'redirect', url: data.url });
+          window.location.assign(data.url);
+        } else {
+          console.error('PORTAL_NO_URL', data);
+          alert('Erreur: aucune URL de portail retournée');
+        }
+      } catch (error: any) {
+        if (error?.message === 'AUTH_REQUIRED') {
+          alert('Session expirée, veuillez vous reconnecter');
+          await supabase.auth.signOut();
+          navigate('/login');
+        } else {
+          console.error('PORTAL_EXCEPTION', error);
+          alert('Erreur lors de la création de la session portail');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    await callPortalSession();
   };
 
   const tiers: PlanTier[] = ['FREE', 'PRO', 'PRO_PLUS', 'PRO_PLUS_PLUS'];
@@ -938,6 +1021,16 @@ export default function SubscriptionPage() {
           </div>
         </>
       )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      <DevAuthReset />
     </div>
   );
 }

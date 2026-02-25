@@ -8,7 +8,7 @@ import Toast from '../components/Toast';
 import AIAssistant from '../components/AIAssistant';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { downloadCSV, generateCSVContent, formatCurrency } from '../utils/csvExport';
+import { downloadCSV, generateCSVContentExcelFR, formatCurrencyExcelFR } from '../utils/csvExport';
 import { buildPdfHeader, buildPdfFooter, buildPdfStyles, formatGeneratedDate, buildFiscalYearLabel, generateDocumentId } from '../utils/pdfTemplate';
 import { savePdfToStorage } from '../utils/pdfArchive';
 import { useEntitlements } from '../billing/useEntitlements';
@@ -378,14 +378,14 @@ export default function CompteDeResultatPage() {
     }
 
     try {
-      const headers = ['Type', 'Montant HT (EUR)'];
+      const headers = ['Entreprise', 'Année', 'Type', 'Montant HT (EUR)'];
       const rows = [
-        ['Total Produits HT', formatCurrency(resultatData.produitsHT)],
-        ['Total Charges HT', formatCurrency(resultatData.chargesHT)],
-        ['Résultat HT', formatCurrency(resultatData.resultatHT)],
+        [companyName, String(selectedYear), 'Total Produits HT', `="${formatCurrencyExcelFR(resultatData.produitsHT)}"`],
+        [companyName, String(selectedYear), 'Total Charges HT', `="${formatCurrencyExcelFR(resultatData.chargesHT)}"`],
+        [companyName, String(selectedYear), 'Résultat HT', `="${formatCurrencyExcelFR(resultatData.resultatHT)}"`],
       ];
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `Compte_Resultat_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}_Simple.csv`;
 
       downloadCSV(filename, csvContent);
@@ -402,27 +402,27 @@ export default function CompteDeResultatPage() {
     }
 
     try {
-      const headers = ['Section', 'Catégorie', 'Sous-catégorie', 'Montant HT (EUR)'];
+      const headers = ['Entreprise', 'Année', 'Section', 'Catégorie', 'Sous-catégorie', 'Montant HT (EUR)'];
       const rows: string[][] = [];
 
-      rows.push(['PRODUITS', '', '', '']);
+      rows.push([companyName, String(selectedYear), 'PRODUITS', '', '', '']);
       produitsDetails.forEach(item => {
-        rows.push(['Produits', item.categoryName, item.subcategoryName, formatCurrency(item.totalHT)]);
+        rows.push([companyName, String(selectedYear), 'Produits', item.categoryName, item.subcategoryName, `="${formatCurrencyExcelFR(item.totalHT)}"`]);
       });
-      rows.push(['', '', 'Total Produits HT', formatCurrency(resultatData.produitsHT)]);
-      rows.push(['', '', '', '']);
+      rows.push([companyName, String(selectedYear), '', '', 'Total Produits HT', `="${formatCurrencyExcelFR(resultatData.produitsHT)}"`]);
+      rows.push([companyName, String(selectedYear), '', '', '', '']);
 
-      rows.push(['CHARGES', '', '', '']);
+      rows.push([companyName, String(selectedYear), 'CHARGES', '', '', '']);
       chargesDetails.forEach(item => {
-        rows.push(['Charges', item.categoryName, item.subcategoryName, formatCurrency(item.totalHT)]);
+        rows.push([companyName, String(selectedYear), 'Charges', item.categoryName, item.subcategoryName, `="${formatCurrencyExcelFR(item.totalHT)}"`]);
       });
-      rows.push(['', '', 'Total Charges HT', formatCurrency(resultatData.chargesHT)]);
-      rows.push(['', '', '', '']);
+      rows.push([companyName, String(selectedYear), '', '', 'Total Charges HT', `="${formatCurrencyExcelFR(resultatData.chargesHT)}"`]);
+      rows.push([companyName, String(selectedYear), '', '', '', '']);
 
-      rows.push(['RÉSULTAT', '', '', '']);
-      rows.push(['', '', 'Résultat HT', formatCurrency(resultatData.resultatHT)]);
+      rows.push([companyName, String(selectedYear), 'RÉSULTAT', '', '', '']);
+      rows.push([companyName, String(selectedYear), '', '', 'Résultat HT', `="${formatCurrencyExcelFR(resultatData.resultatHT)}"`]);
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `Compte_Resultat_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}_Detail.csv`;
 
       downloadCSV(filename, csvContent);

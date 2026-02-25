@@ -7,10 +7,10 @@ import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { downloadCSV, generateCSVContent, formatCurrency } from '../utils/csvExport';
+import { downloadCSV, generateCSVContentExcelFR, formatCurrencyExcelFR } from '../utils/csvExport';
 import { buildPdfHeader, buildPdfFooter, buildPdfStyles, formatGeneratedDate, buildFiscalYearLabel, generateDocumentId } from '../utils/pdfTemplate';
 import { savePdfToStorage } from '../utils/pdfArchive';
-import { refreshEntitlements } from '../billing/refreshEntitlements';
+import { useEntitlements } from '../billing/useEntitlements';
 import { hasFeature, getFeatureBlockedMessage, convertEntitlementsPlanToTier } from '../billing/planRules';
 
 interface BilanData {
@@ -39,6 +39,7 @@ export default function BilanPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const entitlements = useEntitlements();
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -297,8 +298,7 @@ export default function BilanPage() {
   }, [companyId, selectedYear]);
 
   const exportCSV = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_csv')) {
       showToast(getFeatureBlockedMessage('exports_csv'), 'error');
@@ -310,22 +310,22 @@ export default function BilanPage() {
       const rows: string[][] = [];
 
       rows.push(['ACTIF', '', '']);
-      rows.push(['Actif', 'Trésorerie', formatCurrency(bilanData.actif.tresorerie)]);
-      rows.push(['Actif', 'Créances clients', formatCurrency(bilanData.actif.creancesClients)]);
-      rows.push(['Actif', 'Autres actifs', formatCurrency(bilanData.actif.autresActifs)]);
-      rows.push(['', 'Total Actif', formatCurrency(bilanData.actif.total)]);
+      rows.push(['Actif', 'Trésorerie', `="${formatCurrencyExcelFR(bilanData.actif.tresorerie)}"`]);
+      rows.push(['Actif', 'Créances clients', `="${formatCurrencyExcelFR(bilanData.actif.creancesClients)}"`]);
+      rows.push(['Actif', 'Autres actifs', `="${formatCurrencyExcelFR(bilanData.actif.autresActifs)}"`]);
+      rows.push(['', 'Total Actif', `="${formatCurrencyExcelFR(bilanData.actif.total)}"`]);
       rows.push(['', '', '']);
 
       rows.push(['PASSIF', '', '']);
-      rows.push(['Passif', 'Résultat de l\'exercice (HT)', formatCurrency(bilanData.passif.resultatExercice)]);
-      rows.push(['Passif', 'TVA nette à payer/rembourser', formatCurrency(bilanData.passif.dettesFiscales)]);
-      rows.push(['Passif', 'Dettes fournisseurs', formatCurrency(bilanData.passif.dettesFournisseurs)]);
-      rows.push(['', 'Total Passif', formatCurrency(bilanData.passif.total)]);
+      rows.push(['Passif', 'Résultat de l\'exercice (HT)', `="${formatCurrencyExcelFR(bilanData.passif.resultatExercice)}"`]);
+      rows.push(['Passif', 'TVA nette à payer/rembourser', `="${formatCurrencyExcelFR(bilanData.passif.dettesFiscales)}"`]);
+      rows.push(['Passif', 'Dettes fournisseurs', `="${formatCurrencyExcelFR(bilanData.passif.dettesFournisseurs)}"`]);
+      rows.push(['', 'Total Passif', `="${formatCurrencyExcelFR(bilanData.passif.total)}"`]);
       rows.push(['', '', '']);
 
       rows.push(['', 'Équilibre', bilanData.equilibre ? 'OK' : 'DÉSÉQUILIBRE']);
 
-      const csvContent = generateCSVContent(headers, rows);
+      const csvContent = generateCSVContentExcelFR(headers, rows);
       const filename = `Bilan_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedYear}.csv`;
 
       downloadCSV(filename, csvContent);
@@ -336,8 +336,7 @@ export default function BilanPage() {
   };
 
   const exportPDF = async () => {
-    const currentEntitlements = await refreshEntitlements();
-    const planTier = convertEntitlementsPlanToTier(currentEntitlements.plan);
+    const planTier = convertEntitlementsPlanToTier(entitlements.plan);
 
     if (!hasFeature(planTier, 'exports_pdf')) {
       showToast(getFeatureBlockedMessage('exports_pdf'), 'error');

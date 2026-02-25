@@ -12,8 +12,9 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, accept",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 const PRICE_TO_PLAN: Record<string, string> = {
@@ -60,42 +61,84 @@ const DEFAULT_ENTITLEMENTS = {
   },
 };
 
+function jsonResponse(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader =
+      req.headers.get("authorization") ??
+      req.headers.get("Authorization") ??
+      "";
 
-    if (!authHeader) {
-      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
-        status: 200,
+    const jwt = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : authHeader.trim();
+
+    if (!jwt) {
+      console.log('[ENTITLEMENTS_EDGE] Missing JWT');
+      return new Response(JSON.stringify({ code: 401, message: "Missing JWT" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+    console.log('[ENTITLEMENTS_EDGE] JWT validation', {
+      headerPrefix: authHeader.slice(0, 20),
+      jwtLength: jwt.length,
+      jwtParts: jwt.split(".").length,
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log("DEBUG supabaseUrl:", supabaseUrl);
+    console.log("DEBUG anonKey_len:", (supabaseAnonKey ?? "").length);
+    console.log("DEBUG jwt_len:", jwt.length);
+    console.log("DEBUG jwt_parts:", jwt.split(".").length);
+    console.log("DEBUG authHeader_prefix:", authHeader.slice(0, 20));
 
-    if (userError || !user) {
-      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
-        status: 200,
+    try {
+      const payload = JSON.parse(atob(jwt.split(".")[1] ?? ""));
+      console.log("DEBUG jwt_iss:", payload?.iss);
+      console.log("DEBUG jwt_aud:", payload?.aud);
+      console.log("DEBUG jwt_exp:", payload?.exp);
+      console.log("DEBUG jwt_iat:", payload?.iat);
+    } catch (e) {
+      console.log("DEBUG jwt_payload_decode_error");
+    }
+
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+
+    const { data: { user }, error } = await supabaseUser.auth.getUser();
+
+    console.log("DEBUG getUser_error:", error);
+    console.log("DEBUG getUser_error_message:", error?.message);
+    console.log("DEBUG getUser_error_status:", (error as any)?.status);
+    console.log("DEBUG user_id:", user?.id);
+
+    if (error || !user) {
+      console.log('[ENTITLEMENTS_EDGE] Invalid JWT', { error: error?.message });
+      return new Response(JSON.stringify({ code: 401, message: "Invalid JWT" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log('[ENTITLEMENTS_EDGE] User authenticated', { userId: user.id });
 
     const body = await req.json().catch(() => ({}));
     const companyId = body.companyId;
 
     if (!companyId) {
-      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(DEFAULT_ENTITLEMENTS);
     }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -105,11 +148,15 @@ Deno.serve(async (req: Request) => {
       .eq("company_id", companyId)
       .maybeSingle();
 
+    console.log('[ENTITLEMENTS_EDGE] DB Query', {
+      companyId,
+      subscription,
+      subscriptionError
+    });
+
     if (subscriptionError || !subscription) {
-      return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log('[ENTITLEMENTS_EDGE] No subscription found, returning DEFAULT');
+      return jsonResponse(DEFAULT_ENTITLEMENTS);
     }
 
     const planTierRaw = subscription.plan_tier || "FREE";
@@ -125,14 +172,20 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    return new Response(JSON.stringify(entitlements), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    console.log('[ENTITLEMENTS_EDGE] Computed entitlements', {
+      companyId,
+      planTierRaw,
+      planTier,
+      plan,
+      status,
+      entitlements
     });
+
+    return jsonResponse(entitlements);
   } catch (err) {
     console.error("ENTITLEMENTS_EDGE_ERROR", err);
-    return new Response(JSON.stringify(DEFAULT_ENTITLEMENTS), {
-      status: 200,
+    return new Response(JSON.stringify({ code: 500, message: "Internal error" }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

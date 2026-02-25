@@ -9,16 +9,61 @@ const PLAN_HIERARCHY: Record<PlanTier, number> = {
   'PRO_PLUS_PLUS': 3,
 };
 
-export async function getCurrentPlan(userId: string): Promise<PlanTier> {
+export async function getCurrentPlan(userId: string, companyId?: string): Promise<PlanTier> {
   try {
-    const { data: subscription, error: subError } = await supabase
-      .from('company_subscriptions')
-      .select('plan_tier, status')
-      .eq('user_id', userId)
-      .maybeSingle();
+    console.log('[PLAN_ACCESS] Getting plan for:', { userId, companyId });
 
-    if (!subError && subscription && subscription.status === 'active') {
-      return subscription.plan_tier as PlanTier;
+    // If companyId is provided, get the subscription for that specific company
+    if (companyId) {
+      const { data: subscription, error: subError } = await supabase
+        .from('company_subscriptions')
+        .select('plan_tier, status, company_id')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      console.log('[PLAN_ACCESS] company_subscriptions (by companyId) query result:', {
+        subscription,
+        error: subError?.message,
+      });
+
+      if (!subError && subscription && subscription.status === 'active') {
+        console.log('[PLAN_ACCESS] Found active company subscription:', subscription.plan_tier);
+        return subscription.plan_tier as PlanTier;
+      }
+    }
+
+    // Otherwise, find any active subscription for any of the user's companies
+    const { data: memberships, error: membershipError } = await supabase
+      .from('memberships')
+      .select('company_id')
+      .eq('user_id', userId);
+
+    console.log('[PLAN_ACCESS] memberships query result:', {
+      count: memberships?.length || 0,
+      companyIds: memberships?.map(m => m.company_id),
+      error: membershipError?.message,
+    });
+
+    if (!membershipError && memberships && memberships.length > 0) {
+      const companyIds = memberships.map(m => m.company_id);
+
+      const { data: subscriptions, error: subError } = await supabase
+        .from('company_subscriptions')
+        .select('plan_tier, status, company_id')
+        .in('company_id', companyIds)
+        .eq('status', 'active')
+        .order('plan_tier', { ascending: false });
+
+      console.log('[PLAN_ACCESS] company_subscriptions (by user memberships) query result:', {
+        subscriptions,
+        error: subError?.message,
+      });
+
+      if (!subError && subscriptions && subscriptions.length > 0) {
+        const highestPlan = subscriptions[0].plan_tier as PlanTier;
+        console.log('[PLAN_ACCESS] Found active subscription(s), highest plan:', highestPlan);
+        return highestPlan;
+      }
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -27,12 +72,20 @@ export async function getCurrentPlan(userId: string): Promise<PlanTier> {
       .eq('id', userId)
       .maybeSingle();
 
+    console.log('[PLAN_ACCESS] profiles query result:', {
+      profile,
+      error: profileError?.message,
+    });
+
     if (!profileError && profile && profile.plan_tier) {
+      console.log('[PLAN_ACCESS] Found profile plan:', profile.plan_tier);
       return profile.plan_tier as PlanTier;
     }
 
+    console.log('[PLAN_ACCESS] No plan found, returning FREE');
     return 'FREE';
   } catch (error) {
+    console.error('[PLAN_ACCESS] Error getting plan:', error);
     return 'FREE';
   }
 }

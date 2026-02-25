@@ -17,10 +17,12 @@ export function normalizePlanTier(input: string | null | undefined): PlanTier {
 
   if (normalized === 'FREE' || normalized === 'GRATUIT') return 'FREE';
   if (normalized === 'PRO') return 'PRO';
-  if (normalized === 'PRO_PLUS' || normalized === 'PRO+' || normalized === 'PROPLUS' || normalized === 'PRO_PLUS_PLUS' || normalized === 'PRO++' || normalized === 'PROPLUSPLUS') {
-    if (normalized.includes('PLUS_PLUS') || normalized === 'PRO++' || normalized === 'PROPLUSPLUS') {
-      return 'PRO_PLUS_PLUS';
-    }
+
+  if (normalized === 'PRO_PP' || normalized === 'PRO++' || normalized === 'PROPLUSPLUS' || normalized === 'PRO_PLUS_PLUS' || normalized.includes('PLUS_PLUS')) {
+    return 'PRO_PLUS_PLUS';
+  }
+
+  if (normalized === 'PRO_PLUS' || normalized === 'PRO+' || normalized === 'PROPLUS') {
     return 'PRO_PLUS';
   }
 

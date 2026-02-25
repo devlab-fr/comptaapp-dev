@@ -19,6 +19,7 @@ import { savePdfToStorage } from '../utils/pdfArchive';
 import { useEntitlements } from '../billing/useEntitlements';
 import { hasFeature, getFeatureBlockedMessage, convertEntitlementsPlanToTier } from '../billing/planRules';
 import { exportBilanDetaille as exportBilanDetailleUtil } from '../utils/bilanDetaille';
+import { calculateBilan } from '../utils/bilanCalculation';
 
 interface CompanyData {
   name: string;
@@ -724,67 +725,27 @@ export default function RapportsPage() {
 
       showToast('Génération du PDF en cours...', 'success');
 
-      const { data: expenseDocs } = await supabase
-        .from('expense_documents')
-        .select('id, invoice_date')
-        .eq('company_id', companyId)
-        .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid')
-        .eq('is_test', false);
+      const bilanData = await calculateBilan(companyId!, selectedYear);
 
-      const { data: revenueDocs } = await supabase
-        .from('revenue_documents')
-        .select('id, invoice_date')
-        .eq('company_id', companyId)
-        .eq('accounting_status', 'validated')
-        .eq('payment_status', 'paid')
-        .eq('is_test', false);
+      console.log('PDF_BILAN_DEBUG', JSON.stringify({
+        actif: bilanData.actif,
+        passif: bilanData.passif,
+        totalActif: bilanData.actif.total,
+        totalPassif: bilanData.passif.total,
+        equilibre: bilanData.equilibre
+      }, null, 2));
 
-      const expenseDocsInYear = expenseDocs?.filter((doc) => {
-        const year = new Date(doc.invoice_date).getFullYear();
-        return year === selectedYear;
-      }) || [];
-
-      const revenueDocsInYear = revenueDocs?.filter((doc) => {
-        const year = new Date(doc.invoice_date).getFullYear();
-        return year === selectedYear;
-      }) || [];
-
-      let totalExpenses = 0;
-      let totalRevenues = 0;
-
-      if (expenseDocsInYear.length > 0) {
-        const { data: expenseLines } = await supabase
-          .from('expense_lines')
-          .select('amount_incl_vat')
-          .in('document_id', expenseDocsInYear.map(d => d.id));
-
-        if (expenseLines) {
-          totalExpenses = expenseLines.reduce((sum, line) => sum + Number(line.amount_incl_vat), 0);
-        }
-      }
-
-      if (revenueDocsInYear.length > 0) {
-        const { data: revenueLines } = await supabase
-          .from('revenue_lines')
-          .select('amount_incl_vat')
-          .in('document_id', revenueDocsInYear.map(d => d.id));
-
-        if (revenueLines) {
-          totalRevenues = revenueLines.reduce((sum, line) => sum + Number(line.amount_incl_vat), 0);
-        }
-      }
-
-      const tresorerie = totalRevenues - totalExpenses;
+      const tresorerie = bilanData.actif.tresorerie;
       const actifImmobilise = 0;
-      const actifCirculant = 0;
-      const totalActif = actifImmobilise + actifCirculant + tresorerie;
+      const actifCirculant = bilanData.actif.creancesClients + bilanData.actif.autresActifs;
+      const totalActif = bilanData.actif.total;
 
-      const capitauxPropres = 0;
-      const dettes = 0;
-      const totalPassif = capitauxPropres + dettes;
+      const resultatExercice = bilanData.passif.resultatExercice;
+      const dettesFiscales = bilanData.passif.dettesFiscales;
+      const dettesFournisseurs = bilanData.passif.dettesFournisseurs;
+      const totalPassif = bilanData.passif.total;
 
-      const equilibre = Math.abs(totalActif - totalPassif) < 0.01;
+      const equilibre = bilanData.equilibre;
 
       const fiscalYearLabel = buildFiscalYearLabel(
         selectedYear,
@@ -828,94 +789,108 @@ export default function RapportsPage() {
     <p style="margin: 0; font-size: 16px; color: #475569;">Document informatif — V1</p>
   </div>
 
-  <div class="section-title">COMPTE DE RÉSULTAT — SYNTHÈSE</div>
-  <div style="max-width: 700px; margin: 0 auto;">
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-      <thead>
-        <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-          <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">Libellé</th>
-          <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant HT (€)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Total Produits</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${resultatData.produitsHT >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.produitsHT)}</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Total Charges</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: #f59e0b;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.chargesHT)}</td>
-        </tr>
-        <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;">
-          <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">Résultat de l'exercice</td>
-          <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700; color: ${resultatData.resultatHT >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.resultatHT)}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="page-break-inside-avoid">
+    <div class="section-title keep-with-next">COMPTE DE RÉSULTAT — SYNTHÈSE</div>
+    <div style="max-width: 700px; margin: 0 auto;">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <thead>
+          <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+            <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">Libellé</th>
+            <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant HT (€)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Total Produits</td>
+            <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${resultatData.produitsHT >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.produitsHT)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Total Charges</td>
+            <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: #f59e0b;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.chargesHT)}</td>
+          </tr>
+          <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;">
+            <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">Résultat de l'exercice</td>
+            <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700; color: ${resultatData.resultatHT >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatData.resultatHT)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="section-title">BILAN — SYNTHÈSE</div>
-  <div style="max-width: 700px; margin: 0 auto;">
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-      <thead>
-        <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-          <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">ACTIF</th>
-          <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant (€)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Actif Immobilisé</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(actifImmobilise)}</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Actif Circulant</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(actifCirculant)}</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Trésorerie</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${tresorerie >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(tresorerie)}</td>
-        </tr>
-        <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;">
-          <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">TOTAL ACTIF</td>
-          <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalActif)}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="page-break-inside-avoid">
+    <div class="section-title keep-with-next">BILAN — SYNTHÈSE</div>
+    <div style="max-width: 700px; margin: 0 auto;">
+      <div class="page-break-inside-avoid">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+          <thead>
+            <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;" class="keep-with-next">
+              <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">ACTIF</th>
+              <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant (€)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Actif Immobilisé</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(actifImmobilise)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Actif Circulant</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(actifCirculant)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Trésorerie</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${tresorerie >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(tresorerie)}</td>
+            </tr>
+            <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;">
+              <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">TOTAL ACTIF</td>
+              <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalActif)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-      <thead>
-        <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-          <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">PASSIF</th>
-          <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant (€)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Capitaux propres</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(capitauxPropres)}</td>
-        </tr>
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Dettes</td>
-          <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(dettes)}</td>
-        </tr>
-        <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;">
-          <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">TOTAL PASSIF</td>
-          <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalPassif)}</td>
-        </tr>
-      </tbody>
-    </table>
+      <div class="page-break-inside-avoid">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; margin-top: 30px;">
+          <thead>
+            <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;" class="keep-with-next">
+              <th style="padding: 14px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #374151;">PASSIF</th>
+              <th style="padding: 14px 16px; text-align: right; font-size: 15px; font-weight: 600; color: #374151;">Montant (€)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Résultat de l'exercice (HT)</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${resultatExercice >= 0 ? '#059669' : '#dc2626'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(resultatExercice)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">TVA nette à payer/rembourser</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${dettesFiscales >= 0 ? '#dc2626' : '#059669'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(dettesFiscales)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Dettes fournisseurs</td>
+              <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(dettesFournisseurs)}</td>
+            </tr>
+            <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;" class="page-break-inside-avoid">
+              <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">TOTAL PASSIF</td>
+              <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalPassif)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <div class="section-title">CONTRÔLES DE COHÉRENCE</div>
-  <div style="max-width: 700px; margin: 0 auto 30px auto;">
-    <div style="padding: 20px; background-color: ${equilibre ? '#f0fdf4' : '#fef2f2'}; border-radius: 8px; border-left: 4px solid ${equilibre ? '#059669' : '#dc2626'};">
-      <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: ${equilibre ? '#065f46' : '#991b1b'};">
-        ${equilibre ? '✓ Équilibre du bilan vérifié' : '⚠ Alerte : Déséquilibre détecté'}
-      </p>
-      <p style="margin: 0; font-size: 14px; color: ${equilibre ? '#065f46' : '#991b1b'}; line-height: 1.6;">
-        Actif = ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalActif)} | Passif = ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalPassif)}
-      </p>
+  <div class="page-break-inside-avoid">
+    <div class="section-title keep-with-next">CONTRÔLES DE COHÉRENCE</div>
+    <div style="max-width: 700px; margin: 0 auto 30px auto;">
+      <div style="padding: 20px; background-color: ${equilibre ? '#f0fdf4' : '#fef2f2'}; border-radius: 8px; border-left: 4px solid ${equilibre ? '#059669' : '#dc2626'};">
+        <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: ${equilibre ? '#065f46' : '#991b1b'};">
+          ${equilibre ? '✓ Équilibre du bilan vérifié' : '⚠ Alerte : Déséquilibre détecté'}
+        </p>
+        <p style="margin: 0; font-size: 14px; color: ${equilibre ? '#065f46' : '#991b1b'}; line-height: 1.6;">
+          Actif = ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalActif)} | Passif = ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalPassif)}
+        </p>
+      </div>
     </div>
   </div>
 
