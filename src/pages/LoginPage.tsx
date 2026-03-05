@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
+import { logoUrl } from '../lib/logoUrl';
 
 /*
   TODO: CONFIGURATION SUPABASE AUTH - URLs de redirection requises
@@ -115,7 +116,7 @@ export default function LoginPage() {
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <img
-              src="/logo_carre_comptaapp_format_png.png"
+              src={logoUrl}
               alt="ComptaApp Logo"
               style={{
                 width: '64px',

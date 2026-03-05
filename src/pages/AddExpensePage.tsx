@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import { AttachmentUpload } from '../components/AttachmentUpload';
@@ -24,7 +23,7 @@ interface Subcategory {
 
 export default function AddExpensePage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const entitlements = useEntitlements();
@@ -53,11 +52,6 @@ export default function AddExpensePage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [createdDocumentId, setCreatedDocumentId] = useState<string | null>(null);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -257,8 +251,6 @@ export default function AddExpensePage() {
   if (createdDocumentId) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AppHeader subtitle={user?.email} showSignOut={false} />
-
         <main
           style={{
             maxWidth: '1000px',
@@ -380,8 +372,6 @@ export default function AddExpensePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
       <main
         style={{
           maxWidth: '1000px',

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import jsPDF from 'jspdf';
@@ -37,8 +36,8 @@ interface ToastState {
 
 export default function BilanPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+  useAuth();
+  useNavigate();
   const entitlements = useEntitlements();
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -71,11 +70,6 @@ export default function BilanPage() {
     fiscal_year_end?: string;
   } | null>(null);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -598,19 +592,18 @@ export default function BilanPage() {
   const hasData = bilanData.actif.total !== 0 || bilanData.passif.total !== 0;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', overflowX: 'hidden' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
-      <main
-        style={{
-          maxWidth: '1200px',
-          width: '100%',
-          margin: '0 auto',
-          padding: '32px 16px',
-          boxSizing: 'border-box',
-          overflowX: 'hidden',
-        }}
-      >
+    <>
+      <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%', overflowX: 'hidden' }}>
+        <main
+          style={{
+            maxWidth: '1200px',
+            width: '100%',
+            margin: '0 auto',
+            padding: '32px 16px',
+            boxSizing: 'border-box',
+            overflowX: 'hidden',
+          }}
+        >
         <BackButton to={`/app/company/${companyId}`} />
 
         <div style={{ marginBottom: '24px' }}>
@@ -1076,6 +1069,7 @@ export default function BilanPage() {
           onClose={closeToast}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../lib/usePlan';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 
@@ -35,7 +34,7 @@ interface OpeningEntry {
 
 export default function HistoryImportPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { effectiveTier } = usePlan(companyId);
 
@@ -67,11 +66,6 @@ export default function HistoryImportPage() {
 
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     loadData();
@@ -269,8 +263,6 @@ export default function HistoryImportPage() {
 
   return (
     <>
-      <AppHeader onSignOut={handleSignOut} />
-
       <div className="min-h-screen w-full bg-slate-100 flex flex-col pt-16">
         {/* Sticky Back Button Bar */}
         <div className="sticky top-16 z-40">

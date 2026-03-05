@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import jsPDF from 'jspdf';
@@ -67,7 +65,6 @@ interface ToastState {
 
 export default function RapportsPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const entitlements = useEntitlements();
 
@@ -88,11 +85,6 @@ export default function RapportsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -817,10 +809,11 @@ export default function RapportsPage() {
     </div>
   </div>
 
-  <div class="page-break-inside-avoid">
-    <div class="section-title keep-with-next">BILAN — SYNTHÈSE</div>
+  <div class="section-title keep-with-next">BILAN — SYNTHÈSE</div>
+
+  <div class="pdf-allow-breaks">
     <div style="max-width: 700px; margin: 0 auto;">
-      <div class="page-break-inside-avoid">
+      <div class="pdf-avoid-break-inside">
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
           <thead>
             <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;" class="keep-with-next">
@@ -848,8 +841,12 @@ export default function RapportsPage() {
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
 
-      <div class="page-break-inside-avoid">
+  <div class="pdf-page-break-before pdf-allow-breaks">
+    <div style="max-width: 700px; margin: 0 auto;">
+      <div class="pdf-avoid-break-inside">
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; margin-top: 30px;">
           <thead>
             <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;" class="keep-with-next">
@@ -866,11 +863,11 @@ export default function RapportsPage() {
               <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">TVA nette à payer/rembourser</td>
               <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500; color: ${dettesFiscales >= 0 ? '#dc2626' : '#059669'};">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(dettesFiscales)}</td>
             </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
+            <tr style="border-bottom: 1px solid #e5e7eb;" class="keep-with-next">
               <td style="padding: 12px 16px; font-size: 14px; color: #1f2937;">Dettes fournisseurs</td>
               <td style="padding: 12px 16px; text-align: right; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(dettesFournisseurs)}</td>
             </tr>
-            <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;" class="page-break-inside-avoid">
+            <tr style="background-color: #f0f9ff; border-top: 2px solid #0284c7;" class="pdf-avoid-break-inside">
               <td style="padding: 16px; font-size: 16px; font-weight: 700; color: #1a1a1a;">TOTAL PASSIF</td>
               <td style="padding: 16px; text-align: right; font-size: 16px; font-weight: 700;">${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalPassif)}</td>
             </tr>
@@ -1573,9 +1570,7 @@ export default function RapportsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
+    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
       <main
         style={{
           maxWidth: '1200px',

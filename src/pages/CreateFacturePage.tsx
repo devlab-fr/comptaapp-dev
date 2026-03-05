@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
-import { usePlan } from '../lib/usePlan';
+import BackButton from '../components/BackButton';
 
 interface LigneFacture {
   description: string;
@@ -14,16 +12,12 @@ interface LigneFacture {
 
 interface Client {
   id: string;
-  type_client: string;
-  nom?: string;
-  raison_sociale?: string;
+  name: string;
 }
 
 export default function CreateFacturePage() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { companyId } = useParams<{ companyId: string }>();
-  const { canUse } = usePlan(companyId);
 
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -34,23 +28,11 @@ export default function CreateFacturePage() {
   const [statutPaiement, setStatutPaiement] = useState('non_payee');
   const [datePaiement, setDatePaiement] = useState('');
 
-  const [typeClient, setTypeClient] = useState<'particulier' | 'entreprise'>('particulier');
-  const [nom, setNom] = useState('');
-  const [raisonSociale, setRaisonSociale] = useState('');
-  const [adresse, setAdresse] = useState('');
-  const [pays, setPays] = useState('France');
-  const [email, setEmail] = useState('');
-  const [siren, setSiren] = useState('');
-  const [tvaIntracommunautaire, setTvaIntracommunautaire] = useState('');
+  const [newClientName, setNewClientName] = useState('');
 
   const [lignes, setLignes] = useState<LigneFacture[]>([
-    { description: '', quantite: 1, prix_unitaire_ht: 0, taux_tva: 20 }
+    { description: '', quantite: 0, prix_unitaire_ht: 0, taux_tva: 20 }
   ]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     if (companyId) {
@@ -62,9 +44,8 @@ export default function CreateFacturePage() {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, type_client, nom, raison_sociale')
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false });
+        .select('id, name')
+        .eq('company_id', companyId);
 
       if (error) throw error;
       setClients(data || []);
@@ -74,7 +55,7 @@ export default function CreateFacturePage() {
   };
 
   const addLigne = () => {
-    setLignes([...lignes, { description: '', quantite: 1, prix_unitaire_ht: 0, taux_tva: 20 }]);
+    setLignes([...lignes, { description: '', quantite: 0, prix_unitaire_ht: 0, taux_tva: 20 }]);
   };
 
   const removeLigne = (index: number) => {
@@ -119,18 +100,8 @@ export default function CreateFacturePage() {
       let clientId = selectedClientId;
 
       if (showNewClient) {
-        if (typeClient === 'particulier' && !nom) {
-          alert('Le nom est obligatoire pour un particulier');
-          setLoading(false);
-          return;
-        }
-        if (typeClient === 'entreprise' && !raisonSociale) {
-          alert('La raison sociale est obligatoire pour une entreprise');
-          setLoading(false);
-          return;
-        }
-        if (!adresse || !pays) {
-          alert('L\'adresse et le pays sont obligatoires');
+        if (!newClientName.trim()) {
+          alert('Le nom du client est obligatoire');
           setLoading(false);
           return;
         }
@@ -139,19 +110,15 @@ export default function CreateFacturePage() {
           .from('clients')
           .insert({
             company_id: companyId,
-            type_client: typeClient,
-            nom: typeClient === 'particulier' ? nom : null,
-            raison_sociale: typeClient === 'entreprise' ? raisonSociale : null,
-            adresse,
-            pays,
-            email: email || null,
-            siren: siren || null,
-            tva_intracommunautaire: tvaIntracommunautaire || null,
+            name: newClientName.trim(),
           })
           .select()
           .single();
 
-        if (clientError) throw clientError;
+        if (clientError) {
+          console.error('Erreur client:', JSON.stringify(clientError, null, 2));
+          throw clientError;
+        }
         clientId = newClient.id;
       }
 
@@ -164,7 +131,10 @@ export default function CreateFacturePage() {
       const { data: numeroData, error: numeroError } = await supabase
         .rpc('generate_numero_facture', { p_company_id: companyId });
 
-      if (numeroError) throw numeroError;
+      if (numeroError) {
+        console.error('Erreur numéro facture:', JSON.stringify(numeroError, null, 2));
+        throw numeroError;
+      }
 
       const totals = calculateTotals();
 
@@ -184,7 +154,10 @@ export default function CreateFacturePage() {
         .select()
         .single();
 
-      if (factureError) throw factureError;
+      if (factureError) {
+        console.error('Erreur facture:', JSON.stringify(factureError, null, 2));
+        throw factureError;
+      }
 
       const lignesData = lignes.map((ligne, index) => {
         const { montantHT, montantTVA, montantTTC } = calculateLigneTotals(ligne);
@@ -205,35 +178,27 @@ export default function CreateFacturePage() {
         .from('lignes_factures')
         .insert(lignesData);
 
-      if (lignesError) throw lignesError;
+      if (lignesError) {
+        console.error('Erreur lignes:', JSON.stringify(lignesError, null, 2));
+        throw lignesError;
+      }
 
       navigate(`/app/company/${companyId}/factures/${facture.id}`);
-    } catch (error) {
-      console.error('Erreur lors de la création de la facture:', error);
-      alert('Erreur lors de la création de la facture');
+    } catch (error: any) {
+      console.error('Erreur création facture:', JSON.stringify(error, null, 2));
+      alert(`Erreur: ${error?.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const hasAccess = canUse('assistantIA');
-
-  if (!hasAccess) {
-    navigate(`/app/company/${companyId}/factures`);
-    return null;
-  }
-
   const totals = calculateTotals();
 
   return (
     <>
-      <AppHeader
-        title="Nouvelle facture"
-        showSignOut={true}
-        onSignOut={handleSignOut}
-      />
 
       <div style={{ padding: '32px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+        <BackButton to={`/app/company/${companyId}/factures`} />
         <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginBottom: '32px' }}>
           Nouvelle facture
         </h1>
@@ -317,119 +282,25 @@ export default function CreateFacturePage() {
                   <option value="">-- Choisir un client --</option>
                   {clients.map(client => (
                     <option key={client.id} value={client.id}>
-                      {client.type_client === 'particulier' ? client.nom : client.raison_sociale}
+                      {client.name}
                     </option>
                   ))}
                 </select>
               </div>
             ) : (
-              <>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                    Type de client *
-                  </label>
-                  <select
-                    value={typeClient}
-                    onChange={(e) => setTypeClient(e.target.value as 'particulier' | 'entreprise')}
-                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                  >
-                    <option value="particulier">Particulier</option>
-                    <option value="entreprise">Entreprise / Professionnel</option>
-                  </select>
-                </div>
-
-                {typeClient === 'particulier' ? (
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                      Nom *
-                    </label>
-                    <input
-                      type="text"
-                      value={nom}
-                      onChange={(e) => setNom(e.target.value)}
-                      required
-                      style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                        Raison sociale *
-                      </label>
-                      <input
-                        type="text"
-                        value={raisonSociale}
-                        onChange={(e) => setRaisonSociale(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                      />
-                    </div>
-
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                        Numéro SIREN
-                      </label>
-                      <input
-                        type="text"
-                        value={siren}
-                        onChange={(e) => setSiren(e.target.value)}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                      />
-                    </div>
-
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                        TVA intracommunautaire
-                      </label>
-                      <input
-                        type="text"
-                        value={tvaIntracommunautaire}
-                        onChange={(e) => setTvaIntracommunautaire(e.target.value)}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                    Adresse *
-                  </label>
-                  <textarea
-                    value={adresse}
-                    onChange={(e) => setAdresse(e.target.value)}
-                    required
-                    rows={3}
-                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                    Pays *
-                  </label>
-                  <input
-                    type="text"
-                    value={pays}
-                    onChange={(e) => setPays(e.target.value)}
-                    required
-                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                  />
-                </div>
-              </>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Nom du client *
+                </label>
+                <input
+                  type="text"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  required
+                  placeholder="Ex: Jean Dupont ou SARL Martin"
+                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                />
+              </div>
             )}
           </div>
 
@@ -493,9 +364,11 @@ export default function CreateFacturePage() {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={ligne.quantite}
-                      onChange={(e) => updateLigne(index, 'quantite', parseFloat(e.target.value) || 0)}
+                      value={ligne.quantite === 0 ? '' : ligne.quantite}
+                      onChange={(e) => updateLigne(index, 'quantite', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                      onFocus={(e) => e.target.select()}
                       required
+                      placeholder="1"
                       style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                     />
                   </div>
@@ -508,9 +381,10 @@ export default function CreateFacturePage() {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={ligne.prix_unitaire_ht}
-                      onChange={(e) => updateLigne(index, 'prix_unitaire_ht', parseFloat(e.target.value) || 0)}
+                      value={ligne.prix_unitaire_ht === 0 ? '' : ligne.prix_unitaire_ht}
+                      onChange={(e) => updateLigne(index, 'prix_unitaire_ht', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                       required
+                      placeholder="0.00"
                       style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                     />
                   </div>
@@ -519,16 +393,17 @@ export default function CreateFacturePage() {
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
                       TVA (%) *
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
+                    <select
                       value={ligne.taux_tva}
-                      onChange={(e) => updateLigne(index, 'taux_tva', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateLigne(index, 'taux_tva', parseFloat(e.target.value))}
                       required
                       style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                    />
+                    >
+                      <option value="0">0%</option>
+                      <option value="5.5">5,5%</option>
+                      <option value="10">10%</option>
+                      <option value="20">20%</option>
+                    </select>
                   </div>
                 </div>
 

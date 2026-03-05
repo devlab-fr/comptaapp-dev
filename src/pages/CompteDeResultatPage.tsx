@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import AIAssistant from '../components/AIAssistant';
@@ -36,7 +35,7 @@ interface ToastState {
 
 export default function CompteDeResultatPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const entitlements = useEntitlements();
   const planTier = convertEntitlementsPlanToTier(entitlements.plan);
@@ -65,11 +64,6 @@ export default function CompteDeResultatPage() {
   } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -637,9 +631,9 @@ export default function CompteDeResultatPage() {
 
   if (!hasProAccess) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+      <>
+        <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
+          <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
           <BackButton to={`/app/company/${companyId}`} />
 
           <div style={{ marginBottom: '24px' }}>
@@ -683,21 +677,21 @@ export default function CompteDeResultatPage() {
             </button>
           </div>
         </main>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
-      <main
-        style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '32px 24px',
-        }}
-      >
+    <>
+      <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
+        <main
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '32px 24px',
+          }}
+        >
         <BackButton to={`/app/company/${companyId}`} />
 
         <div style={{ marginBottom: '24px' }}>
@@ -1523,6 +1517,7 @@ export default function CompteDeResultatPage() {
           onClose={closeToast}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }

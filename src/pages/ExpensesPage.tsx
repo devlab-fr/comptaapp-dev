@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { StatusBadges } from '../components/StatusBadges';
 import { ActionsDropdown } from '../components/ActionsDropdown';
@@ -37,7 +36,7 @@ interface Subcategory {
 
 export default function ExpensesPage() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  useAuth();
   const { companyId } = useParams<{ companyId: string }>();
   const { canModify } = useUserRole(companyId);
 
@@ -72,11 +71,6 @@ export default function ExpensesPage() {
   const dismissHistoryBanner = () => {
     localStorage.setItem(`history-banner-dismissed-${companyId}`, 'true');
     setShowHistoryBanner(false);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
   };
 
   useEffect(() => {
@@ -344,9 +338,7 @@ export default function ExpensesPage() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
+      <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
         <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
           <BackButton to={`/app/company/${companyId}`} />
 

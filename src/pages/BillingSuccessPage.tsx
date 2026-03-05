@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { invalidateEntitlementsCache } from '../billing/useEntitlements';
 import { normalizePlanTier, formatPlanLabel } from '../billing/planRules';
-import AppHeader from '../components/AppHeader';
 
 export default function BillingSuccessPage() {
   const navigate = useNavigate();
@@ -44,8 +43,6 @@ export default function BillingSuccessPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle="" onSignOut={() => {}} />
-
       <main style={{
         maxWidth: '600px',
         margin: '80px auto',

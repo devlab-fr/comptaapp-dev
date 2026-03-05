@@ -10,7 +10,7 @@ export default function Toast({ message, type, onClose }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 4000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -19,7 +19,7 @@ export default function Toast({ message, type, onClose }: ToastProps) {
     <div
       style={{
         position: 'fixed',
-        bottom: '24px',
+        top: '24px',
         right: '24px',
         padding: '16px 20px',
         backgroundColor: type === 'success' ? '#d1fae5' : '#fee2e2',

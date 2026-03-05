@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
+import { logoUrl } from '../lib/logoUrl';
 
 export default function CheckEmailPage() {
   const [resendLoading, setResendLoading] = useState(false);
@@ -68,7 +69,7 @@ export default function CheckEmailPage() {
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <img
-              src="/logo_carre_comptaapp_format_png.png"
+              src={logoUrl}
               alt="ComptaApp Logo"
               style={{
                 width: '64px',

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { AttachmentUpload } from '../components/AttachmentUpload';
 
@@ -29,7 +28,7 @@ interface RevenueLine {
 
 export default function EditRevenuePage() {
   const { companyId, documentId } = useParams<{ companyId: string; documentId: string }>();
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -40,11 +39,6 @@ export default function EditRevenuePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     loadDocument();
@@ -280,8 +274,6 @@ export default function EditRevenuePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
       <main
         style={{
           maxWidth: '1000px',

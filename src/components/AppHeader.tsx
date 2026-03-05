@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { logoUrl } from '../lib/logoUrl';
 
 interface AppHeaderProps {
   title?: string;
@@ -113,7 +114,7 @@ export default function AppHeader({
             >
               {!logoError && (
                 <img
-                  src="/logo_carre_comptaapp_format_png.png"
+                  src={logoUrl}
                   alt="ComptaApp Logo"
                   className="app-header-logo"
                   width="40"

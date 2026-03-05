@@ -283,6 +283,29 @@ export function buildPdfStyles(): string {
         .no-print {
           display: none;
         }
+        table { page-break-inside: auto; break-inside: auto; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr { page-break-inside: avoid; break-inside: avoid; }
+        tbody { page-break-inside: auto; break-inside: auto; }
+        .passif-new-page {
+          break-before: page;
+          page-break-before: always;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .pdf-page-break-before {
+          break-before: page;
+          page-break-before: always;
+        }
+        .pdf-allow-breaks {
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+        .pdf-avoid-break-inside {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
       }
     </style>
   `;

@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
-import { usePlan } from '../lib/usePlan';
 import jsPDF from 'jspdf';
+import BackButton from '../components/BackButton';
 
 interface Facture {
   id: string;
@@ -18,14 +16,8 @@ interface Facture {
 }
 
 interface Client {
-  type_client: string;
-  nom?: string;
-  raison_sociale?: string;
-  adresse: string;
-  pays: string;
-  email?: string;
-  siren?: string;
-  tva_intracommunautaire?: string;
+  id: string;
+  name: string;
 }
 
 interface LigneFacture {
@@ -43,29 +35,21 @@ interface LigneFacture {
 interface Company {
   name: string;
   country: string;
-  siren?: string;
-  tva_number?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
+  siren?: string | null;
+  siret?: string | null;
+  address?: string | null;
+  vat_regime?: string | null;
+  legal_form?: string | null;
 }
 
 export default function ViewFacturePage() {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { companyId, factureId } = useParams<{ companyId: string; factureId: string }>();
-  const { canUse } = usePlan(companyId);
 
   const [facture, setFacture] = useState<Facture | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [lignes, setLignes] = useState<LigneFacture[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     if (companyId && factureId) {
@@ -78,7 +62,7 @@ export default function ViewFacturePage() {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('name, country, siren, tva_number, address, city, postal_code')
+        .select('name, country')
         .eq('id', companyId)
         .single();
 
@@ -113,7 +97,7 @@ export default function ViewFacturePage() {
 
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
-        .select('*')
+        .select('id, name')
         .eq('id', factureData.client_id)
         .single();
 
@@ -140,164 +124,230 @@ export default function ViewFacturePage() {
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    let yPos = 20;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPos = margin;
 
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('FACTURE', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 15;
+    const grayBg = 245;
+    const lineColor = 220;
+    const textPrimary = 30;
+    const textSecondary = 100;
+
+    yPos = margin;
+
+    const colLeftX = margin;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Numéro: ${facture.numero_facture}`, 20, yPos);
-    yPos += 6;
-    doc.text(`Date: ${new Date(facture.date_facture).toLocaleDateString('fr-FR')}`, 20, yPos);
-    yPos += 15;
+    doc.setTextColor(textSecondary);
+    doc.text(company.name, colLeftX, yPos);
+    yPos += 5;
+
+    if (company.address) {
+      const addressLines = doc.splitTextToSize(company.address, 80);
+      doc.text(addressLines, colLeftX, yPos);
+      yPos += addressLines.length * 5;
+    }
+
+    if (company.siren) {
+      doc.text(`SIREN: ${company.siren}`, colLeftX, yPos);
+      yPos += 5;
+    }
+
+    if (company.vat_regime && company.vat_regime.toLowerCase().includes('tva')) {
+      doc.text(company.vat_regime, colLeftX, yPos);
+      yPos += 5;
+    }
+
+    const titleYPos = margin;
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(textPrimary);
+    doc.text('FACTURE', pageWidth - margin, titleYPos, { align: 'right' });
+
+    let rightYPos = titleYPos + 15;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(textSecondary);
+    doc.text(`N° ${facture.numero_facture}`, pageWidth - margin, rightYPos, { align: 'right' });
+    rightYPos += 6;
+    doc.text(`Date: ${new Date(facture.date_facture).toLocaleDateString('fr-FR')}`, pageWidth - margin, rightYPos, { align: 'right' });
+    rightYPos += 6;
+
+    if (facture.date_paiement) {
+      const dueDate = new Date(facture.date_facture);
+      dueDate.setDate(dueDate.getDate() + 30);
+      doc.text(`Échéance: ${dueDate.toLocaleDateString('fr-FR')}`, pageWidth - margin, rightYPos, { align: 'right' });
+    }
+
+    yPos = Math.max(yPos, rightYPos) + 20;
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Émetteur:', 20, yPos);
-    yPos += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.text(company.name, 20, yPos);
-    yPos += 5;
-    if (company.address) {
-      doc.text(company.address, 20, yPos);
-      yPos += 5;
-    }
-    if (company.city && company.postal_code) {
-      doc.text(`${company.postal_code} ${company.city}`, 20, yPos);
-      yPos += 5;
-    }
-    if (company.siren) {
-      doc.text(`SIREN: ${company.siren}`, 20, yPos);
-      yPos += 5;
-    }
-    if (company.tva_number) {
-      doc.text(`TVA: ${company.tva_number}`, 20, yPos);
-      yPos += 5;
-    }
-
-    yPos += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Client:', 20, yPos);
-    yPos += 6;
-    doc.setFont('helvetica', 'normal');
-    if (client.type_client === 'particulier') {
-      doc.text(client.nom || '', 20, yPos);
-    } else {
-      doc.text(client.raison_sociale || '', 20, yPos);
-      yPos += 5;
-      if (client.siren) {
-        doc.text(`SIREN: ${client.siren}`, 20, yPos);
-        yPos += 5;
-      }
-      if (client.tva_intracommunautaire) {
-        doc.text(`TVA intracommunautaire: ${client.tva_intracommunautaire}`, 20, yPos);
-        yPos += 5;
-      }
-    }
-    yPos += 5;
-    doc.text(client.adresse, 20, yPos);
-    yPos += 5;
-    doc.text(client.pays, 20, yPos);
-    if (client.email) {
-      yPos += 5;
-      doc.text(`Email: ${client.email}`, 20, yPos);
-    }
-
-    yPos += 15;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Détail de la facture', 20, yPos);
+    doc.setTextColor(textSecondary);
+    doc.text('FACTURÉ À', colLeftX, yPos);
     yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(textPrimary);
+
+    const clientName = client.name || 'Client';
+    doc.text(clientName, colLeftX, yPos);
+    yPos += 6;
+
+    yPos += 20;
 
     const tableStartY = yPos;
+    const colWidths = {
+      description: contentWidth * 0.40,
+      qte: contentWidth * 0.12,
+      pu: contentWidth * 0.18,
+      tva: contentWidth * 0.12,
+      total: contentWidth * 0.18
+    };
+
+    doc.setFillColor(grayBg, grayBg, grayBg);
+    doc.rect(margin, tableStartY, contentWidth, 10, 'F');
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('Description', 20, tableStartY);
-    doc.text('Qté', 110, tableStartY, { align: 'right' });
-    doc.text('P.U. HT', 135, tableStartY, { align: 'right' });
-    doc.text('TVA %', 155, tableStartY, { align: 'right' });
-    doc.text('Total TTC', 185, tableStartY, { align: 'right' });
-    yPos = tableStartY + 5;
+    doc.setTextColor(textPrimary);
 
-    doc.setLineWidth(0.5);
-    doc.line(20, yPos, 190, yPos);
-    yPos += 5;
+    let colX = margin + 5;
+    doc.text('Description', colX, tableStartY + 7);
+    colX += colWidths.description;
+    doc.text('Qté', colX, tableStartY + 7, { align: 'center' });
+    colX += colWidths.qte;
+    doc.text('Prix unitaire HT', colX, tableStartY + 7, { align: 'right' });
+    colX += colWidths.pu;
+    doc.text('TVA %', colX, tableStartY + 7, { align: 'right' });
+    colX += colWidths.tva;
+    doc.text('Total TTC', colX, tableStartY + 7, { align: 'right' });
+
+    yPos = tableStartY + 10;
 
     doc.setFont('helvetica', 'normal');
-    lignes.forEach((ligne) => {
-      if (yPos > 270) {
+    doc.setFontSize(9);
+
+    lignes.forEach((ligne, index) => {
+      if (yPos > pageHeight - 80) {
         doc.addPage();
-        yPos = 20;
+        yPos = margin;
       }
 
-      const descLines = doc.splitTextToSize(ligne.description, 85);
-      doc.text(descLines, 20, yPos);
-      const lineHeight = descLines.length * 5;
+      const rowStartY = yPos;
+      const rowPadding = 10;
 
-      doc.text(ligne.quantite.toFixed(2), 110, yPos, { align: 'right' });
-      doc.text(`${ligne.prix_unitaire_ht.toFixed(2)} €`, 135, yPos, { align: 'right' });
-      doc.text(`${ligne.taux_tva.toFixed(2)}%`, 155, yPos, { align: 'right' });
-      doc.text(`${ligne.montant_ttc.toFixed(2)} €`, 185, yPos, { align: 'right' });
+      const descLines = doc.splitTextToSize(ligne.description, colWidths.description - 10);
+      const rowHeight = Math.max(descLines.length * 5 + rowPadding, rowPadding + 5);
 
-      yPos += Math.max(lineHeight, 5) + 2;
+      if (index % 2 === 1) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(margin, rowStartY, contentWidth, rowHeight, 'F');
+      }
+
+      colX = margin + 5;
+      doc.setTextColor(textPrimary);
+      doc.text(descLines, colX, rowStartY + 7);
+
+      colX += colWidths.description;
+      doc.text(ligne.quantite.toString(), colX, rowStartY + 7, { align: 'center' });
+
+      colX += colWidths.qte;
+      doc.text(`${ligne.prix_unitaire_ht.toFixed(2)} €`, colX, rowStartY + 7, { align: 'right' });
+
+      colX += colWidths.pu;
+      doc.text(`${ligne.taux_tva}%`, colX, rowStartY + 7, { align: 'right' });
+
+      colX += colWidths.tva;
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${ligne.montant_ttc.toFixed(2)} €`, colX, rowStartY + 7, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+
+      doc.setDrawColor(lineColor, lineColor, lineColor);
+      doc.setLineWidth(0.1);
+      doc.line(margin, rowStartY + rowHeight, pageWidth - margin, rowStartY + rowHeight);
+
+      yPos += rowHeight;
     });
 
-    yPos += 5;
+    yPos += 10;
+
+    const totalsX = pageWidth - margin - 60;
+    const totalsValueX = pageWidth - margin - 5;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(textSecondary);
+    doc.text('Total HT', totalsX, yPos);
+    doc.setTextColor(textPrimary);
+    doc.text(`${facture.montant_total_ht.toFixed(2)} €`, totalsValueX, yPos, { align: 'right' });
+    yPos += 7;
+
+    doc.setTextColor(textSecondary);
+    doc.text('Total TVA', totalsX, yPos);
+    doc.setTextColor(textPrimary);
+    doc.text(`${facture.montant_total_tva.toFixed(2)} €`, totalsValueX, yPos, { align: 'right' });
+    yPos += 10;
+
+    doc.setDrawColor(textPrimary, textPrimary, textPrimary);
     doc.setLineWidth(0.5);
-    doc.line(20, yPos, 190, yPos);
-    yPos += 8;
+    doc.line(totalsX - 5, yPos - 3, totalsValueX, yPos - 3);
 
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Total HT:', 135, yPos, { align: 'right' });
-    doc.text(`${facture.montant_total_ht.toFixed(2)} €`, 185, yPos, { align: 'right' });
-    yPos += 6;
+    doc.setTextColor(textPrimary);
+    doc.text('Total TTC', totalsX, yPos);
+    doc.text(`${facture.montant_total_ttc.toFixed(2)} €`, totalsValueX, yPos, { align: 'right' });
 
-    doc.text('Total TVA:', 135, yPos, { align: 'right' });
-    doc.text(`${facture.montant_total_tva.toFixed(2)} €`, 185, yPos, { align: 'right' });
-    yPos += 6;
+    yPos += 20;
 
-    doc.setFontSize(11);
-    doc.text('Total TTC:', 135, yPos, { align: 'right' });
-    doc.text(`${facture.montant_total_ttc.toFixed(2)} €`, 185, yPos, { align: 'right' });
-    yPos += 15;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    if (client.type_client === 'particulier') {
-      doc.text('Mentions légales - Particuliers:', 20, yPos);
-      yPos += 5;
-      doc.text('Facture à conserver. En cas de litige, seul le tribunal de commerce compétent', 20, yPos);
-      yPos += 4;
-      doc.text('sera habilité. Aucun escompte en cas de paiement anticipé.', 20, yPos);
-    } else {
-      doc.text('Mentions légales - Professionnels:', 20, yPos);
-      yPos += 5;
-      doc.text('Facture à conserver. Pénalités de retard: taux BCE + 10 points.', 20, yPos);
-      yPos += 4;
-      doc.text('Indemnité forfaitaire pour frais de recouvrement: 40€. Escompte: néant.', 20, yPos);
+    if (yPos > pageHeight - 60) {
+      doc.addPage();
+      yPos = margin;
     }
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(textSecondary);
+    doc.text('MENTIONS LÉGALES', margin, yPos);
+    yPos += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(textSecondary);
+
+    const mentions: string[] = [];
+
+    if (company.vat_regime) {
+      if (company.vat_regime.toLowerCase().includes('293b') || company.vat_regime.toLowerCase().includes('non applicable')) {
+        mentions.push('TVA non applicable, art. 293 B du CGI.');
+      }
+    }
+
+    mentions.push('Conditions de paiement: paiement à réception.');
+    mentions.push('Pénalités de retard en cas de non-paiement: taux BCE + 10 points.');
+    mentions.push('Indemnité forfaitaire pour frais de recouvrement en cas de retard: 40 €.');
+    mentions.push('Escompte pour paiement anticipé: néant.');
+
+    mentions.forEach((mention) => {
+      if (yPos > pageHeight - margin) {
+        doc.addPage();
+        yPos = margin;
+      }
+      const mentionLines = doc.splitTextToSize(mention, contentWidth - 20);
+      doc.text(mentionLines, margin, yPos);
+      yPos += mentionLines.length * 4.5;
+    });
 
     doc.save(`Facture_${facture.numero_facture}.pdf`);
   };
 
-  const hasAccess = canUse('assistantIA');
-
-  if (!hasAccess) {
-    navigate(`/app/company/${companyId}/factures`);
-    return null;
-  }
-
   if (loading) {
     return (
       <>
-        <AppHeader
-          title="Facture"
-          showSignOut={true}
-          onSignOut={handleSignOut}
-        />
         <div style={{ padding: '60px 20px', textAlign: 'center', color: '#6b7280' }}>
           Chargement...
         </div>
@@ -308,11 +358,6 @@ export default function ViewFacturePage() {
   if (!facture || !client) {
     return (
       <>
-        <AppHeader
-          title="Facture"
-          showSignOut={true}
-          onSignOut={handleSignOut}
-        />
         <div style={{ padding: '60px 20px', textAlign: 'center', color: '#6b7280' }}>
           Facture introuvable
         </div>
@@ -322,13 +367,9 @@ export default function ViewFacturePage() {
 
   return (
     <>
-      <AppHeader
-        title={`Facture ${facture.numero_facture}`}
-        showSignOut={true}
-        onSignOut={handleSignOut}
-      />
 
       <div style={{ padding: '32px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+        <BackButton to={`/app/company/${companyId}/factures`} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 }}>
             Facture {facture.numero_facture}
@@ -403,12 +444,7 @@ export default function ViewFacturePage() {
                 Client
               </h3>
               <div style={{ fontSize: '14px', color: '#111827', lineHeight: '1.8' }}>
-                <div><strong>{client.type_client === 'particulier' ? client.nom : client.raison_sociale}</strong></div>
-                <div>{client.adresse}</div>
-                <div>{client.pays}</div>
-                {client.email && <div>Email: {client.email}</div>}
-                {client.siren && <div>SIREN: {client.siren}</div>}
-                {client.tva_intracommunautaire && <div>TVA intracommunautaire: {client.tva_intracommunautaire}</div>}
+                <div><strong>{client.name}</strong></div>
               </div>
             </div>
           </div>

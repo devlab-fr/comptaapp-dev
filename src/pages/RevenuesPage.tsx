@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { StatusBadges } from '../components/StatusBadges';
 import { ActionsDropdown } from '../components/ActionsDropdown';
@@ -28,7 +27,7 @@ interface Category {
 
 export default function RevenuesPage() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  useAuth();
   const { companyId } = useParams<{ companyId: string }>();
 
   const [revenues, setRevenues] = useState<RevenueDocument[]>([]);
@@ -47,11 +46,6 @@ export default function RevenuesPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 10;
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     if (companyId) {
@@ -270,9 +264,7 @@ export default function RevenuesPage() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
+      <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
         <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
           <BackButton to={`/app/company/${companyId}`} />
 

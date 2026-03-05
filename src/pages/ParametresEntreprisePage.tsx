@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import MembersManagement from '../components/MembersManagement';
@@ -47,7 +46,7 @@ interface ToastState {
 
 export default function ParametresEntreprisePage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const { canModify, isOwner } = useUserRole(companyId);
 
@@ -89,11 +88,6 @@ export default function ParametresEntreprisePage() {
     ownership_percentage: 0,
     capital_amount: 0,
   });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -351,8 +345,6 @@ export default function ParametresEntreprisePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
       <main
         style={{
           maxWidth: '1200px',

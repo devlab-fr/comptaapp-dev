@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import AppHeader from '../components/AppHeader';
 
 export default function BillingCancelPage() {
   const navigate = useNavigate();
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle="" onSignOut={() => {}} />
-
       <main style={{
         maxWidth: '600px',
         margin: '80px auto',

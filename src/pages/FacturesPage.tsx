@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import BackButton from '../components/BackButton';
 import { usePlan } from '../lib/usePlan';
 import { useUserRole } from '../lib/useUserRole';
 
@@ -20,18 +19,12 @@ interface Facture {
 
 export default function FacturesPage() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { companyId } = useParams<{ companyId: string }>();
-  const { canUse } = usePlan(companyId);
+  const { canUse, loading: planLoading } = usePlan(companyId);
   const { canModify } = useUserRole(companyId);
 
   const [factures, setFactures] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   useEffect(() => {
     if (companyId) {
@@ -51,14 +44,12 @@ export default function FacturesPage() {
           statut_paiement,
           montant_total_ttc,
           client_id,
-          clients (
-            nom,
-            raison_sociale,
-            type_client
+          clients:clients!factures_client_id_fkey (
+            name
           )
         `)
         .eq('company_id', companyId)
-        .order('date_facture', { ascending: false });
+        .order('date_facture', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
 
@@ -69,9 +60,9 @@ export default function FacturesPage() {
         statut_paiement: f.statut_paiement,
         montant_total_ttc: f.montant_total_ttc,
         client_id: f.client_id,
-        client_nom: f.clients?.nom,
-        client_raison_sociale: f.clients?.raison_sociale,
-        client_type: f.clients?.type_client,
+        client_nom: f.clients?.name,
+        client_raison_sociale: f.clients?.name,
+        client_type: 'entreprise',
       }));
 
       setFactures(formattedFactures);
@@ -84,14 +75,22 @@ export default function FacturesPage() {
 
   const hasAccess = canUse('assistantIA');
 
+  if (planLoading) {
+    return (
+      <div style={{ padding: '32px 20px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+          Chargement...
+        </div>
+      </div>
+    );
+  }
+
   if (!hasAccess) {
     return (
       <>
-        <AppHeader
-          title="Factures"
-          showSignOut={true}
-          onSignOut={handleSignOut}
-        />
+        <div style={{ padding: '32px 24px', maxWidth: '1400px', margin: '0 auto' }}>
+          <BackButton to={`/app/company/${companyId}`} />
+        </div>
         <div style={{ padding: '40px 20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ fontSize: '64px', marginBottom: '24px' }}>🔒</div>
           <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
@@ -126,13 +125,8 @@ export default function FacturesPage() {
 
   return (
     <>
-      <AppHeader
-        title="Factures"
-        showSignOut={true}
-        onSignOut={handleSignOut}
-      />
-
       <div style={{ padding: '32px 20px', maxWidth: '1400px', margin: '0 auto' }}>
+        <BackButton to={`/app/company/${companyId}`} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 }}>
             Factures
@@ -217,7 +211,7 @@ export default function FacturesPage() {
                       {new Date(facture.date_facture).toLocaleDateString('fr-FR')}
                     </td>
                     <td style={{ padding: '16px', fontSize: '14px', color: '#111827' }}>
-                      {facture.client_type === 'particulier' ? facture.client_nom : facture.client_raison_sociale}
+                      {facture.client_nom || facture.client_raison_sociale}
                     </td>
                     <td style={{ padding: '16px', fontSize: '14px', color: '#111827', textAlign: 'right', fontWeight: '600' }}>
                       {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ttc)}

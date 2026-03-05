@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { HOME_RECENT_LIMIT } from '../constants';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import KPIGraphs from '../components/KPIGraphs';
 import AIAssistant from '../components/AIAssistant';
@@ -41,7 +40,7 @@ interface RecentItem {
 
 export default function CompanyPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { canUse } = usePlan(companyId);
@@ -57,11 +56,6 @@ export default function CompanyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const handleProtectedAction = (action: () => void) => {
     if (legalLoading) {
@@ -358,9 +352,7 @@ export default function CompanyPage() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
+      <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
         <main style={{
           maxWidth: '1200px',
           margin: '0 auto',
@@ -827,6 +819,111 @@ export default function CompanyPage() {
                   Ajouter un revenu
                 </button>
               </div>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+            }}>
+              Trésorerie & Banque
+            </h3>
+
+            <div className="quick-actions-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/tresorerie`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #10b981',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d1fae5';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>💰</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#10b981',
+                }}>
+                  Trésorerie
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Soldes bancaires
+                </p>
+              </button>
+
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/banque`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #0ea5e9',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e0f2fe';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>🏦</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#0ea5e9',
+                }}>
+                  Banque
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Import & rapprochement
+                </p>
+              </button>
             </div>
           </div>
 

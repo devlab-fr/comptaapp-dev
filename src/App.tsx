@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
+import AppLayout from './components/AppLayout';
 import LoginPage from './pages/LoginPage';
 import AppPage from './pages/AppPage';
 import CreateCompanyPage from './pages/CreateCompanyPage';
@@ -36,6 +37,8 @@ import CreateFacturePage from './pages/CreateFacturePage';
 import ViewFacturePage from './pages/ViewFacturePage';
 import HistoryImportPage from './pages/HistoryImportPage';
 import CheckEmailPage from './pages/CheckEmailPage';
+import BankPage from './pages/BankPage';
+import TreasuryPage from './pages/TreasuryPage';
 
 export default function App() {
   return (
@@ -56,194 +59,37 @@ export default function App() {
             path="/app"
             element={
               <ProtectedRoute>
-                <AppPage />
+                <AppLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/app/create-company"
-            element={
-              <ProtectedRoute>
-                <CreateCompanyPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId"
-            element={
-              <ProtectedRoute>
-                <CompanyPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/ai-scan"
-            element={
-              <ProtectedRoute>
-                <AiScanPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/expenses"
-            element={
-              <ProtectedRoute>
-                <ExpensesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/expenses/new"
-            element={
-              <ProtectedRoute>
-                <AddExpensePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/revenues"
-            element={
-              <ProtectedRoute>
-                <RevenuesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/revenues/new"
-            element={
-              <ProtectedRoute>
-                <AddRevenuePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/expenses/:documentId/edit"
-            element={
-              <ProtectedRoute>
-                <EditExpensePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/revenues/:documentId/edit"
-            element={
-              <ProtectedRoute>
-                <EditRevenuePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/tva"
-            element={
-              <ProtectedRoute>
-                <ViewTVAPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/resultat"
-            element={
-              <ProtectedRoute>
-                <CompteDeResultatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/bilan"
-            element={
-              <ProtectedRoute>
-                <BilanPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/rapports"
-            element={
-              <ProtectedRoute>
-                <RapportsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/parametres"
-            element={
-              <ProtectedRoute>
-                <ParametresEntreprisePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/reprise-historique"
-            element={
-              <ProtectedRoute>
-                <HistoryImportPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/guide"
-            element={
-              <ProtectedRoute>
-                <UserGuidePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/verification"
-            element={
-              <ProtectedRoute>
-                <VerificationV1Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/comptabilite"
-            element={
-              <ProtectedRoute>
-                <ComptabilitePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/factures"
-            element={
-              <ProtectedRoute>
-                <FacturesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/factures/create"
-            element={
-              <ProtectedRoute>
-                <CreateFacturePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/factures/:factureId"
-            element={
-              <ProtectedRoute>
-                <ViewFacturePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/subscription"
-            element={
-              <ProtectedRoute>
-                <SubscriptionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/company/:companyId/subscription"
-            element={
-              <ProtectedRoute>
-                <SubscriptionPage />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<AppPage />} />
+            <Route path="create-company" element={<CreateCompanyPage />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="company/:companyId" element={<CompanyPage />} />
+            <Route path="company/:companyId/ai-scan" element={<AiScanPage />} />
+            <Route path="company/:companyId/expenses" element={<ExpensesPage />} />
+            <Route path="company/:companyId/expenses/new" element={<AddExpensePage />} />
+            <Route path="company/:companyId/expenses/:documentId/edit" element={<EditExpensePage />} />
+            <Route path="company/:companyId/revenues" element={<RevenuesPage />} />
+            <Route path="company/:companyId/revenues/new" element={<AddRevenuePage />} />
+            <Route path="company/:companyId/revenues/:documentId/edit" element={<EditRevenuePage />} />
+            <Route path="company/:companyId/tva" element={<ViewTVAPage />} />
+            <Route path="company/:companyId/resultat" element={<CompteDeResultatPage />} />
+            <Route path="company/:companyId/bilan" element={<BilanPage />} />
+            <Route path="company/:companyId/rapports" element={<RapportsPage />} />
+            <Route path="company/:companyId/parametres" element={<ParametresEntreprisePage />} />
+            <Route path="company/:companyId/reprise-historique" element={<HistoryImportPage />} />
+            <Route path="company/:companyId/guide" element={<UserGuidePage />} />
+            <Route path="company/:companyId/verification" element={<VerificationV1Page />} />
+            <Route path="company/:companyId/comptabilite" element={<ComptabilitePage />} />
+            <Route path="company/:companyId/factures" element={<FacturesPage />} />
+            <Route path="company/:companyId/factures/create" element={<CreateFacturePage />} />
+            <Route path="company/:companyId/factures/:factureId" element={<ViewFacturePage />} />
+            <Route path="company/:companyId/banque" element={<BankPage />} />
+            <Route path="company/:companyId/tresorerie" element={<TreasuryPage />} />
+            <Route path="company/:companyId/subscription" element={<SubscriptionPage />} />
+          </Route>
           <Route
             path="/billing/success"
             element={

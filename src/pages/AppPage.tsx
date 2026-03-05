@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import AppHeader from '../components/AppHeader';
 import Footer from '../components/Footer';
 
 interface Company {
@@ -12,7 +11,7 @@ interface Company {
 }
 
 export default function AppPage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -58,11 +57,6 @@ export default function AppPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
   if (loading) {
     return (
       <div style={{
@@ -96,9 +90,7 @@ export default function AppPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
+    <div style={{ backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <main style={{
         maxWidth: '1200px',
         margin: '0 auto',

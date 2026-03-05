@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../lib/usePlan';
 import { PLANS, PlanTier } from '../lib/plans';
-import AppHeader from '../components/AppHeader';
 import BackButton from '../components/BackButton';
 import { supabase } from '../lib/supabase';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
@@ -23,7 +22,7 @@ const isValidStripeUrl = (url: string): boolean => {
 };
 
 export default function SubscriptionPage() {
-  const { user, signOut } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const { companyId: paramsCompanyId } = useParams<{ companyId: string }>();
   const currentCompanyId = useCurrentCompany();
@@ -37,11 +36,6 @@ export default function SubscriptionPage() {
 
   // Priorité: params.companyId puis currentCompanyId
   const companyId = paramsCompanyId ?? currentCompanyId;
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const TIER_RANK: Record<PlanTier, number> = {
     FREE: 0,
@@ -346,8 +340,6 @@ export default function SubscriptionPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <AppHeader subtitle={user?.email} onSignOut={handleSignOut} />
-
       <main style={{
         maxWidth: '1400px',
         margin: '0 auto',
