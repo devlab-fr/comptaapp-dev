@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import Footer from '../components/Footer';
 
 interface Company {
   id: string;
@@ -90,13 +89,11 @@ export default function AppPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <main style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px 24px 24px',
-        flex: 1,
-      }}>
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '20px 24px 24px',
+    }}>
         {error && (
           <div style={{
             padding: '12px 16px',
@@ -311,8 +308,6 @@ export default function AppPage() {
             ))}
           </div>
         )}
-      </main>
-      <Footer />
     </div>
   );
 }

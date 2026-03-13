@@ -12,8 +12,8 @@ interface RevenueMobileCardProps {
     accounting_status: string;
     payment_status: string;
   };
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
   onToggleValidation?: (id: string) => void;
   onTogglePaid?: (id: string) => void;
 }
@@ -64,8 +64,8 @@ export function RevenueMobileCard({
           paymentStatus={revenue.payment_status}
         />
         <ActionsDropdown
-          onEdit={() => onEdit(revenue.id)}
-          onDelete={() => onDelete(revenue.id)}
+          onEdit={onEdit ? () => onEdit(revenue.id) : undefined}
+          onDelete={onDelete ? () => onDelete(revenue.id) : undefined}
           onToggleValidation={onToggleValidation ? () => onToggleValidation(revenue.id) : undefined}
           onTogglePaid={onTogglePaid ? () => onTogglePaid(revenue.id) : undefined}
           accountingStatus={revenue.accounting_status}

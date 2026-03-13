@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 
 interface LigneFacture {
+  id?: string;
   description: string;
   quantite: number;
   prix_unitaire_ht: number;
@@ -16,28 +17,44 @@ interface Client {
   name: string;
 }
 
+interface InvoiceRecipient {
+  id: string;
+  name: string;
+  type: 'particulier' | 'entreprise';
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country?: string | null;
+  email?: string | null;
+  siren?: string | null;
+  vat_number?: string | null;
+}
+
 interface RevenueCategory {
   id: string;
   name: string;
 }
 
-export default function CreateFacturePage() {
+export default function EditFacturePage() {
   const navigate = useNavigate();
-  const { companyId } = useParams<{ companyId: string }>();
+  const { companyId, factureId } = useParams<{ companyId: string; factureId: string }>();
 
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [categories, setCategories] = useState<RevenueCategory[]>([]);
-  const [showNewClient, setShowNewClient] = useState(true);
 
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [dateFacture, setDateFacture] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFacture, setDateFacture] = useState('');
   const [statutPaiement, setStatutPaiement] = useState('en_attente');
   const [datePaiement, setDatePaiement] = useState('');
 
-  const [newClientName, setNewClientName] = useState('');
+  const [recipientId, setRecipientId] = useState<string | null>(null);
+  const [recipient, setRecipient] = useState<InvoiceRecipient | null>(null);
 
   const [clientType, setClientType] = useState<'particulier' | 'entreprise'>('particulier');
+  const [clientName, setClientName] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [postalCode, setPostalCode] = useState('');
@@ -52,11 +69,12 @@ export default function CreateFacturePage() {
   ]);
 
   useEffect(() => {
-    if (companyId) {
+    if (companyId && factureId) {
       loadClients();
       loadCategories();
+      loadFacture();
     }
-  }, [companyId]);
+  }, [companyId, factureId]);
 
   const loadClients = async () => {
     try {
@@ -84,6 +102,75 @@ export default function CreateFacturePage() {
       setCategories(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des catégories:', error);
+    }
+  };
+
+  const loadFacture = async () => {
+    setLoadingData(true);
+    try {
+      const { data: factureData, error: factureError } = await supabase
+        .from('factures')
+        .select(`
+          *,
+          clients:clients!factures_client_id_fkey (id, name)
+        `)
+        .eq('id', factureId)
+        .single();
+
+      if (factureError) throw factureError;
+
+      setSelectedClientId(factureData.client_id);
+      setDateFacture(factureData.date_facture);
+      setStatutPaiement(factureData.statut_paiement);
+      setDatePaiement(factureData.date_paiement || '');
+      setRecipientId(factureData.recipient_id);
+
+      if (factureData.recipient_id) {
+        const { data: recipientData, error: recipientError } = await supabase
+          .from('invoice_recipients')
+          .select('*')
+          .eq('id', factureData.recipient_id)
+          .single();
+
+        if (!recipientError && recipientData) {
+          setRecipient(recipientData);
+          setClientType(recipientData.type);
+          setClientName(recipientData.name);
+          setAddressLine1(recipientData.address_line1 || '');
+          setAddressLine2(recipientData.address_line2 || '');
+          setPostalCode(recipientData.postal_code || '');
+          setCity(recipientData.city || '');
+          setCountry(recipientData.country || 'France');
+          setEmail(recipientData.email || '');
+          setSiren(recipientData.siren || '');
+          setVatNumber(recipientData.vat_number || '');
+        }
+      }
+
+      const { data: lignesData, error: lignesError } = await supabase
+        .from('lignes_factures')
+        .select('*')
+        .eq('facture_id', factureId)
+        .order('ordre', { ascending: true });
+
+      if (lignesError) throw lignesError;
+
+      if (lignesData && lignesData.length > 0) {
+        setLignes(lignesData.map(l => ({
+          id: l.id,
+          description: l.description,
+          quantite: l.quantite,
+          prix_unitaire_ht: l.prix_unitaire_ht,
+          taux_tva: l.taux_tva,
+          category_id: l.category_id || '',
+        })));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la facture:', error);
+      alert('Erreur lors du chargement de la facture');
+      navigate(`/app/company/${companyId}/factures`);
+    } finally {
+      setLoadingData(false);
     }
   };
 
@@ -137,36 +224,11 @@ export default function CreateFacturePage() {
           return;
         }
       }
-      let clientId = selectedClientId;
-      let recipientId = null;
-
-      if (showNewClient) {
-        if (!newClientName.trim()) {
-          alert('Le nom du client est obligatoire');
-          setLoading(false);
-          return;
-        }
-
-        const { data: newClient, error: clientError } = await supabase
-          .from('clients')
-          .insert({
-            company_id: companyId,
-            name: newClientName.trim(),
-          })
-          .select()
-          .single();
-
-        if (clientError) {
-          console.error('Erreur client:', JSON.stringify(clientError, null, 2));
-          throw clientError;
-        }
-        clientId = newClient.id;
-
-        const { data: newRecipient, error: recipientError } = await supabase
+      if (recipientId) {
+        const { error: recipientError } = await supabase
           .from('invoice_recipients')
-          .insert({
-            company_id: companyId,
-            name: newClientName.trim(),
+          .update({
+            name: clientName.trim(),
             type: clientType,
             address_line1: addressLine1.trim() || null,
             address_line2: addressLine2.trim() || null,
@@ -177,58 +239,49 @@ export default function CreateFacturePage() {
             siren: clientType === 'entreprise' ? (siren.trim() || null) : null,
             vat_number: clientType === 'entreprise' ? (vatNumber.trim() || null) : null,
           })
-          .select()
-          .single();
+          .eq('id', recipientId);
 
         if (recipientError) {
           console.error('Erreur recipient:', JSON.stringify(recipientError, null, 2));
           throw recipientError;
         }
-        recipientId = newRecipient.id;
-      }
-
-      if (!clientId) {
-        alert('Veuillez sélectionner ou créer un client');
-        setLoading(false);
-        return;
-      }
-
-      const { data: numeroData, error: numeroError } = await supabase
-        .rpc('generate_numero_facture', { p_company_id: companyId });
-
-      if (numeroError) {
-        console.error('Erreur numéro facture:', JSON.stringify(numeroError, null, 2));
-        throw numeroError;
       }
 
       const totals = calculateTotals();
 
-      const { data: facture, error: factureError } = await supabase
+      const { error: factureError } = await supabase
         .from('factures')
-        .insert({
-          company_id: companyId,
-          client_id: clientId,
-          recipient_id: recipientId,
-          numero_facture: numeroData,
+        .update({
+          client_id: selectedClientId,
           date_facture: dateFacture,
           statut_paiement: statutPaiement,
           date_paiement: statutPaiement === 'payee' ? datePaiement : null,
           montant_total_ht: totals.totalHT,
           montant_total_tva: totals.totalTVA,
           montant_total_ttc: totals.totalTTC,
+          updated_at: new Date().toISOString(),
         })
-        .select()
-        .single();
+        .eq('id', factureId);
 
       if (factureError) {
         console.error('Erreur facture:', JSON.stringify(factureError, null, 2));
         throw factureError;
       }
 
+      const { error: deleteLignesError } = await supabase
+        .from('lignes_factures')
+        .delete()
+        .eq('facture_id', factureId);
+
+      if (deleteLignesError) {
+        console.error('Erreur suppression lignes:', JSON.stringify(deleteLignesError, null, 2));
+        throw deleteLignesError;
+      }
+
       const lignesData = lignes.map((ligne, index) => {
         const { montantHT, montantTVA, montantTTC } = calculateLigneTotals(ligne);
         return {
-          facture_id: facture.id,
+          facture_id: factureId,
           description: ligne.description,
           quantite: ligne.quantite,
           prix_unitaire_ht: ligne.prix_unitaire_ht,
@@ -250,9 +303,9 @@ export default function CreateFacturePage() {
         throw lignesError;
       }
 
-      navigate(`/app/company/${companyId}/factures/${facture.id}`);
+      navigate(`/app/company/${companyId}/factures/${factureId}`);
     } catch (error: any) {
-      console.error('Erreur création facture:', JSON.stringify(error, null, 2));
+      console.error('Erreur modification facture:', JSON.stringify(error, null, 2));
       alert(`Erreur: ${error?.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
@@ -261,13 +314,22 @@ export default function CreateFacturePage() {
 
   const totals = calculateTotals();
 
+  if (loadingData) {
+    return (
+      <div style={{ padding: '32px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+          Chargement...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-
       <div style={{ padding: '32px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-        <BackButton to={`/app/company/${companyId}/factures`} />
+        <BackButton to={`/app/company/${companyId}/factures/${factureId}`} />
         <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginBottom: '32px' }}>
-          Nouvelle facture
+          Modifier la facture
         </h1>
 
         <form onSubmit={handleSubmit}>
@@ -301,6 +363,7 @@ export default function CreateFacturePage() {
                 <option value="brouillon">Brouillon</option>
                 <option value="en_attente">En attente</option>
                 <option value="payee">Payée</option>
+                <option value="annulee">Annulée</option>
               </select>
             </div>
 
@@ -326,36 +389,25 @@ export default function CreateFacturePage() {
             </h2>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#374151', marginBottom: '12px' }}>
-                <input
-                  type="checkbox"
-                  checked={showNewClient}
-                  onChange={(e) => setShowNewClient(e.target.checked)}
-                />
-                Créer un nouveau client
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Sélectionner un client *
               </label>
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                required
+                style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+              >
+                <option value="">-- Choisir un client --</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {!showNewClient ? (
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Sélectionner un client *
-                </label>
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => setSelectedClientId(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                >
-                  <option value="">-- Choisir un client --</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
+            {recipient && (
               <div>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
@@ -377,8 +429,8 @@ export default function CreateFacturePage() {
                   </label>
                   <input
                     type="text"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
                     required
                     placeholder={clientType === 'entreprise' ? 'Ex: SARL Martin' : 'Ex: Jean Dupont'}
                     style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
@@ -647,7 +699,7 @@ export default function CreateFacturePage() {
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               type="button"
-              onClick={() => navigate(`/app/company/${companyId}/factures`)}
+              onClick={() => navigate(`/app/company/${companyId}/factures/${factureId}`)}
               disabled={loading}
               style={{
                 padding: '12px 24px',
@@ -676,7 +728,7 @@ export default function CreateFacturePage() {
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Création...' : 'Créer la facture'}
+              {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
           </div>
         </form>

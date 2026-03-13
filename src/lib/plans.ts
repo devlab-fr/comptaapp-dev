@@ -8,8 +8,10 @@ export interface PlanFeatures {
   exercicesMulti: boolean;
   agDocs: boolean;
   assistantIA: boolean;
+  facturation: boolean;
   ocr: boolean;
   comptabiliteExpertMode: boolean;
+  banking: boolean;
 }
 
 export interface PlanQuotas {
@@ -47,8 +49,10 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exercicesMulti: false,
       agDocs: false,
       assistantIA: false,
+      facturation: false,
       ocr: false,
       comptabiliteExpertMode: false,
+      banking: false,
     },
     quotas: {
       maxTransactions: 50,
@@ -68,8 +72,10 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exercicesMulti: false,
       agDocs: false,
       assistantIA: false,
+      facturation: true,
       ocr: false,
       comptabiliteExpertMode: false,
+      banking: false,
     },
     quotas: {
       maxTransactions: null,
@@ -89,8 +95,10 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exercicesMulti: true,
       agDocs: false,
       assistantIA: false,
+      facturation: true,
       ocr: true,
       comptabiliteExpertMode: false,
+      banking: true,
     },
     quotas: {
       maxTransactions: null,
@@ -110,8 +118,10 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exercicesMulti: true,
       agDocs: true,
       assistantIA: true,
+      facturation: true,
       ocr: true,
       comptabiliteExpertMode: true,
+      banking: true,
     },
     quotas: {
       maxTransactions: null,

@@ -26,7 +26,7 @@ export default function SubscriptionPage() {
   const navigate = useNavigate();
   const { companyId: paramsCompanyId } = useParams<{ companyId: string }>();
   const currentCompanyId = useCurrentCompany();
-  const { effectiveTier, refresh: refreshPlan } = usePlan();
+  const { effectiveTier, loading: planLoading, refresh: refreshPlan } = usePlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ status: number; body: any } | null>(null);
@@ -91,20 +91,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      console.log('CHECKOUT_AUTH_DEBUG', {
-        sessionExists: !!session,
-        accessTokenLength: session.access_token?.length || 0,
-        tokenPreview: session.access_token ? session.access_token.substring(0, 12) + '...' + session.access_token.substring(session.access_token.length - 12) : 'none',
-        expiresAt: session.expires_at,
-        expiresAtDate: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none',
-        userId: session.user?.id || 'none',
-      });
 
-      console.log('CHECKOUT_CALL_DEBUG', {
-        method: 'supabase.functions.invoke',
-        functionName: 'create-checkout-session',
-        body: { planTier: targetTier, companyId },
-      });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { planTier: targetTier, companyId },
@@ -142,7 +129,6 @@ export default function SubscriptionPage() {
       }
 
       if (data?.mode === 'upgrade') {
-        console.log('UPGRADE_MODE_DETECTED', { companyId, plan: data.plan });
 
         setToast({ message: `Votre abonnement a été mis à niveau vers ${PLANS[data.plan as PlanTier]?.name || data.plan}`, type: 'success' });
 
@@ -214,18 +200,6 @@ export default function SubscriptionPage() {
       const token = session.access_token;
       const payload = { planTier: 'PRO', companyId };
 
-      const supabaseUrlHost = new URL(import.meta.env.VITE_SUPABASE_URL).host;
-      const projectRef = supabaseUrlHost.split('.')[0];
-
-      console.log('TEST_STRIPE_AUTH_DEBUG', {
-        sessionExists: !!session,
-        accessTokenLength: token.length,
-        userId: session.user?.id || 'none',
-        supabaseUrlHost,
-        projectRef,
-        anonKeyLength: import.meta.env.VITE_SUPABASE_ANON_KEY.length,
-      });
-
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: payload,
         headers: {
@@ -276,7 +250,6 @@ export default function SubscriptionPage() {
       try {
         await ensureFreshSession();
 
-        console.log('PORTAL_FLOW', { step: 'call_portal', companyId: validatedCompanyId, retryCount });
 
         const { data, error } = await supabase.functions.invoke('create-portal-session', {
           body: { companyId: validatedCompanyId },
@@ -292,7 +265,6 @@ export default function SubscriptionPage() {
           const is401 = error.message?.includes('401') || error.message?.includes('Unauthorized') || error.message?.includes('Invalid JWT');
 
           if (is401 && retryCount === 0) {
-            console.log('PORTAL_FLOW', { step: 'retry_on_401', retryCount: retryCount + 1 });
             await callPortalSession(1);
             return;
           }
@@ -313,7 +285,6 @@ export default function SubscriptionPage() {
             alert('URL de portail invalide');
             return;
           }
-          console.log('PORTAL_FLOW', { step: 'redirect', url: data.url });
           window.location.assign(data.url);
         } else {
           console.error('PORTAL_NO_URL', data);
@@ -337,6 +308,30 @@ export default function SubscriptionPage() {
   };
 
   const tiers: PlanTier[] = ['FREE', 'PRO', 'PRO_PLUS', 'PRO_PLUS_PLUS'];
+
+  if (planLoading) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+        <main style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: '40px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+        }}>
+          <div style={{
+            textAlign: 'center',
+            color: '#6b7280',
+            fontSize: '18px',
+          }}>
+            Chargement de votre abonnement...
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
@@ -462,40 +457,38 @@ export default function SubscriptionPage() {
                     flexDirection: 'column',
                     gap: '12px',
                   }}>
-                    {plan.quotas.maxTransactions !== null && (
-                      <li style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '14px',
-                        color: '#374151',
+                    <li style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      color: '#374151',
+                    }}>
+                      <span style={{
+                        marginRight: '8px',
+                        color: '#28a745',
+                        fontWeight: '700',
                       }}>
-                        <span style={{
-                          marginRight: '8px',
-                          color: '#28a745',
-                          fontWeight: '700',
-                        }}>
-                          ✓
-                        </span>
-                        {plan.quotas.maxTransactions} transactions/mois
-                      </li>
-                    )}
-                    {plan.quotas.maxTransactions === null && (
-                      <li style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '14px',
-                        color: '#374151',
+                        ✓
+                      </span>
+                      {plan.quotas.maxTransactions !== null
+                        ? `${plan.quotas.maxTransactions} transactions/mois`
+                        : 'Transactions illimitées'}
+                    </li>
+                    <li style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      color: '#374151',
+                    }}>
+                      <span style={{
+                        marginRight: '8px',
+                        color: '#28a745',
+                        fontWeight: '700',
                       }}>
-                        <span style={{
-                          marginRight: '8px',
-                          color: '#28a745',
-                          fontWeight: '700',
-                        }}>
-                          ✓
-                        </span>
-                        Transactions illimitées
-                      </li>
-                    )}
+                        ✓
+                      </span>
+                      Trésorerie (soldes bancaires)
+                    </li>
                     <li style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -586,57 +579,53 @@ export default function SubscriptionPage() {
                       </span>
                       Documents officiels AG
                     </li>
-                    {tier === 'PRO_PLUS_PLUS' && (
-                      <li style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '14px',
-                        color: '#374151',
+                    <li style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      color: plan.features.facturation ? '#374151' : '#9ca3af',
+                    }}>
+                      <span style={{
+                        marginRight: '8px',
+                        color: plan.features.facturation ? '#28a745' : '#d1d5db',
+                        fontWeight: '700',
                       }}>
-                        <span style={{
-                          marginRight: '8px',
-                          color: '#28a745',
-                          fontWeight: '700',
-                        }}>
-                          ✓
-                        </span>
-                        Création de factures (PDF)
-                      </li>
-                    )}
-                    {tier === 'FREE' && (
-                      <li style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '14px',
-                        color: '#374151',
+                        {plan.features.facturation ? '✓' : '✗'}
+                      </span>
+                      Création de factures (PDF)
+                    </li>
+                    <li style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      color: '#374151',
+                    }}>
+                      <span style={{
+                        marginRight: '8px',
+                        color: '#28a745',
+                        fontWeight: '700',
                       }}>
-                        <span style={{
-                          marginRight: '8px',
-                          color: '#28a745',
-                          fontWeight: '700',
-                        }}>
-                          ✓
-                        </span>
-                        Reprise d'historique (option simple)
-                      </li>
-                    )}
-                    {(tier === 'PRO' || tier === 'PRO_PLUS' || tier === 'PRO_PLUS_PLUS') && (
-                      <li style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '14px',
-                        color: '#374151',
+                        ✓
+                      </span>
+                      {tier === 'FREE'
+                        ? 'Reprise d\'historique (option simple)'
+                        : 'Reprise d\'historique (options avancées)'}
+                    </li>
+                    <li style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      color: (tier === 'PRO_PLUS' || tier === 'PRO_PLUS_PLUS') ? '#374151' : '#9ca3af',
+                    }}>
+                      <span style={{
+                        marginRight: '8px',
+                        color: (tier === 'PRO_PLUS' || tier === 'PRO_PLUS_PLUS') ? '#28a745' : '#d1d5db',
+                        fontWeight: '700',
                       }}>
-                        <span style={{
-                          marginRight: '8px',
-                          color: '#28a745',
-                          fontWeight: '700',
-                        }}>
-                          ✓
-                        </span>
-                        Reprise d'historique (options avancées)
-                      </li>
-                    )}
+                        {(tier === 'PRO_PLUS' || tier === 'PRO_PLUS_PLUS') ? '✓' : '✗'}
+                      </span>
+                      Import bancaire & rapprochement
+                    </li>
                   </ul>
                 </div>
 

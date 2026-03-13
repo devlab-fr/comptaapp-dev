@@ -18,6 +18,8 @@ interface RevenueDocument {
   description?: string;
   category_name?: string;
   category_id?: string;
+  source_type?: string;
+  source_invoice_id?: string;
 }
 
 interface Category {
@@ -149,13 +151,38 @@ export default function RevenuesPage() {
         .in('document_id', docs.map(d => d.id))
         .order('line_order');
 
+      // Charger les numéros de factures pour les revenus issus de factures
+      const invoiceIds = docs
+        .filter(d => d.source_type === 'invoice' && d.source_invoice_id)
+        .map(d => d.source_invoice_id);
+
+      let invoicesMap = new Map();
+      if (invoiceIds.length > 0) {
+        const { data: invoices } = await supabase
+          .from('factures')
+          .select('id, numero_facture')
+          .in('id', invoiceIds);
+
+        if (invoices) {
+          invoices.forEach(inv => invoicesMap.set(inv.id, inv.numero_facture));
+        }
+      }
+
       const enriched = docs.map(doc => {
         const docLines = lines?.filter(l => l.document_id === doc.id) || [];
         const firstLine = docLines[0];
         const lineCount = docLines.length;
 
         let description = 'Sans description';
-        if (firstLine) {
+
+        // Si le revenu provient d'une facture, utiliser le numéro de facture comme libellé
+        if (doc.source_type === 'invoice' && doc.source_invoice_id) {
+          const numeroFacture = invoicesMap.get(doc.source_invoice_id);
+          if (numeroFacture) {
+            description = numeroFacture;
+          }
+        } else if (firstLine && firstLine.description) {
+          // Sinon, utiliser la description de la première ligne
           description = lineCount > 1
             ? `${firstLine.description} (+${lineCount - 1})`
             : firstLine.description;
@@ -164,10 +191,20 @@ export default function RevenuesPage() {
         let category_name = '';
         let category_id = '';
 
-        if (firstLine) {
+        // Tenter de résoudre la catégorie réelle depuis les lignes
+        if (firstLine && firstLine.category_id) {
           const cat = categories.find((c) => c.id === firstLine.category_id);
           category_name = cat?.name || '';
           category_id = firstLine.category_id;
+        }
+
+        // Fallback "Prestations de services" uniquement pour les revenus issus de factures sans catégorie résolue
+        if (!category_id && doc.source_type === 'invoice' && doc.source_invoice_id) {
+          const defaultCat = categories.find((c) => c.name === 'Prestations de services');
+          if (defaultCat) {
+            category_name = defaultCat.name;
+            category_id = defaultCat.id;
+          }
         }
 
         return {
@@ -181,6 +218,8 @@ export default function RevenuesPage() {
           description,
           category_name,
           category_id,
+          source_type: doc.source_type,
+          source_invoice_id: doc.source_invoice_id,
         };
       });
 
@@ -579,7 +618,9 @@ export default function RevenuesPage() {
                               <div style={{ fontWeight: '500' }}>{rev.description || 'Sans libellé'}</div>
                             </td>
                             <td style={{ padding: '14px 16px', fontSize: '14px', color: '#1f2937' }}>
-                              <div style={{ fontWeight: '500' }}>{rev.category_name || '-'}</div>
+                              <div style={{ fontWeight: '500' }}>
+                                {rev.category_name || (rev.source_type === 'invoice' ? 'Prestations de services' : '-')}
+                              </div>
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'right', fontSize: '14px', color: '#1f2937', whiteSpace: 'nowrap' }}>
                               {parseFloat(rev.total_excl_vat.toString()).toFixed(2)} €
@@ -598,8 +639,8 @@ export default function RevenuesPage() {
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                               <ActionsDropdown
-                                onEdit={() => navigate(`/app/company/${companyId}/revenues/${rev.id}/edit`)}
-                                onDelete={() => setDeleteModal({ show: true, id: rev.id })}
+                                onEdit={rev.source_type !== 'invoice' ? () => navigate(`/app/company/${companyId}/revenues/${rev.id}/edit`) : undefined}
+                                onDelete={rev.source_type !== 'invoice' ? () => setDeleteModal({ show: true, id: rev.id }) : undefined}
                                 onToggleValidation={() => handleToggleValidation(rev.id, rev.accounting_status)}
                                 onTogglePaid={() => handleTogglePaid(rev.id, rev.payment_status)}
                                 accountingStatus={rev.accounting_status}
@@ -672,8 +713,8 @@ export default function RevenuesPage() {
                       vat_amount: rev.total_vat,
                       amount_incl_vat: rev.total_incl_vat,
                     }}
-                    onEdit={(id) => navigate(`/app/company/${companyId}/revenues/${id}/edit`)}
-                    onDelete={(id) => setDeleteModal({ show: true, id })}
+                    onEdit={rev.source_type !== 'invoice' ? (id) => navigate(`/app/company/${companyId}/revenues/${id}/edit`) : undefined}
+                    onDelete={rev.source_type !== 'invoice' ? (id) => setDeleteModal({ show: true, id }) : undefined}
                     onToggleValidation={(id) => handleToggleValidation(id, rev.accounting_status)}
                     onTogglePaid={(id) => handleTogglePaid(id, rev.payment_status)}
                   />

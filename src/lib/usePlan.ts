@@ -51,11 +51,44 @@ function getDevForcedPlan(): PlanTier | null {
   return null;
 }
 
+function getSessionStorageSubscription(companyId: string): CompanySubscription | null {
+  try {
+    const key = `subscription_${companyId}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && Date.now() - parsed.timestamp < 60000) {
+        return parsed.subscription;
+      }
+    }
+  } catch (e) {
+    // Ignore sessionStorage errors
+  }
+  return null;
+}
+
+function setSessionStorageSubscription(companyId: string, subscription: CompanySubscription) {
+  try {
+    const key = `subscription_${companyId}`;
+    sessionStorage.setItem(key, JSON.stringify({
+      subscription,
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    // Ignore sessionStorage errors
+  }
+}
+
 export function usePlan(companyIdParam?: string | null): UsePlanReturn {
   const { user } = useAuth();
   const companyIdFromRoute = useCurrentCompany();
   const companyId = companyIdParam || companyIdFromRoute;
-  const [subscription, setSubscription] = useState<CompanySubscription | null>(null);
+  const [subscription, setSubscription] = useState<CompanySubscription | null>(() => {
+    if (companyId) {
+      return getSessionStorageSubscription(companyId);
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   const loadSubscription = async () => {
@@ -97,13 +130,15 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
           return;
         }
 
-        setSubscription({
+        const freeSubscription = {
           company_id: companyId,
-          plan_tier: 'FREE',
+          plan_tier: 'FREE' as PlanTier,
           stripe_subscription_id: null,
           status: 'active',
           current_period_end: null,
-        });
+        };
+        setSubscription(freeSubscription);
+        setSessionStorageSubscription(companyId, freeSubscription);
         setLoading(false);
         return;
       }
@@ -113,6 +148,7 @@ export function usePlan(companyIdParam?: string | null): UsePlanReturn {
         plan_tier: normalizePlanTierLocal(data.plan_tier),
       } as CompanySubscription;
       setSubscription(subscriptionWithNormalized);
+      setSessionStorageSubscription(companyId, subscriptionWithNormalized);
       setLoading(false);
     } catch (err) {
       console.error('PLAN_RESOLVE_EXCEPTION', { userId: user.id, companyId, error: err });

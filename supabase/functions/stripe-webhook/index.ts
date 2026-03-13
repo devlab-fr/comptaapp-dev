@@ -75,14 +75,15 @@ Deno.serve(async (req: Request) => {
   const PRICE_TO_TIER: Record<string, string> = {
     [Deno.env.get("STRIPE_PRICE_PRO") || ""]: "PRO",
     [Deno.env.get("STRIPE_PRICE_PRO_PLUS") || ""]: "PRO_PLUS",
-    [Deno.env.get("STRIPE_PRICE_PRO_PP") || ""]: "PRO_PLUS_PLUS",
+    [Deno.env.get("STRIPE_PRICE_PRO_PLUS_PLUS") || ""]: "PRO_PLUS_PLUS",
+    [Deno.env.get("STRIPE_PRICE_PRO_PP") || ""]: "PRO_PLUS_PLUS", // Legacy alias support
   };
 
   try {
     const signature = req.headers.get("stripe-signature");
     if (!signature) {
       return new Response(JSON.stringify({ ok: false, traceId, error: "No signature" }), {
-        status: 200,
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -200,14 +201,17 @@ Deno.serve(async (req: Request) => {
             });
           }
 
-          const { data: companySubData, error: companySubError } = await supabase.from("company_subscriptions").update({
+          const { data: companySubData, error: companySubError } = await supabase.from("company_subscriptions").upsert({
+            company_id: companyId,
             plan_tier: planTier,
             stripe_subscription_id: subscriptionId,
             status: subscription.status,
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          }).eq("company_id", companyId).select();
+          }, {
+            onConflict: "company_id"
+          }).select();
 
-          console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", companyId, data: companySubData, error: companySubError });
+          console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_upsert", companyId, data: companySubData, error: companySubError });
 
           if (companySubError) {
             console.error("SUPABASE_DB_ERROR", { traceId, step: "company_subscriptions_update", error: companySubError });
@@ -308,28 +312,13 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      case "invoice.paid":
+      case "invoice.paid": {
+        console.log("INVOICE_PAID", { traceId, invoiceId: event.data.object.id });
+        break;
+      }
+
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
-
-        if (subscriptionId) {
-          const { data: subData } = await supabase
-            .from("user_subscriptions")
-            .select("user_id")
-            .eq("stripe_subscription_id", subscriptionId)
-            .maybeSingle();
-
-          if (subData && event.type === "invoice.payment_failed") {
-            const { error: invoiceError } = await supabase.from("profiles").update({
-              plan_tier: "FREE",
-            }).eq("id", subData.user_id);
-
-            if (invoiceError) {
-              console.error("SUPABASE_UPSERT_ERROR [profiles invoice]", invoiceError);
-            }
-          }
-        }
+        console.log("INVOICE_PAYMENT_FAILED", { traceId, invoiceId: event.data.object.id });
         break;
       }
     }

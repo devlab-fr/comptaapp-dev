@@ -48,6 +48,7 @@ export default function AddRevenuePage() {
     : '0.20';
 
   const [date, setDate] = useState(prefillDate);
+  const [sourceType, setSourceType] = useState<'manual' | 'cash'>('manual');
   const [lines, setLines] = useState<RevenueLine[]>([
     {
       id: crypto.randomUUID(),
@@ -212,6 +213,7 @@ export default function AddRevenuePage() {
       total_incl_vat: totals.totalTTC,
       accounting_status: 'draft',
       payment_status: 'unpaid',
+      source_type: sourceType,
     };
 
     if (receiptUrl) {
@@ -473,6 +475,45 @@ export default function AddRevenuePage() {
                   e.currentTarget.style.borderColor = '#d1d5db';
                 }}
               />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                }}
+              >
+                Type de revenu
+              </label>
+              <select
+                value={sourceType}
+                onChange={(e) => setSourceType(e.target.value as 'manual' | 'cash')}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#28a745';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                <option value="manual">Recette directe</option>
+                <option value="cash">Vente en caisse</option>
+              </select>
             </div>
 
             <div style={{ marginBottom: '24px' }}>

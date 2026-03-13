@@ -11,7 +11,6 @@ const PLAN_HIERARCHY: Record<PlanTier, number> = {
 
 export async function getCurrentPlan(userId: string, companyId?: string): Promise<PlanTier> {
   try {
-    console.log('[PLAN_ACCESS] Getting plan for:', { userId, companyId });
 
     // If companyId is provided, get the subscription for that specific company
     if (companyId) {
@@ -21,13 +20,8 @@ export async function getCurrentPlan(userId: string, companyId?: string): Promis
         .eq('company_id', companyId)
         .maybeSingle();
 
-      console.log('[PLAN_ACCESS] company_subscriptions (by companyId) query result:', {
-        subscription,
-        error: subError?.message,
-      });
 
       if (!subError && subscription && subscription.status === 'active') {
-        console.log('[PLAN_ACCESS] Found active company subscription:', subscription.plan_tier);
         return subscription.plan_tier as PlanTier;
       }
     }
@@ -38,11 +32,6 @@ export async function getCurrentPlan(userId: string, companyId?: string): Promis
       .select('company_id')
       .eq('user_id', userId);
 
-    console.log('[PLAN_ACCESS] memberships query result:', {
-      count: memberships?.length || 0,
-      companyIds: memberships?.map(m => m.company_id),
-      error: membershipError?.message,
-    });
 
     if (!membershipError && memberships && memberships.length > 0) {
       const companyIds = memberships.map(m => m.company_id);
@@ -54,14 +43,9 @@ export async function getCurrentPlan(userId: string, companyId?: string): Promis
         .eq('status', 'active')
         .order('plan_tier', { ascending: false });
 
-      console.log('[PLAN_ACCESS] company_subscriptions (by user memberships) query result:', {
-        subscriptions,
-        error: subError?.message,
-      });
 
       if (!subError && subscriptions && subscriptions.length > 0) {
         const highestPlan = subscriptions[0].plan_tier as PlanTier;
-        console.log('[PLAN_ACCESS] Found active subscription(s), highest plan:', highestPlan);
         return highestPlan;
       }
     }
@@ -72,17 +56,11 @@ export async function getCurrentPlan(userId: string, companyId?: string): Promis
       .eq('id', userId)
       .maybeSingle();
 
-    console.log('[PLAN_ACCESS] profiles query result:', {
-      profile,
-      error: profileError?.message,
-    });
 
     if (!profileError && profile && profile.plan_tier) {
-      console.log('[PLAN_ACCESS] Found profile plan:', profile.plan_tier);
       return profile.plan_tier as PlanTier;
     }
 
-    console.log('[PLAN_ACCESS] No plan found, returning FREE');
     return 'FREE';
   } catch (error) {
     console.error('[PLAN_ACCESS] Error getting plan:', error);

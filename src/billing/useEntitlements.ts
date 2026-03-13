@@ -14,6 +14,34 @@ interface CacheKey {
 
 let entitlementsCache: Map<string, CacheKey> = new Map();
 
+function getSessionStorageCache(companyId: string): Entitlements | null {
+  try {
+    const key = `entitlements_${companyId}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && Date.now() - parsed.timestamp < CACHE_DURATION_MS) {
+        return parsed.entitlements;
+      }
+    }
+  } catch (e) {
+    // Ignore sessionStorage errors
+  }
+  return null;
+}
+
+function setSessionStorageCache(companyId: string, entitlements: Entitlements) {
+  try {
+    const key = `entitlements_${companyId}`;
+    sessionStorage.setItem(key, JSON.stringify({
+      entitlements,
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    // Ignore sessionStorage errors
+  }
+}
+
 export function invalidateEntitlementsCache() {
   entitlementsCache.clear();
 }
@@ -26,6 +54,11 @@ export function useEntitlements(): Entitlements {
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
         return cached.entitlements;
       }
+
+      const sessionCached = getSessionStorageCache(companyId);
+      if (sessionCached) {
+        return sessionCached;
+      }
     }
     return defaultEntitlements;
   });
@@ -34,8 +67,6 @@ export function useEntitlements(): Entitlements {
     let isMounted = true;
 
     const fetchEntitlements = async () => {
-      console.log('[selected_company_id]', companyId);
-
       if (!companyId) {
         if (isMounted) {
           setEntitlements(defaultEntitlements);
@@ -45,7 +76,6 @@ export function useEntitlements(): Entitlements {
 
       const cached = entitlementsCache.get(companyId);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
-        console.log('[entitlements] CACHE HIT', { companyId, data: cached.entitlements });
         setEntitlements(cached.entitlements);
         return;
       }
@@ -74,6 +104,7 @@ export function useEntitlements(): Entitlements {
               entitlements: devEntitlements,
               timestamp: Date.now(),
             });
+            setSessionStorageCache(companyId, devEntitlements);
             setEntitlements(devEntitlements);
           }
           return;
@@ -84,7 +115,6 @@ export function useEntitlements(): Entitlements {
         });
 
         if (error) {
-          console.log('[entitlements] ERROR', { companyId, error });
           const cached = entitlementsCache.get(companyId);
           if (isMounted && cached) {
             setEntitlements(cached.entitlements);
@@ -95,13 +125,13 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
-          console.log('[entitlements] FETCH SUCCESS', { companyId, data });
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,
               entitlements: data,
               timestamp: Date.now(),
             });
+            setSessionStorageCache(companyId, data);
             setEntitlements(data);
           }
         }

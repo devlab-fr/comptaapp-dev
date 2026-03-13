@@ -121,7 +121,6 @@ export function parseCSV(csvContent: string): ParsedLine[] {
         amountCents,
       });
     } catch (err) {
-      console.warn(`Skipping line ${i + 1}:`, err);
     }
   }
 

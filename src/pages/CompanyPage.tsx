@@ -800,144 +800,55 @@ export default function CompanyPage() {
                 >
                   Gérer les revenus
                 </button>
-                <button
-                  onClick={() => handleProtectedAction(() => navigate(`/app/company/${companyId}/revenues/new`))}
-                  style={{
-                    padding: '12px 20px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#16a34a',
-                    backgroundColor: 'white',
-                    border: '2px solid #16a34a',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                >
-                  Ajouter un revenu
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => handleProtectedAction(() => navigate(`/app/company/${companyId}/revenues/new`))}
+                    style={{
+                      padding: '12px 20px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#16a34a',
+                      backgroundColor: 'white',
+                      border: '2px solid #16a34a',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      flex: 1,
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    Ajouter un revenu
+                  </button>
+                  <button
+                    onClick={() => handleProtectedAction(() => {
+                      if (canUse('facturation')) {
+                        navigate(`/app/company/${companyId}/factures/new`);
+                      } else {
+                        setShowFacturesUpsell(true);
+                      }
+                    })}
+                    style={{
+                      padding: '12px 20px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#16a34a',
+                      backgroundColor: 'white',
+                      border: '2px solid #16a34a',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      flex: 1,
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    Créer une facture
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-
-          <div style={{
-            padding: '24px 32px',
-            backgroundColor: '#f9fafb',
-            borderRadius: '16px',
-            border: '2px solid #e5e7eb',
-            marginBottom: '32px',
-          }}>
-            <h3 style={{
-              margin: '0 0 20px 0',
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#1a1a1a',
-            }}>
-              Trésorerie & Banque
-            </h3>
-
-            <div className="quick-actions-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-            }}>
-              <button
-                onClick={() => navigate(`/app/company/${companyId}/tresorerie`)}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #10b981',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ fontSize: '28px', marginBottom: '12px' }}>💰</div>
-                <h4 style={{
-                  margin: '0 0 6px 0',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: '#10b981',
-                }}>
-                  Trésorerie
-                </h4>
-                <p style={{
-                  margin: 0,
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  lineHeight: '1.4',
-                }}>
-                  Soldes bancaires
-                </p>
-              </button>
-
-              <button
-                onClick={() => navigate(`/app/company/${companyId}/banque`)}
-                style={{
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  border: '2px solid #0ea5e9',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#e0f2fe';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ fontSize: '28px', marginBottom: '12px' }}>🏦</div>
-                <h4 style={{
-                  margin: '0 0 6px 0',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: '#0ea5e9',
-                }}>
-                  Banque
-                </h4>
-                <p style={{
-                  margin: 0,
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  lineHeight: '1.4',
-                }}>
-                  Import & rapprochement
-                </p>
-              </button>
-            </div>
-          </div>
-
-          <KPIGraphs companyId={companyId!} />
-
-          <AIAssistant
-            context="synthese"
-            data={{
-              netResult: revenueSummary.totalHT - expenseSummary.totalHT,
-              revenues: revenueSummary.totalHT,
-              expenses: expenseSummary.totalHT,
-            }}
-            companyId={companyId!}
-          />
 
           <div style={{
             padding: '24px 32px',
@@ -1004,7 +915,7 @@ export default function CompanyPage() {
               <button
                 onClick={() => {
                   handleProtectedAction(() => {
-                    if (canUse('assistantIA')) {
+                    if (canUse('facturation')) {
                       navigate(`/app/company/${companyId}/factures`);
                     } else {
                       setShowFacturesUpsell(true);
@@ -1048,7 +959,7 @@ export default function CompanyPage() {
                     borderRadius: '4px',
                     fontWeight: '600',
                   }}>
-                    PRO++
+                    PRO
                   </span>
                 </h4>
                 <p style={{
@@ -1062,6 +973,167 @@ export default function CompanyPage() {
               </button>
             </div>
           </div>
+
+          <div style={{
+            padding: '24px 32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+            }}>
+              Trésorerie & Banque
+            </h3>
+
+            <div className="quick-actions-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+            }}>
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/tresorerie`)}
+                style={{
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #10b981',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d1fae5';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>💰</div>
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#10b981',
+                }}>
+                  Trésorerie
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                }}>
+                  Soldes bancaires
+                </p>
+              </button>
+
+              {canUse('banking') ? (
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/banque`)}
+                  style={{
+                    padding: '20px',
+                    backgroundColor: 'white',
+                    border: '2px solid #0ea5e9',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e0f2fe';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '28px', marginBottom: '12px' }}>🏦</div>
+                  <h4 style={{
+                    margin: '0 0 6px 0',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: '#0ea5e9',
+                  }}>
+                    Banque
+                  </h4>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    lineHeight: '1.4',
+                  }}>
+                    Import & rapprochement
+                  </p>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+                  style={{
+                    padding: '20px',
+                    backgroundColor: '#f3f4f6',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'left',
+                    opacity: 0.7,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.7';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '28px', marginBottom: '12px' }}>🔒</div>
+                  <h4 style={{
+                    margin: '0 0 6px 0',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                  }}>
+                    Banque
+                  </h4>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    lineHeight: '1.4',
+                  }}>
+                    Pro+ requis
+                  </p>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <KPIGraphs companyId={companyId!} />
+
+          <AIAssistant
+            context="synthese"
+            data={{
+              netResult: revenueSummary.totalHT - expenseSummary.totalHT,
+              revenues: revenueSummary.totalHT,
+              expenses: expenseSummary.totalHT,
+            }}
+            companyId={companyId!}
+          />
 
           <div style={{
             padding: '24px 32px',
@@ -1614,10 +1686,10 @@ export default function CompanyPage() {
             <div style={{ padding: '40px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
               <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
-                Module Factures disponible en Pro++
+                Module Factures disponible à partir du plan Pro
               </h3>
               <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>
-                Le module Factures est disponible en Pro++. Passez au plan Pro++ pour y accéder.
+                Le module Factures est disponible sur tous les plans payants. Passez à un plan payant pour y accéder.
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
@@ -1663,7 +1735,7 @@ export default function CompanyPage() {
                     e.currentTarget.style.backgroundColor = '#2563eb';
                   }}
                 >
-                  Passer au plan Pro++
+                  Voir les plans payants
                 </button>
               </div>
             </div>

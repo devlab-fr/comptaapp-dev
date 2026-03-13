@@ -5,26 +5,6 @@ import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 import { logoUrl } from '../lib/logoUrl';
 
-/*
-  TODO: CONFIGURATION SUPABASE AUTH - URLs de redirection requises
-
-  Pour que le flow "Mot de passe oublié" fonctionne correctement, vous devez configurer
-  les URLs de redirection dans votre projet Supabase:
-
-  1. Aller dans Supabase Dashboard > Authentication > URL Configuration
-
-  2. Site URL:
-     - Production: https://votre-domaine-production.com
-     - Développement: http://localhost:5173
-
-  3. Redirect URLs (Additional Redirect URLs):
-     - https://votre-domaine-production.com/auth/callback
-     - https://votre-domaine-production.com/reset-password
-     - http://localhost:5173/auth/callback (pour dev)
-     - http://localhost:5173/reset-password (pour dev)
-
-  Sans ces URLs configurées, les liens de réinitialisation de mot de passe ne fonctionneront pas.
-*/
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);

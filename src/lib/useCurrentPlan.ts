@@ -21,10 +21,8 @@ export function useCurrentPlan(userId: string | undefined): {
 
     async function fetchPlan() {
       try {
-        console.log('[useCurrentPlan] Fetching plan for:', { userId, companyId });
         const currentPlan = await getCurrentPlan(userId!, companyId || undefined);
         if (isMounted) {
-          console.log('[useCurrentPlan] Setting plan to:', currentPlan);
           setPlan(currentPlan);
           setLoading(false);
         }

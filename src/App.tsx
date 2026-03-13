@@ -34,6 +34,7 @@ import ConfidentialitePage from './pages/ConfidentialitePage';
 import AcceptInvitationPage from './pages/AcceptInvitationPage';
 import FacturesPage from './pages/FacturesPage';
 import CreateFacturePage from './pages/CreateFacturePage';
+import EditFacturePage from './pages/EditFacturePage';
 import ViewFacturePage from './pages/ViewFacturePage';
 import HistoryImportPage from './pages/HistoryImportPage';
 import CheckEmailPage from './pages/CheckEmailPage';
@@ -86,6 +87,7 @@ export default function App() {
             <Route path="company/:companyId/factures" element={<FacturesPage />} />
             <Route path="company/:companyId/factures/create" element={<CreateFacturePage />} />
             <Route path="company/:companyId/factures/:factureId" element={<ViewFacturePage />} />
+            <Route path="company/:companyId/factures/:factureId/edit" element={<EditFacturePage />} />
             <Route path="company/:companyId/banque" element={<BankPage />} />
             <Route path="company/:companyId/tresorerie" element={<TreasuryPage />} />
             <Route path="company/:companyId/subscription" element={<SubscriptionPage />} />

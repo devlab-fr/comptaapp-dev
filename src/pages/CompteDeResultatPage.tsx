@@ -155,6 +155,7 @@ export default function CompteDeResultatPage() {
         .select('id, invoice_date')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
+        .eq('payment_status', 'paid')
         .eq('is_test', false);
 
       const { data: revenueDocs } = await supabase
@@ -162,6 +163,7 @@ export default function CompteDeResultatPage() {
         .select('id, invoice_date')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
+        .eq('payment_status', 'paid')
         .eq('is_test', false);
 
       const expenseDocsInYear = expenseDocs?.filter((doc) => {
@@ -187,7 +189,7 @@ export default function CompteDeResultatPage() {
           .in('document_id', expenseDocsInYear.map(d => d.id));
 
         if (expenseLines) {
-          const categoryIds = [...new Set(expenseLines.map(l => l.category_id))];
+          const categoryIds = [...new Set(expenseLines.map(l => l.category_id).filter(Boolean))];
           const subcategoryIds = [...new Set(expenseLines.map(l => l.subcategory_id).filter(Boolean))];
 
           const { data: categories } = await supabase
@@ -232,8 +234,8 @@ export default function CompteDeResultatPage() {
           .in('document_id', revenueDocsInYear.map(d => d.id));
 
         if (revenueLines) {
-          const categoryIds = [...new Set(revenueLines.map(l => l.category_id))];
-          const subcategoryIds = [...new Set(revenueLines.map(l => l.subcategory_id))];
+          const categoryIds = [...new Set(revenueLines.map(l => l.category_id).filter(Boolean))];
+          const subcategoryIds = [...new Set(revenueLines.map(l => l.subcategory_id).filter(Boolean))];
 
           const { data: categories } = await supabase
             .from('revenue_categories')

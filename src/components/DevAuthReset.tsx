@@ -16,20 +16,16 @@ export default function DevAuthReset() {
     }
 
     setLoading(true);
-    console.log('DEV_HARD_RESET_START');
 
     try {
       await supabase.auth.signOut();
-      console.log('DEV_HARD_RESET_SIGNOUT_OK');
 
       Object.keys(localStorage).forEach((key) => {
         if (key.includes('supabase')) {
-          console.log('DEV_HARD_RESET_CLEAR_STORAGE', key);
           localStorage.removeItem(key);
         }
       });
 
-      console.log('DEV_HARD_RESET_COMPLETE');
       alert('Session réinitialisée. Redirection vers login...');
       navigate('/login');
     } catch (error) {

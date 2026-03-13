@@ -32,6 +32,7 @@ export default function EditRevenuePage() {
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [sourceType, setSourceType] = useState<'manual' | 'cash'>('manual');
   const [lines, setLines] = useState<RevenueLine[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategoriesMap, setSubcategoriesMap] = useState<Record<string, Subcategory[]>>({});
@@ -62,7 +63,17 @@ export default function EditRevenuePage() {
       return;
     }
 
+    // Bloquer l'édition des revenus issus de factures
+    if (doc.source_type === 'invoice') {
+      setError('Ce revenu provient d\'une facture payée et ne peut pas être modifié ici. Pour modifier ce revenu, vous devez modifier la facture correspondante.');
+      setLoading(false);
+      return;
+    }
+
     setDate(doc.invoice_date);
+    if (doc.source_type === 'manual' || doc.source_type === 'cash') {
+      setSourceType(doc.source_type);
+    }
 
     const { data: linesData, error: linesError } = await supabase
       .from('revenue_lines')
@@ -221,6 +232,7 @@ export default function EditRevenuePage() {
         total_excl_vat: totals.totalHT,
         total_vat: totals.totalTVA,
         total_incl_vat: totals.totalTTC,
+        source_type: sourceType,
       })
       .eq('id', documentId);
 
@@ -359,6 +371,45 @@ export default function EditRevenuePage() {
                   e.currentTarget.style.borderColor = '#d1d5db';
                 }}
               />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                }}
+              >
+                Type de revenu
+              </label>
+              <select
+                value={sourceType}
+                onChange={(e) => setSourceType(e.target.value as 'manual' | 'cash')}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#28a745';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                <option value="manual">Recette directe</option>
+                <option value="cash">Vente en caisse</option>
+              </select>
             </div>
 
             <div style={{ marginBottom: '24px' }}>

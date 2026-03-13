@@ -5,13 +5,15 @@ import { importCSVToBank } from '../banking/csvImport';
 import { exportBankStatementCSV, exportReconciliationCSV, downloadCSV } from '../banking/csvExport';
 import { CreateBankAccountDialog } from '../banking/components/CreateBankAccountDialog';
 import { supabase } from '../lib/supabase';
-import Footer from '../components/Footer';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
+import { usePlan } from '../lib/usePlan';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 export default function BankPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
+  const { canUse, loading: planLoading } = usePlan(companyId);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [lines, setLines] = useState<BankStatementLine[]>([]);
@@ -187,24 +189,40 @@ export default function BankPage() {
             </button>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
 
-  if (loading) {
+  if (planLoading || loading) {
     return (
       <div className="bg-gray-50">
         <main className="container mx-auto px-4 py-8">
-          <p>Chargement...</p>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <p className="text-gray-600 text-lg">Chargement...</p>
+          </div>
         </main>
-        <Footer />
+      </div>
+    );
+  }
+
+  if (!canUse('banking')) {
+    return (
+      <div className="bg-gray-50">
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <BackButton />
+          </div>
+          <UpgradePrompt
+            feature="Module Banque (import bancaire et rapprochement)"
+            requiredPlan="PRO_PLUS"
+          />
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
       <main className="container mx-auto px-4 py-10">
         <div className="mb-6">
           <BackButton />
@@ -410,7 +428,6 @@ export default function BankPage() {
           />
         )}
       </main>
-      <Footer />
     </div>
   );
 }

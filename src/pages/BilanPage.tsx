@@ -149,7 +149,7 @@ export default function BilanPage() {
 
       const { data: expenseDocs } = await supabase
         .from('expense_documents')
-        .select('id, invoice_date, total_incl_vat, total_vat')
+        .select('id, invoice_date, total_excl_vat, total_incl_vat, total_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
         .eq('payment_status', 'paid')
@@ -157,7 +157,7 @@ export default function BilanPage() {
 
       const { data: revenueDocs } = await supabase
         .from('revenue_documents')
-        .select('id, invoice_date, total_incl_vat, total_vat')
+        .select('id, invoice_date, total_excl_vat, total_incl_vat, total_vat')
         .eq('company_id', companyId)
         .eq('accounting_status', 'validated')
         .eq('payment_status', 'paid')
@@ -183,34 +183,14 @@ export default function BilanPage() {
       revenueDocsInYear.forEach((doc) => {
         totalEncaissementsTTC += Number(doc.total_incl_vat);
         tvaCollectee += Number(doc.total_vat);
+        produitsHT += Number(doc.total_excl_vat);
       });
 
       expenseDocsInYear.forEach((doc) => {
         totalDecaissementsTTC += Number(doc.total_incl_vat);
         tvaDeductible += Number(doc.total_vat);
+        chargesHT += Number(doc.total_excl_vat);
       });
-
-      if (revenueDocsInYear.length > 0) {
-        const { data: revenueLines } = await supabase
-          .from('revenue_lines')
-          .select('amount_excl_vat')
-          .in('document_id', revenueDocsInYear.map(d => d.id));
-
-        if (revenueLines) {
-          produitsHT = revenueLines.reduce((sum, line) => sum + Number(line.amount_excl_vat), 0);
-        }
-      }
-
-      if (expenseDocsInYear.length > 0) {
-        const { data: expenseLines } = await supabase
-          .from('expense_lines')
-          .select('amount_excl_vat')
-          .in('document_id', expenseDocsInYear.map(d => d.id));
-
-        if (expenseLines) {
-          chargesHT = expenseLines.reduce((sum, line) => sum + Number(line.amount_excl_vat), 0);
-        }
-      }
 
       // Load opening entries (reprise d'ouverture)
       const { data: openingData } = await supabase

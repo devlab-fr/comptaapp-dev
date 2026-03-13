@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 
 interface ActionsDropdownProps {
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onToggleValidation?: () => void;
   onTogglePaid?: () => void;
   accountingStatus?: string;
@@ -82,32 +82,34 @@ export function ActionsDropdown({
             overflow: 'hidden',
           }}
         >
-          <button
-            onClick={() => {
-              onEdit();
-              setIsOpen(false);
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              textAlign: 'left',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#1f2937',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Modifier
-          </button>
+          {onEdit && (
+            <button
+              onClick={() => {
+                onEdit();
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                textAlign: 'left',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#1f2937',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Modifier
+            </button>
+          )}
 
           {onToggleValidation && (
             <button
@@ -169,33 +171,35 @@ export function ActionsDropdown({
             </button>
           )}
 
-          <button
-            onClick={() => {
-              onDelete();
-              setIsOpen(false);
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              textAlign: 'left',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#dc2626',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderTop: '1px solid #f3f4f6',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#fef2f2';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Supprimer
-          </button>
+          {onDelete && (
+            <button
+              onClick={() => {
+                onDelete();
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                textAlign: 'left',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#dc2626',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderTop: '1px solid #f3f4f6',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#fef2f2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Supprimer
+            </button>
+          )}
         </div>
       )}
     </div>

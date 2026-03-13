@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getBankAccounts, BankAccount } from '../banking/queries';
 import { calculateTreasuryBalance, TreasuryBalance } from '../treasury/calculations';
-import Footer from '../components/Footer';
 import BackButton from '../components/BackButton';
 
 export default function TreasuryPage() {
@@ -72,7 +71,6 @@ export default function TreasuryPage() {
             </button>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -83,13 +81,12 @@ export default function TreasuryPage() {
         <main className="container mx-auto px-4 py-8">
           <p>Chargement...</p>
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
       <main className="container mx-auto px-4 py-10">
         <div className="mb-6">
           <BackButton />
@@ -189,7 +186,6 @@ export default function TreasuryPage() {
           </div>
         )}
       </main>
-      <Footer />
     </div>
   );
 }

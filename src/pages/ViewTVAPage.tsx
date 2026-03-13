@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
+import TvaDeclareModal from '../components/TvaDeclareModal';
 import AIAssistant from '../components/AIAssistant';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -27,7 +28,6 @@ interface MonthlyTVA {
   status: 'open' | 'declared';
   periodId?: string;
   declaredAt?: string | null;
-  declaredBy?: string | null;
 }
 
 interface ToastState {
@@ -63,11 +63,19 @@ export default function ViewTVAPage() {
     fiscal_year_end?: string;
   } | null>(null);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '', type: 'success' });
+  const [showDeclareModal, setShowDeclareModal] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ];
+
+  const getVatBalanceLabel = (solde: number): string => {
+    if (solde > 0) return 'TVA à payer';
+    if (solde < 0) return 'Crédit de TVA à reporter';
+    return 'Solde TVA nul';
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -363,7 +371,6 @@ export default function ViewTVAPage() {
           monthlyTVA[month].status = period.status as 'open' | 'declared';
           monthlyTVA[month].periodId = period.id;
           monthlyTVA[month].declaredAt = period.declared_at || null;
-          monthlyTVA[month].declaredBy = period.declared_by || null;
         }
       });
 
@@ -392,24 +399,22 @@ export default function ViewTVAPage() {
   }, [companyId, selectedYear]);
 
   const markPeriodAsDeclared = async (month: number) => {
-    if (!companyId) return;
+    setSelectedMonth(month);
+    setShowDeclareModal(true);
+  };
 
-    const monthNum = Number(month);
+  const handleConfirmDeclaration = async (declaredDateInput: string) => {
+    if (!companyId || selectedMonth === null) return;
+
+    const monthNum = Number(selectedMonth);
     const yearNum = Number(selectedYear);
 
-    const today = new Date().toISOString().split('T')[0];
-    const declaredDateInput = prompt(
-      `Date de déclaration (format: YYYY-MM-DD)`,
-      today
-    );
+    setShowDeclareModal(false);
 
-    if (!declaredDateInput) {
-      return;
-    }
-
+    // Convert date input (YYYY-MM-DD) to date string for storage
     let declaredAt: string;
     try {
-      declaredAt = new Date(declaredDateInput).toISOString();
+      declaredAt = declaredDateInput;
     } catch {
       showToast('Format de date invalide', 'error');
       return;
@@ -418,69 +423,45 @@ export default function ViewTVAPage() {
     const existingPeriod = monthlyData.find(m => m.month === monthNum);
 
     if (existingPeriod?.periodId) {
-      await supabase
+      const { error } = await supabase
         .from('vat_periods')
         .update({
           status: 'declared',
           declared_at: declaredAt,
-          declared_by: (await supabase.auth.getUser()).data.user?.id || null,
         })
         .eq('id', existingPeriod.periodId);
+
+      if (error) {
+        console.error('VAT_UPDATE_FAILED', error);
+        showToast('Impossible de marquer la période comme déclarée', 'error');
+        return;
+      }
     } else {
       if (!yearNum || !monthNum || isNaN(yearNum) || isNaN(monthNum)) {
         console.error('VAT_INSERT_VALIDATION_FAILED', 'year ou month manquants', {
           selectedYear,
-          month,
-          yearNum,
           monthNum,
+          yearNum,
           existingPeriod
         });
         showToast('Période invalide (year/month manquants)', 'error');
         return;
       }
 
-      const currentUserId = (await supabase.auth.getUser()).data.user?.id || null;
-
-      const candidate1 = {
-        company_id: companyId,
-        period_year: yearNum,
-        period_month: monthNum,
-        status: 'declared' as const,
-        declared_at: declaredAt,
-        declared_by: currentUserId,
-      };
-
-      const candidate2 = {
-        period_year: yearNum,
-        period_month: monthNum,
-        status: 'declared' as const,
-        declared_at: declaredAt,
-        declared_by: currentUserId,
-      };
-
-      const { error: error1 } = await supabase
+      const { error } = await supabase
         .from('vat_periods')
-        .insert(candidate1);
+        .insert({
+          company_id: companyId,
+          year: yearNum,
+          month: monthNum,
+          status: 'declared',
+          declared_at: declaredAt,
+        });
 
-      if (error1) {
-        const isColumnError = error1.code === '42703' ||
-                             (error1.message && error1.message.toLowerCase().includes('does not exist'));
-
-        if (isColumnError && error1.message.includes('company_id')) {
-          const { error: error2 } = await supabase
-            .from('vat_periods')
-            .insert(candidate2);
-
-          if (error2) {
-            console.error('VAT_INSERT_FAILED', error2);
-            showToast('Impossible de créer la période', 'error');
-            return;
-          }
-        } else {
-          console.error('VAT_INSERT_FAILED', error1);
-          showToast('Impossible de créer la période', 'error');
-          return;
-        }
+      if (error) {
+        console.error('VAT_INSERT_FAILED', error);
+        showToast('Impossible de créer la période', 'error');
+        return;
       }
     }
 
@@ -490,7 +471,7 @@ export default function ViewTVAPage() {
         : m
     );
     setMonthlyData(updatedMonthly);
-    showToast(`Période déclarée le ${new Date(declaredAt).toLocaleDateString('fr-FR')}`, 'success');
+    showToast(`Période déclarée avec succès`, 'success');
   };
 
   const markPeriodAsOpen = async (month: number) => {
@@ -503,12 +484,13 @@ export default function ViewTVAPage() {
         .from('vat_periods')
         .update({
           status: 'open',
+          declared_at: null,
         })
         .eq('id', existingPeriod.periodId);
 
       const updatedMonthly = monthlyData.map(m =>
         m.month === month
-          ? { ...m, status: 'open' as const }
+          ? { ...m, status: 'open' as const, declaredAt: null }
           : m
       );
       setMonthlyData(updatedMonthly);
@@ -1591,7 +1573,7 @@ export default function ViewTVAPage() {
                         letterSpacing: '0.5px',
                       }}
                     >
-                      Solde TVA
+                      {getVatBalanceLabel(tvaData.soldeTVA)}
                     </p>
                     <p
                       style={{
@@ -1600,7 +1582,7 @@ export default function ViewTVAPage() {
                         color: '#9ca3af',
                       }}
                     >
-                      {tvaData.soldeTVA >= 0 ? 'À reverser' : 'Crédit de TVA'}
+                      {tvaData.soldeTVA === 0 ? 'Aucun montant à reverser' : (tvaData.soldeTVA > 0 ? 'À reverser' : 'Crédit à reporter')}
                     </p>
                   </div>
                 </div>
@@ -1611,13 +1593,17 @@ export default function ViewTVAPage() {
                     fontWeight: '700',
                     color: loading
                       ? '#9ca3af'
-                      : tvaData.soldeTVA >= 0
+                      : tvaData.soldeTVA === 0
+                      ? '#6b7280'
+                      : tvaData.soldeTVA > 0
                       ? '#059669'
                       : '#dc2626',
                   }}
                 >
                   {loading
                     ? '...'
+                    : tvaData.soldeTVA === 0
+                    ? '0,00 €'
                     : new Intl.NumberFormat('fr-FR', {
                         style: 'currency',
                         currency: 'EUR',
@@ -2048,15 +2034,33 @@ export default function ViewTVAPage() {
                             style={{
                               padding: '12px 16px',
                               fontSize: '14px',
-                              color: month.soldeTVA >= 0 ? '#059669' : '#dc2626',
                               textAlign: 'right',
-                              fontWeight: '600',
                             }}
                           >
-                            {new Intl.NumberFormat('fr-FR', {
-                              style: 'currency',
-                              currency: 'EUR',
-                            }).format(Math.abs(month.soldeTVA))}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                              <span
+                                style={{
+                                  fontWeight: '600',
+                                  color: month.soldeTVA === 0 ? '#6b7280' : month.soldeTVA > 0 ? '#059669' : '#dc2626',
+                                }}
+                              >
+                                {month.soldeTVA === 0
+                                  ? '0,00 €'
+                                  : new Intl.NumberFormat('fr-FR', {
+                                      style: 'currency',
+                                      currency: 'EUR',
+                                    }).format(Math.abs(month.soldeTVA))}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#9ca3af',
+                                  fontWeight: '500',
+                                }}
+                              >
+                                {month.soldeTVA > 0 ? 'à payer' : month.soldeTVA < 0 ? 'crédit' : 'solde nul'}
+                              </span>
+                            </div>
                           </td>
                           <td
                             style={{
@@ -2084,7 +2088,7 @@ export default function ViewTVAPage() {
                                     color: '#6b7280',
                                   }}
                                 >
-                                  le {new Date(month.declaredAt).toLocaleDateString('fr-FR')}
+                                  {new Date(month.declaredAt).toLocaleDateString('fr-FR')}
                                 </span>
                               )}
                             </div>
@@ -2191,6 +2195,19 @@ export default function ViewTVAPage() {
           message={toast.message}
           type={toast.type}
           onClose={closeToast}
+        />
+      )}
+
+      {selectedMonth !== null && (
+        <TvaDeclareModal
+          isOpen={showDeclareModal}
+          month={monthNames[selectedMonth - 1]}
+          soldeTVA={monthlyData.find(m => m.month === selectedMonth)?.soldeTVA || 0}
+          onConfirm={handleConfirmDeclaration}
+          onCancel={() => {
+            setShowDeclareModal(false);
+            setSelectedMonth(null);
+          }}
         />
       )}
 

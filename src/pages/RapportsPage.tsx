@@ -719,14 +719,6 @@ export default function RapportsPage() {
 
       const bilanData = await calculateBilan(companyId!, selectedYear);
 
-      console.log('PDF_BILAN_DEBUG', JSON.stringify({
-        actif: bilanData.actif,
-        passif: bilanData.passif,
-        totalActif: bilanData.actif.total,
-        totalPassif: bilanData.passif.total,
-        equilibre: bilanData.equilibre
-      }, null, 2));
-
       const tresorerie = bilanData.actif.tresorerie;
       const actifImmobilise = 0;
       const actifCirculant = bilanData.actif.creancesClients + bilanData.actif.autresActifs;
