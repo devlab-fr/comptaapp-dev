@@ -81,7 +81,7 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.refreshSession();
 
         if (!session) {
           console.log('[ENTITLEMENTS_DEBUG] No session found, falling back to FREE', { companyId });
