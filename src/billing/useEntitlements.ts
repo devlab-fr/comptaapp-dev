@@ -121,6 +121,9 @@ export function useEntitlements(): Entitlements {
 
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
+          headers: {
+            Authorization: `Bearer ${session?.access_token || ''}`
+          }
         });
 
         console.log('[ENTITLEMENTS_DEBUG] After edge function call', {
