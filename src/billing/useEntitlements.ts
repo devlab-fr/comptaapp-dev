@@ -84,6 +84,7 @@ export function useEntitlements(): Entitlements {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
+          console.log('[ENTITLEMENTS_DEBUG] No session found, falling back to FREE', { companyId });
           if (isMounted) {
             setEntitlements(defaultEntitlements);
           }
@@ -110,11 +111,31 @@ export function useEntitlements(): Entitlements {
           return;
         }
 
+        console.log('[ENTITLEMENTS_DEBUG] Before edge function call', {
+          companyId,
+          userId: session.user?.id,
+          email: session.user?.email,
+          expiresAt: session.expires_at,
+          isExpired: session.expires_at ? new Date(session.expires_at * 1000) < new Date() : 'unknown',
+        });
+
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
         });
 
+        console.log('[ENTITLEMENTS_DEBUG] After edge function call', {
+          companyId,
+          data,
+          error,
+          hasData: !!data,
+          hasError: !!error,
+        });
+
         if (error) {
+          console.error('[ENTITLEMENTS_DEBUG] Edge function returned error, falling back to FREE', {
+            companyId,
+            error,
+          });
           const cached = entitlementsCache.get(companyId);
           if (isMounted && cached) {
             setEntitlements(cached.entitlements);
@@ -125,6 +146,11 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
+          console.log('[ENTITLEMENTS_DEBUG] Success, setting entitlements', {
+            companyId,
+            plan: data.plan,
+            status: data.status,
+          });
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,
@@ -136,6 +162,10 @@ export function useEntitlements(): Entitlements {
           }
         }
       } catch (error) {
+        console.error('[ENTITLEMENTS_DEBUG] Exception caught, falling back to FREE', {
+          companyId,
+          error,
+        });
         const cached = entitlementsCache.get(companyId);
         if (isMounted && cached) {
           setEntitlements(cached.entitlements);
