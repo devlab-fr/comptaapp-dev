@@ -1,3 +1,0 @@
-export default function PAGE_NAME() {
-  return <div>PAGE_NAME</div>;
-}
