@@ -69,6 +69,8 @@ function jsonResponse(body: any, status = 200) {
 }
 
 Deno.serve(async (req: Request) => {
+  console.log('🔥 EDGE FUNCTION V2 ACTIVE');
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
