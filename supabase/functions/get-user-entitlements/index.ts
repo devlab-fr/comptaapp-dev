@@ -85,10 +85,21 @@ Deno.serve(async (req: Request) => {
 
     if (!jwt) {
       console.log('[ENTITLEMENTS_EDGE] Missing JWT');
-      return new Response(JSON.stringify({ code: 401, message: "Missing JWT" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          code: 401,
+          message: "AUTH_DEBUG_STEP_1",
+          step: "missing_jwt_check",
+          hasAuthHeader: !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
+          authHeaderPrefix: (req.headers.get("authorization") ?? req.headers.get("Authorization"))?.slice(0, 20) ?? null,
+          authHeaderLength: (req.headers.get("authorization") ?? req.headers.get("Authorization"))?.length ?? 0,
+          allHeaders: Object.fromEntries(req.headers.entries())
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     console.log('[ENTITLEMENTS_EDGE] JWT validation', {
@@ -129,7 +140,8 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           code: 401,
-          message: "AUTH_DEBUG",
+          message: "AUTH_DEBUG_STEP_2",
+          step: "getUser_failed",
           getUser_error_message: error?.message ?? null,
           getUser_error_status: (error as any)?.status ?? null,
           jwt_len: jwt?.length ?? null,
