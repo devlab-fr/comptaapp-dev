@@ -126,10 +126,42 @@ Deno.serve(async (req: Request) => {
 
     if (error || !user) {
       console.log('[ENTITLEMENTS_EDGE] Invalid JWT', { error: error?.message });
-      return new Response(JSON.stringify({ code: 401, message: "Invalid JWT" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          code: 401,
+          message: "AUTH_DEBUG",
+          getUser_error_message: error?.message ?? null,
+          getUser_error_status: (error as any)?.status ?? null,
+          jwt_len: jwt?.length ?? null,
+          jwt_parts: jwt ? jwt.split(".").length : null,
+          jwt_iss: (() => {
+            try {
+              return JSON.parse(atob(jwt.split(".")[1]))?.iss ?? null;
+            } catch {
+              return null;
+            }
+          })(),
+          jwt_aud: (() => {
+            try {
+              return JSON.parse(atob(jwt.split(".")[1]))?.aud ?? null;
+            } catch {
+              return null;
+            }
+          })(),
+          jwt_exp: (() => {
+            try {
+              return JSON.parse(atob(jwt.split(".")[1]))?.exp ?? null;
+            } catch {
+              return null;
+            }
+          })(),
+          supabaseUrl: supabaseUrl ?? null
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     console.log('[ENTITLEMENTS_EDGE] User authenticated', { userId: user.id });
