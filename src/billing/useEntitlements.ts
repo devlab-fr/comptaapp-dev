@@ -81,10 +81,24 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.refreshSession();
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+        const session = refreshData?.session;
+        const accessToken = refreshData?.session?.access_token;
 
         if (!session) {
-          console.log('[ENTITLEMENTS_DEBUG] No session found, falling back to FREE', { companyId });
+          console.log('[ENTITLEMENTS_DEBUG] No session found, falling back to FREE', { companyId, refreshError });
+          if (isMounted) {
+            setEntitlements(defaultEntitlements);
+          }
+          return;
+        }
+
+        if (!accessToken) {
+          console.log('[ENTITLEMENTS_DEBUG] No valid token after refresh', {
+            companyId,
+            refreshError,
+          });
           if (isMounted) {
             setEntitlements(defaultEntitlements);
           }
@@ -122,7 +136,7 @@ export function useEntitlements(): Entitlements {
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
           headers: {
-            Authorization: `Bearer ${session?.access_token || ''}`
+            Authorization: `Bearer ${accessToken}`
           }
         });
 
