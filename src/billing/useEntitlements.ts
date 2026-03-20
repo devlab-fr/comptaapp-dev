@@ -133,6 +133,13 @@ export function useEntitlements(): Entitlements {
           isExpired: session.expires_at ? new Date(session.expires_at * 1000) < new Date() : 'unknown',
         });
 
+        const { data: userData } = await supabase.auth.getUser();
+
+        console.log('[AUTH_USER_CHECK]', {
+          user: userData?.user?.id ?? null,
+          email: userData?.user?.email ?? null
+        });
+
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
           headers: {
