@@ -74,109 +74,44 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader =
-      req.headers.get("authorization") ??
-      req.headers.get("Authorization") ??
-      "";
+    const authHeader = req.headers.get('Authorization');
 
-    const jwt = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7).trim()
-      : authHeader.trim();
+    console.log('[AUTH_HEADER]', authHeader);
 
-    if (!jwt) {
-      console.log('[ENTITLEMENTS_EDGE] Missing JWT');
+    const token = authHeader?.replace('Bearer ', '');
+
+    console.log('[JWT_TOKEN]', token);
+
+    if (!token) {
       return new Response(
-        JSON.stringify({
-          code: 401,
-          message: "AUTH_DEBUG_STEP_1",
-          step: "missing_jwt_check",
-          hasAuthHeader: !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
-          authHeaderPrefix: (req.headers.get("authorization") ?? req.headers.get("Authorization"))?.slice(0, 20) ?? null,
-          authHeaderLength: (req.headers.get("authorization") ?? req.headers.get("Authorization"))?.length ?? 0,
-          allHeaders: Object.fromEntries(req.headers.entries())
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: 'USER_NOT_AUTHENTICATED' }),
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    console.log('[ENTITLEMENTS_EDGE] JWT validation', {
-      headerPrefix: authHeader.slice(0, 20),
-      jwtLength: jwt.length,
-      jwtParts: jwt.split(".").length,
-    });
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader!,
+          },
+        },
+      }
+    );
 
-    console.log("DEBUG supabaseUrl:", supabaseUrl);
-    console.log("DEBUG anonKey_len:", (supabaseAnonKey ?? "").length);
-    console.log("DEBUG jwt_len:", jwt.length);
-    console.log("DEBUG jwt_parts:", jwt.split(".").length);
-    console.log("DEBUG authHeader_prefix:", authHeader.slice(0, 20));
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
 
-    try {
-      const payload = JSON.parse(atob(jwt.split(".")[1] ?? ""));
-      console.log("DEBUG jwt_iss:", payload?.iss);
-      console.log("DEBUG jwt_aud:", payload?.aud);
-      console.log("DEBUG jwt_exp:", payload?.exp);
-      console.log("DEBUG jwt_iat:", payload?.iat);
-    } catch (e) {
-      console.log("DEBUG jwt_payload_decode_error");
-    }
+    console.log('[EDGE_USER]', user);
+    console.log('[EDGE_ERROR]', error);
 
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-
-    const { data: { user }, error } = await supabaseUser.auth.getUser();
-
-    console.log("DEBUG getUser_error:", error);
-    console.log("DEBUG getUser_error_message:", error?.message);
-    console.log("DEBUG getUser_error_status:", (error as any)?.status);
-    console.log("DEBUG user_id:", user?.id);
-
-    if (error || !user) {
-      console.log('[ENTITLEMENTS_EDGE] Invalid JWT', { error: error?.message });
+    if (!user) {
       return new Response(
-        JSON.stringify({
-          code: 401,
-          message: "AUTH_DEBUG_STEP_2",
-          step: "getUser_failed",
-          getUser_error_message: error?.message ?? null,
-          getUser_error_status: (error as any)?.status ?? null,
-          jwt_len: jwt?.length ?? null,
-          jwt_parts: jwt ? jwt.split(".").length : null,
-          jwt_iss: (() => {
-            try {
-              return JSON.parse(atob(jwt.split(".")[1]))?.iss ?? null;
-            } catch {
-              return null;
-            }
-          })(),
-          jwt_aud: (() => {
-            try {
-              return JSON.parse(atob(jwt.split(".")[1]))?.aud ?? null;
-            } catch {
-              return null;
-            }
-          })(),
-          jwt_exp: (() => {
-            try {
-              return JSON.parse(atob(jwt.split(".")[1]))?.exp ?? null;
-            } catch {
-              return null;
-            }
-          })(),
-          supabaseUrl: supabaseUrl ?? null
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: 'USER_NOT_AUTHENTICATED' }),
+        { status: 401, headers: corsHeaders }
       );
     }
-
-    console.log('[ENTITLEMENTS_EDGE] User authenticated', { userId: user.id });
 
     const body = await req.json().catch(() => ({}));
     const companyId = body.companyId;
