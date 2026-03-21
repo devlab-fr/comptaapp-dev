@@ -97,6 +97,8 @@ Deno.serve(async (req: Request) => {
       jwtParts: jwt.split(".").length,
     });
 
+    console.log("EDGE_SUPABASE_URL:", Deno.env.get("SUPABASE_URL"));
+
     console.log("DEBUG supabaseUrl:", supabaseUrl);
     console.log("DEBUG anonKey_len:", (supabaseAnonKey ?? "").length);
     console.log("DEBUG jwt_len:", jwt.length);
