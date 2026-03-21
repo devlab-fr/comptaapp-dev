@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 export interface FreshSession {
   accessToken: string;
   userId: string;
+  expires_at?: number;
 }
 
 export async function ensureFreshSession(): Promise<FreshSession> {
@@ -25,5 +26,6 @@ export async function ensureFreshSession(): Promise<FreshSession> {
   return {
     accessToken: session.access_token,
     userId: session.user?.id || '',
+    expires_at: session.expires_at,
   };
 }

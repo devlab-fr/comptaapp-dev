@@ -120,6 +120,15 @@ export function useEntitlements(): Entitlements {
         console.log('session email:', user?.email);
         console.log('accessToken exists:', !!session?.accessToken);
 
+        const { data: userCheck, error: userError } = await supabase.auth.getUser();
+        console.log("JWT VALID TEST:", {
+          user: userCheck?.user?.id,
+          error: userError,
+        });
+
+        console.log("JWT EXPIRATION:", session?.expires_at);
+        console.log("NOW:", Date.now() / 1000);
+
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
           headers: {
