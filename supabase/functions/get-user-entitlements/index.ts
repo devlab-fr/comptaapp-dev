@@ -126,6 +126,12 @@ Deno.serve(async (req: Request) => {
     console.log("DEBUG getUser_error_status:", (error as any)?.status);
     console.log("DEBUG user_id:", user?.id);
 
+    // 1. Log user debug juste après getUser()
+    console.log("USER DEBUG:", {
+      userId: user?.id,
+      email: user?.email
+    });
+
     if (error || !user) {
       console.log('[ENTITLEMENTS_EDGE] Invalid JWT', { error: error?.message });
       return new Response(JSON.stringify({ code: 401, message: "Invalid JWT" }), {
@@ -139,11 +145,40 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const companyId = body.companyId;
 
+    // 2. Log les inputs
+    console.log("INPUT DEBUG:", {
+      companyId
+    });
+
     if (!companyId) {
       return jsonResponse(DEFAULT_ENTITLEMENTS);
     }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 3. Requête FULL TABLE temporaire
+    const { data, error: fullError } = await supabaseAdmin
+      .from("company_subscriptions")
+      .select("*")
+      .limit(10);
+
+    console.log("FULL TABLE company_subscriptions:", {
+      data,
+      error: fullError
+    });
+
+    // 4. Requête filtrée
+    const { data: filtered, error: filteredError } = await supabaseAdmin
+      .from("company_subscriptions")
+      .select("*")
+      .eq("company_id", companyId);
+
+    console.log("FILTERED RESULT:", {
+      filtered,
+      filteredError
+    });
+
+    // Requête originale
     const { data: subscription, error: subscriptionError } = await supabaseAdmin
       .from("company_subscriptions")
       .select("plan_tier, status")
