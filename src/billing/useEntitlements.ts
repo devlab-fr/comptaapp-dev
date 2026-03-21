@@ -3,6 +3,7 @@ import { defaultEntitlements, type Entitlements } from './entitlements';
 import { supabase } from '../lib/supabase';
 import { shouldApplyDevOverride } from '../utils/devOverride';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
+import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
 
 const CACHE_DURATION_MS = 60000;
 
@@ -81,16 +82,19 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await ensureFreshSession();
 
-        if (!session) {
+        if (!session?.accessToken) {
+          console.warn('[ENTITLEMENTS] No valid session');
           if (isMounted) {
             setEntitlements(defaultEntitlements);
           }
           return;
         }
 
-        if (shouldApplyDevOverride(session.user?.email)) {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (shouldApplyDevOverride(user?.email)) {
           const devEntitlements: Entitlements = {
             plan: 'pro_pp',
             status: 'active',
@@ -112,6 +116,9 @@ export function useEntitlements(): Entitlements {
 
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`
+          }
         });
 
         if (error) {
