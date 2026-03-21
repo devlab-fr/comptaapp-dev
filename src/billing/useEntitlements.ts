@@ -114,12 +114,22 @@ export function useEntitlements(): Entitlements {
           return;
         }
 
+        console.log('[ENTITLEMENTS DEBUG START]');
+        console.log('companyId:', companyId);
+        console.log('companyId type:', typeof companyId);
+        console.log('session email:', user?.email);
+        console.log('accessToken exists:', !!session?.accessToken);
+
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
           headers: {
             Authorization: `Bearer ${session.accessToken}`
           }
         });
+
+        console.log('[ENTITLEMENTS DEBUG RESPONSE]');
+        console.log('data:', data);
+        console.log('error:', error);
 
         if (error) {
           const cached = entitlementsCache.get(companyId);
