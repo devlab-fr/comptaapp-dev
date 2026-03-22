@@ -152,7 +152,19 @@ Deno.serve(async (req: Request) => {
 
     if (!anthropicResponse.ok) {
       const errorText = await anthropicResponse.text();
-      console.error('[AI ANTHROPIC ERROR BODY]', errorText);
+      console.error('[AI ANTHROPIC ERROR FULL BODY]', errorText);
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('[AI ANTHROPIC ERROR PARSED]', {
+          type: errorJson.error?.type || errorJson.type || 'Unknown',
+          message: errorJson.error?.message || errorJson.message || 'No message',
+          code: errorJson.error?.code || errorJson.code || 'No code'
+        });
+      } catch (parseError) {
+        console.error('[AI ANTHROPIC ERROR NOT JSON]', 'Body is not valid JSON');
+      }
+
       throw new Error("Anthropic API request failed");
     }
 
