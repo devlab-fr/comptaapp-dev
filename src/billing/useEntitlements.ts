@@ -83,12 +83,22 @@ export function useEntitlements(): Entitlements {
 
       try {
         let userEmail: string | undefined;
+        let accessToken: string;
 
         try {
           await ensureFreshSession();
 
           const { data: { session } } = await supabase.auth.getSession();
           userEmail = session?.user?.email;
+          accessToken = session?.access_token || '';
+
+          if (!accessToken) {
+            console.warn('[ENTITLEMENTS] No access token found in session');
+            if (isMounted) {
+              setEntitlements(defaultEntitlements);
+            }
+            return;
+          }
         } catch (error) {
           console.warn('[ENTITLEMENTS] Failed to get fresh session', error);
           if (isMounted) {
@@ -119,6 +129,9 @@ export function useEntitlements(): Entitlements {
 
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         if (error) {
