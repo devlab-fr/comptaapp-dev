@@ -3,6 +3,7 @@ import { defaultEntitlements, type Entitlements } from './entitlements';
 import { supabase } from '../lib/supabase';
 import { shouldApplyDevOverride } from '../utils/devOverride';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
+import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
 
 const CACHE_DURATION_MS = 60000;
 
@@ -81,17 +82,22 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let userEmail: string | undefined;
 
-        if (!session) {
-          console.warn('[ENTITLEMENTS] No valid session');
+        try {
+          await ensureFreshSession();
+
+          const { data: { session } } = await supabase.auth.getSession();
+          userEmail = session?.user?.email;
+        } catch (error) {
+          console.warn('[ENTITLEMENTS] Failed to get fresh session', error);
           if (isMounted) {
             setEntitlements(defaultEntitlements);
           }
           return;
         }
 
-        if (shouldApplyDevOverride(session.user?.email)) {
+        if (shouldApplyDevOverride(userEmail)) {
           const devEntitlements: Entitlements = {
             plan: 'pro_pp',
             status: 'active',
@@ -126,7 +132,6 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
-          console.log('[ENTITLEMENTS] Received data from Edge Function:', data);
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,

@@ -41,12 +41,6 @@ export default function CompteDeResultatPage() {
   const planTier = convertEntitlementsPlanToTier(entitlements.plan);
   const hasProAccess = hasFeature(planTier, 'transactions_unlimited');
 
-  console.log('[CompteDeResultat] DEBUG:', {
-    entitlements,
-    planTier,
-    hasProAccess,
-  });
-
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [resultatData, setResultatData] = useState<ResultatData>({
