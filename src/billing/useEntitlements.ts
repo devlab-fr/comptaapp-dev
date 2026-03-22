@@ -82,10 +82,12 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
+        let accessToken: string;
         let userEmail: string | undefined;
 
         try {
-          await ensureFreshSession();
+          const freshSession = await ensureFreshSession();
+          accessToken = freshSession.accessToken;
 
           const { data: { session } } = await supabase.auth.getSession();
           userEmail = session?.user?.email;
@@ -119,6 +121,9 @@ export function useEntitlements(): Entitlements {
 
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         if (error) {
