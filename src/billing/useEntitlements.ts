@@ -126,6 +126,7 @@ export function useEntitlements(): Entitlements {
         }
 
         if (data) {
+          console.log('[ENTITLEMENTS] Received data from Edge Function:', data);
           if (isMounted) {
             entitlementsCache.set(companyId, {
               companyId,
