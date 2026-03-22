@@ -118,32 +118,16 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(DEFAULT_ENTITLEMENTS);
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    // 3. Requête FULL TABLE temporaire
-    const { data, error: fullError } = await supabaseAdmin
-      .from("company_subscriptions")
-      .select("*")
-      .limit(10);
-
-    console.log("FULL TABLE company_subscriptions:", {
-      data,
-      error: fullError
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${jwt}`
+        }
+      }
     });
 
-    // 4. Requête filtrée
-    const { data: filtered, error: filteredError } = await supabaseAdmin
-      .from("company_subscriptions")
-      .select("*")
-      .eq("company_id", companyId);
-
-    console.log("FILTERED RESULT:", {
-      filtered,
-      filteredError
-    });
-
-    // Requête originale
-    const { data: subscription, error: subscriptionError } = await supabaseAdmin
+    // Requête avec JWT utilisateur (plus de service role)
+    const { data: subscription, error: subscriptionError } = await supabaseUser
       .from("company_subscriptions")
       .select("plan_tier, status")
       .eq("company_id", companyId)
