@@ -333,7 +333,7 @@ export function AiScanPage() {
 
     setScanning(true);
     try {
-      const { result, requestId: scanRequestId } = await scanReceipt(file, pdfConvertedImage || undefined);
+      const { result, requestId: scanRequestId } = await scanReceipt(file, pdfConvertedImage || undefined, companyId);
 
       let normalizedResult = { ...result };
       if (normalizedResult.tva_rate !== null && normalizedResult.tva_rate !== undefined) {

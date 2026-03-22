@@ -61,6 +61,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
           data,
           userMessage: userInput,
           conversationHistory: messages,
+          companyId,
         }),
       });
 

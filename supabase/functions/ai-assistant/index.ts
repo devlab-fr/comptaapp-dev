@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,13 @@ INTERDICTIONS :
 TON RÔLE :
 Expliquer la signification des chiffres comptables affichés, les mécanismes comptables de base, et aider l'utilisateur à mieux comprendre ses données.`;
 
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -34,7 +42,49 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { context, data, userMessage, conversationHistory } = await req.json();
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return jsonResponse({ error: "Unauthorized - invalid token" }, 401);
+    }
+
+    const { context, data, userMessage, conversationHistory, companyId } = await req.json();
+
+    if (!companyId) {
+      return jsonResponse({ error: "Missing companyId" }, 400);
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      return jsonResponse({ error: "Forbidden - not a member of this company" }, 403);
+    }
+
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from("company_subscriptions")
+      .select("plan_tier, status")
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (subscriptionError || !subscription || subscription.plan_tier !== "PRO_PLUS_PLUS" || subscription.status !== "active") {
+      return jsonResponse({ error: "Forbidden - Pro++ subscription required" }, 403);
+    }
 
     if (!userMessage || !context || !data) {
       return new Response(

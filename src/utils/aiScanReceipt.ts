@@ -17,7 +17,7 @@ export interface ScanReceiptResponse {
   requestId: string;
 }
 
-export async function scanReceipt(file: File, pdfConvertedImage?: { base64: string; mimeType: string }): Promise<ScanReceiptResponse> {
+export async function scanReceipt(file: File, pdfConvertedImage?: { base64: string; mimeType: string }, companyId?: string): Promise<ScanReceiptResponse> {
   let base64: string;
   let mimeType: string;
 
@@ -47,7 +47,8 @@ export async function scanReceipt(file: File, pdfConvertedImage?: { base64: stri
       requestId,
       fileName: file.name,
       fileSize: file.size,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
+      companyId
     })
   });
 
