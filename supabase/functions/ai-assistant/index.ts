@@ -67,6 +67,14 @@ Deno.serve(async (req: Request) => {
 
     const { context, data, userMessage, conversationHistory, companyId } = await req.json();
 
+    console.log('[AI BODY PARSED]', {
+      context,
+      companyId,
+      hasData: !!data,
+      dataKeys: data ? Object.keys(data) : [],
+      userMessageLength: userMessage?.length || 0
+    });
+
     if (!companyId) {
       return jsonResponse({ error: "Missing companyId" }, 400);
     }
@@ -104,6 +112,11 @@ Deno.serve(async (req: Request) => {
 
     const contextDescription = getContextDescription(context, data);
 
+    console.log('[AI CONTEXT BUILT]', {
+      success: true,
+      contextPreview: contextDescription.slice(0, 100)
+    });
+
     const messages = [
       ...(conversationHistory || []),
       {
@@ -132,13 +145,25 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
+    console.log('[AI ANTHROPIC RESPONSE]', {
+      status: anthropicResponse.status,
+      ok: anthropicResponse.ok
+    });
+
     if (!anthropicResponse.ok) {
       const errorText = await anthropicResponse.text();
-      console.error("Anthropic API error:", errorText);
+      console.error('[AI ANTHROPIC ERROR BODY]', errorText);
       throw new Error("Anthropic API request failed");
     }
 
     const anthropicData = await anthropicResponse.json();
+
+    console.log('[AI ANTHROPIC DATA STRUCTURE]', {
+      hasContent: !!anthropicData.content,
+      contentLength: anthropicData.content?.length || 0,
+      topLevelKeys: Object.keys(anthropicData)
+    });
+
     const assistantResponse = anthropicData.content[0].text;
 
     return new Response(
@@ -148,7 +173,11 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("AI Assistant error:", error);
+    console.error('[AI CATCH ERROR]', {
+      errorName: error?.name || 'Unknown',
+      errorMessage: error?.message || 'No message',
+      errorStack: error?.stack || 'No stack'
+    });
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
