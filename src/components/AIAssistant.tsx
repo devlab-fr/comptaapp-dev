@@ -17,7 +17,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [userInput, setUserInput] = useState('');
   const [showLegalGate, setShowLegalGate] = useState(false);
-  const { canUse } = usePlan(companyId);
+  const { canUse, loading: planLoading } = usePlan(companyId);
   const { hasAccepted, loading: legalLoading } = useLegalAcceptance(companyId);
   const navigate = useNavigate();
 
@@ -195,7 +195,11 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
           </button>
         </div>
 
-        {!hasAccess ? (
+        {planLoading ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>Chargement...</div>
+          </div>
+        ) : !hasAccess ? (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
             <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
