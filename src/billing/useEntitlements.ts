@@ -47,8 +47,9 @@ export function invalidateEntitlementsCache() {
   entitlementsCache.clear();
 }
 
-export function useEntitlements(): Entitlements {
+export function useEntitlements(): Entitlements & { isLoading?: boolean } {
   const companyId = useCurrentCompany();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [entitlements, setEntitlements] = useState<Entitlements>(() => {
     if (companyId) {
       const cached = entitlementsCache.get(companyId);
@@ -71,6 +72,7 @@ export function useEntitlements(): Entitlements {
       if (!companyId) {
         if (isMounted) {
           setEntitlements(defaultEntitlements);
+          setIsLoading(false);
         }
         return;
       }
@@ -78,6 +80,7 @@ export function useEntitlements(): Entitlements {
       const cached = entitlementsCache.get(companyId);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
         setEntitlements(cached.entitlements);
+        setIsLoading(false);
         return;
       }
 
@@ -96,6 +99,7 @@ export function useEntitlements(): Entitlements {
             console.warn('[ENTITLEMENTS] No access token found in session');
             if (isMounted) {
               setEntitlements(defaultEntitlements);
+              setIsLoading(false);
             }
             return;
           }
@@ -103,6 +107,7 @@ export function useEntitlements(): Entitlements {
           console.warn('[ENTITLEMENTS] Failed to get fresh session', error);
           if (isMounted) {
             setEntitlements(defaultEntitlements);
+            setIsLoading(false);
           }
           return;
         }
@@ -123,6 +128,7 @@ export function useEntitlements(): Entitlements {
             });
             setSessionStorageCache(companyId, devEntitlements);
             setEntitlements(devEntitlements);
+            setIsLoading(false);
           }
           return;
         }
@@ -171,6 +177,9 @@ export function useEntitlements(): Entitlements {
           } else if (isMounted) {
             setEntitlements(defaultEntitlements);
           }
+          if (isMounted) {
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -183,6 +192,7 @@ export function useEntitlements(): Entitlements {
             });
             setSessionStorageCache(companyId, data);
             setEntitlements(data);
+            setIsLoading(false);
           }
         }
       } catch (error) {
@@ -191,6 +201,9 @@ export function useEntitlements(): Entitlements {
           setEntitlements(cached.entitlements);
         } else if (isMounted) {
           setEntitlements(defaultEntitlements);
+        }
+        if (isMounted) {
+          setIsLoading(false);
         }
       }
     };
@@ -202,5 +215,5 @@ export function useEntitlements(): Entitlements {
     };
   }, [companyId]);
 
-  return entitlements;
+  return { ...entitlements, isLoading };
 }

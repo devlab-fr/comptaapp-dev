@@ -40,6 +40,7 @@ export default function CompteDeResultatPage() {
   const entitlements = useEntitlements();
   const planTier = convertEntitlementsPlanToTier(entitlements.plan);
   const hasProAccess = hasFeature(planTier, 'transactions_unlimited');
+  const isLoadingEntitlements = entitlements.isLoading;
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -630,6 +631,27 @@ export default function CompteDeResultatPage() {
   };
 
   const hasData = resultatData.produitsHT !== 0 || resultatData.chargesHT !== 0;
+
+  if (isLoadingEntitlements) {
+    return (
+      <>
+        <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
+          <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+          <BackButton to={`/app/company/${companyId}`} />
+
+          <div style={{ marginBottom: '24px' }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '32px', fontWeight: '700', color: '#1a1a1a' }}>
+              Compte de Résultat
+            </h2>
+            <p style={{ margin: 0, fontSize: '16px', color: '#6b7280' }}>
+              Chargement...
+            </p>
+          </div>
+        </main>
+        </div>
+      </>
+    );
+  }
 
   if (!hasProAccess) {
     return (
