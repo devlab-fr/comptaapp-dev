@@ -43,6 +43,12 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get("authorization");
+    console.log('[AI EDGE AUTH]', {
+      hasHeader: !!authHeader,
+      preview: authHeader?.slice(0, 30),
+      length: authHeader?.length
+    });
+
     if (!authHeader) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }

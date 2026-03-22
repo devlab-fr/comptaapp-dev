@@ -38,6 +38,13 @@ export async function scanReceipt(file: File, pdfConvertedImage?: { base64: stri
     throw new Error('Session expirée. Veuillez vous reconnecter.');
   }
 
+  console.log('[AI AUTH DEBUG]', {
+    hasSession: !!session,
+    hasAccessToken: !!session?.access_token,
+    tokenPreview: session?.access_token?.slice(0, 20),
+    tokenLength: session?.access_token?.length
+  });
+
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-scan-receipt`;
   const headers = {
     'Authorization': `Bearer ${session.access_token}`,
