@@ -86,11 +86,11 @@ export function useEntitlements(): Entitlements {
         let accessToken: string;
 
         try {
-          await ensureFreshSession();
+          const freshSession = await ensureFreshSession();
+          accessToken = freshSession.accessToken;
 
           const { data: { session } } = await supabase.auth.getSession();
           userEmail = session?.user?.email;
-          accessToken = session?.access_token || '';
 
           if (!accessToken) {
             console.warn('[ENTITLEMENTS] No access token found in session');
