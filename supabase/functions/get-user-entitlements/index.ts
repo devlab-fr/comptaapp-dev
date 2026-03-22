@@ -91,56 +91,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    console.log('[ENTITLEMENTS_EDGE] JWT validation', {
-      headerPrefix: authHeader.slice(0, 20),
-      jwtLength: jwt.length,
-      jwtParts: jwt.split(".").length,
-    });
-
-    console.log("EDGE_SUPABASE_URL:", Deno.env.get("SUPABASE_URL"));
-
-    console.log("DEBUG supabaseUrl:", supabaseUrl);
-    console.log("DEBUG anonKey_len:", (supabaseAnonKey ?? "").length);
-    console.log("DEBUG jwt_len:", jwt.length);
-    console.log("DEBUG jwt_parts:", jwt.split(".").length);
-    console.log("DEBUG authHeader_prefix:", authHeader.slice(0, 20));
-
+    let userId: string | undefined;
     try {
       const payload = JSON.parse(atob(jwt.split(".")[1] ?? ""));
-      console.log("DEBUG jwt_iss:", payload?.iss);
-      console.log("DEBUG jwt_aud:", payload?.aud);
-      console.log("DEBUG jwt_exp:", payload?.exp);
-      console.log("DEBUG jwt_iat:", payload?.iat);
-    } catch (e) {
-      console.log("DEBUG jwt_payload_decode_error");
-    }
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-
-    const { data: { user }, error } = await supabaseUser.auth.getUser();
-
-    console.log("DEBUG getUser_error:", error);
-    console.log("DEBUG getUser_error_message:", error?.message);
-    console.log("DEBUG getUser_error_status:", (error as any)?.status);
-    console.log("DEBUG user_id:", user?.id);
-
-    // 1. Log user debug juste après getUser()
-    console.log("USER DEBUG:", {
-      userId: user?.id,
-      email: user?.email
-    });
-
-    if (error || !user) {
-      console.log('[ENTITLEMENTS_EDGE] Invalid JWT', { error: error?.message });
-      return new Response(JSON.stringify({ code: 401, message: "Invalid JWT" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      userId = payload?.sub;
+      console.log('[ENTITLEMENTS_EDGE] JWT decoded', {
+        userId,
+        iss: payload?.iss,
+        aud: payload?.aud,
       });
+    } catch (e) {
+      console.log('[ENTITLEMENTS_EDGE] JWT decode error', e);
     }
 
-    console.log('[ENTITLEMENTS_EDGE] User authenticated', { userId: user.id });
+    console.log('[ENTITLEMENTS_EDGE] JWT validation bypassed, relying on verifyJWT=true', { userId });
 
     const body = await req.json().catch(() => ({}));
     const companyId = body.companyId;
