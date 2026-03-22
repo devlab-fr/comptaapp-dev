@@ -3,6 +3,7 @@ import { usePlan } from '../lib/usePlan';
 import { useNavigate } from 'react-router-dom';
 import { useLegalAcceptance } from '../hooks/useLegalAcceptance';
 import { LegalGateModal } from './legal/LegalGateModal';
+import { supabase } from '../lib/supabase';
 
 interface AIAssistantProps {
   context: 'synthese' | 'compte-resultat' | 'tva';
@@ -47,9 +48,14 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       };
 

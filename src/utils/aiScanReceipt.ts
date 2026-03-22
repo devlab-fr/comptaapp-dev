@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export interface AiScanResult {
   suggested_type: 'expense' | 'revenue' | null;
   date: string | null;
@@ -31,9 +33,14 @@ export async function scanReceipt(file: File, pdfConvertedImage?: { base64: stri
 
   const requestId = crypto.randomUUID();
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Session expirée. Veuillez vous reconnecter.');
+  }
+
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-scan-receipt`;
   const headers = {
-    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    'Authorization': `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
   };
 
