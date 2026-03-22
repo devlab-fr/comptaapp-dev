@@ -3,7 +3,6 @@ import { defaultEntitlements, type Entitlements } from './entitlements';
 import { supabase } from '../lib/supabase';
 import { shouldApplyDevOverride } from '../utils/devOverride';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
-import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
 
 const CACHE_DURATION_MS = 60000;
 
@@ -82,9 +81,9 @@ export function useEntitlements(): Entitlements {
       }
 
       try {
-        const session = await ensureFreshSession();
+        const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session?.accessToken) {
+        if (!session) {
           console.warn('[ENTITLEMENTS] No valid session');
           if (isMounted) {
             setEntitlements(defaultEntitlements);
@@ -92,9 +91,7 @@ export function useEntitlements(): Entitlements {
           return;
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (shouldApplyDevOverride(user?.email)) {
+        if (shouldApplyDevOverride(session.user?.email)) {
           const devEntitlements: Entitlements = {
             plan: 'pro_pp',
             status: 'active',
@@ -114,31 +111,9 @@ export function useEntitlements(): Entitlements {
           return;
         }
 
-        console.log('[ENTITLEMENTS DEBUG START]');
-        console.log('companyId:', companyId);
-        console.log('companyId type:', typeof companyId);
-        console.log('session email:', user?.email);
-        console.log('accessToken exists:', !!session?.accessToken);
-
-        const { data: userCheck, error: userError } = await supabase.auth.getUser();
-        console.log("JWT VALID TEST:", {
-          user: userCheck?.user?.id,
-          error: userError,
-        });
-
-        console.log("JWT EXPIRATION:", session?.expires_at);
-        console.log("NOW:", Date.now() / 1000);
-
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
-          headers: {
-            Authorization: `Bearer ${session.accessToken}`
-          }
         });
-
-        console.log('[ENTITLEMENTS DEBUG RESPONSE]');
-        console.log('data:', data);
-        console.log('error:', error);
 
         if (error) {
           const cached = entitlementsCache.get(companyId);
