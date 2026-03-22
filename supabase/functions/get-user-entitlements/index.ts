@@ -100,6 +100,16 @@ Deno.serve(async (req: Request) => {
         iss: payload?.iss,
         aud: payload?.aud,
       });
+
+      // Validation issuer JWT
+      const expectedIssuer = `${supabaseUrl}/auth/v1`;
+      if (!payload?.iss || !payload.iss.startsWith(expectedIssuer)) {
+        console.log('[ENTITLEMENTS_EDGE] JWT issuer mismatch', {
+          expected: expectedIssuer,
+          actual: payload?.iss
+        });
+        return jsonResponse({ code: 401, message: "Invalid JWT issuer" }, 401);
+      }
     } catch (e) {
       console.log('[ENTITLEMENTS_EDGE] JWT decode error', e);
     }
