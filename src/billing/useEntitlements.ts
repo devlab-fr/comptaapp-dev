@@ -127,6 +127,36 @@ export function useEntitlements(): Entitlements {
           return;
         }
 
+        // ========== DIAGNOSTIC JWT - DÉBUT ==========
+        try {
+          const parts = accessToken.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            const expectedProject = 'lmbxmluyggwvvjpyvlnt';
+            const now = Math.floor(Date.now() / 1000);
+            const isExpired = payload.exp ? payload.exp < now : true;
+            const projectMatch =
+              payload.ref === expectedProject ||
+              (payload.iss && payload.iss.includes(expectedProject));
+
+            console.log('🔍 [JWT DIAGNOSTIC]', {
+              iss: payload.iss,
+              aud: payload.aud,
+              role: payload.role,
+              sub: payload.sub,
+              exp: payload.exp,
+              expDate: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'N/A',
+              isExpired,
+              ref: payload.ref,
+              expectedProject,
+              projectMatch: projectMatch ? '✅ OK' : '❌ MISMATCH',
+            });
+          }
+        } catch (e) {
+          console.warn('[JWT DIAGNOSTIC] Failed to decode JWT', e);
+        }
+        // ========== DIAGNOSTIC JWT - FIN ==========
+
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
           headers: {
