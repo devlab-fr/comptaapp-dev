@@ -178,29 +178,6 @@ Deno.serve(async (req: Request) => {
 
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-          const { data: subData, error: subError } = await supabase.from("user_subscriptions").upsert({
-            user_id: userId,
-            stripe_subscription_id: subscriptionId,
-            stripe_customer_id: customerId,
-            price_id: priceId,
-            status: subscription.status,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            plan_tier: planTier,
-            cancel_at_period_end: subscription.cancel_at_period_end,
-          }, {
-            onConflict: "user_id"
-          }).select();
-
-          console.log("DB_STEP_RESULT", { traceId, step: "user_subscriptions_upsert", data: subData, error: subError });
-
-          if (subError) {
-            console.error("SUPABASE_DB_ERROR", { traceId, step: "user_subscriptions_upsert", error: subError });
-            return new Response(JSON.stringify({ ok: false, traceId, step: "user_subscriptions_upsert", error: subError }), {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
           const { data: companySubData, error: companySubError } = await supabase.from("company_subscriptions").upsert({
             company_id: companyId,
             plan_tier: planTier,
@@ -267,47 +244,26 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        const { data: subData } = await supabase
-          .from("user_subscriptions")
-          .select("user_id")
-          .eq("stripe_subscription_id", subscriptionId)
-          .maybeSingle();
-
-        if (subData) {
-          const { error: subUpdateError } = await supabase.from("user_subscriptions").update({
-            status: subscription.status,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            plan_tier: planTier,
-            cancel_at_period_end: subscription.cancel_at_period_end,
-            price_id: priceId,
-            updated_at: new Date().toISOString(),
-          }).eq("stripe_subscription_id", subscriptionId);
-
-          if (subUpdateError) {
-            console.error("SUPABASE_UPSERT_ERROR [user_subscriptions update]", subUpdateError);
-          }
-
-          const { error: companySubUpdateError } = await supabase.from("company_subscriptions").update({
+        const { error: companySubUpdateError } = await supabase.from("company_subscriptions").update({
             plan_tier: planTier,
             status: subscription.status,
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           }).eq("company_id", companyId);
 
-          console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", companyId, error: companySubUpdateError });
+        console.log("DB_STEP_RESULT", { traceId, step: "company_subscriptions_update", companyId, error: companySubUpdateError });
 
-          if (companySubUpdateError) {
-            console.error("SUPABASE_UPSERT_ERROR [company_subscriptions update]", companySubUpdateError);
-            return new Response(JSON.stringify({
-              ok: false,
-              traceId,
-              error: "DB_UPDATE_ERROR",
-              step: "company_subscriptions_update",
-              details: companySubUpdateError
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+        if (companySubUpdateError) {
+          console.error("SUPABASE_UPSERT_ERROR [company_subscriptions update]", companySubUpdateError);
+          return new Response(JSON.stringify({
+            ok: false,
+            traceId,
+            error: "DB_UPDATE_ERROR",
+            step: "company_subscriptions_update",
+            details: companySubUpdateError
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
         break;
       }
