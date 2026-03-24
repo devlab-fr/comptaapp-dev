@@ -627,17 +627,17 @@ export function AiScanPage() {
 
           <button
             onClick={handleScan}
-            disabled={scanning}
+            disabled={scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)}
             style={{
               width: '100%',
               padding: '16px',
-              backgroundColor: scanning ? '#d1d5db' : '#3b82f6',
+              backgroundColor: (scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)) ? '#d1d5db' : '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: scanning ? 'not-allowed' : 'pointer',
+              cursor: (scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s'
             }}
           >
