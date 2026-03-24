@@ -71,14 +71,7 @@ export default function CompanyPage() {
   };
 
   const onCGUAccepted = () => {
-    console.log('[AUDIT CGU] onCGUAccepted appelé - AVANT setState', {
-      acceptedCGULocally,
-      legalLoading,
-      hasAcceptedCGU: hasAccepted('cgu'),
-      companyId
-    });
     setAcceptedCGULocally(true);
-    console.log('[AUDIT CGU] onCGUAccepted - APRÈS setAcceptedCGULocally(true)');
     setShowLegalGate(false);
     if (pendingAction) {
       pendingAction();
@@ -157,10 +150,6 @@ export default function CompanyPage() {
   }, [companyId]);
 
   useEffect(() => {
-    console.log('[AUDIT CGU] useEffect companyId - RESET acceptedCGULocally', {
-      companyId,
-      acceptedCGULocallyAvantReset: acceptedCGULocally
-    });
     setAcceptedCGULocally(false);
   }, [companyId]);
 
@@ -375,17 +364,7 @@ export default function CompanyPage() {
           margin: '0 auto',
           padding: '32px 24px',
         }}>
-          {(() => {
-            const shouldShowBanner = !legalLoading && !acceptedCGULocally && !hasAccepted('cgu');
-            console.log('[AUDIT CGU] RENDER - condition bannière', {
-              legalLoading,
-              acceptedCGULocally,
-              hasAcceptedCGU: hasAccepted('cgu'),
-              shouldShowBanner,
-              companyId
-            });
-            return shouldShowBanner;
-          })() && (
+          {!legalLoading && !acceptedCGULocally && !hasAccepted('cgu') && (
             <div style={{
               padding: '16px 20px',
               backgroundColor: '#fef3c7',
