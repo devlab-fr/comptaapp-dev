@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { invalidateEntitlementsCache } from '../billing/useEntitlements';
+import { normalizePlanTier, formatPlanLabel } from '../billing/planRules';
 
 export default function BillingSuccessPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [, setPlan] = useState<string>('');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -16,6 +18,18 @@ export default function BillingSuccessPage() {
         if (!user) {
           navigate('/login');
           return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan_tier')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile) {
+          const normalizedTier = normalizePlanTier(profile.plan_tier);
+          const planLabel = formatPlanLabel(normalizedTier);
+          setPlan(planLabel);
         }
       } catch (error) {
         console.error('Error loading profile:', error);
