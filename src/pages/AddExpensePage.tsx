@@ -253,6 +253,14 @@ export default function AddExpensePage() {
       return;
     }
 
+    if (prefillReceiptUrl && docData.id) {
+      await supabase.from('attachments').insert({
+        company_id: companyId,
+        expense_document_id: docData.id,
+        file_path: prefillReceiptStoragePath,
+      });
+    }
+
     setCreatedDocumentId(docData.id);
     setLoading(false);
   };
