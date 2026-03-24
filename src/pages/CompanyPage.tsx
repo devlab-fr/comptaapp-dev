@@ -48,6 +48,7 @@ export default function CompanyPage() {
   const [showLegalGate, setShowLegalGate] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [showFacturesUpsell, setShowFacturesUpsell] = useState(false);
+  const [acceptedCGULocally, setAcceptedCGULocally] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0, unpaidAmount: 0 });
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0 });
@@ -70,6 +71,7 @@ export default function CompanyPage() {
   };
 
   const onCGUAccepted = () => {
+    setAcceptedCGULocally(true);
     setShowLegalGate(false);
     if (pendingAction) {
       pendingAction();
@@ -145,6 +147,10 @@ export default function CompanyPage() {
     };
 
     loadCompany();
+  }, [companyId]);
+
+  useEffect(() => {
+    setAcceptedCGULocally(false);
   }, [companyId]);
 
   const loadExpenseSummary = async () => {
@@ -358,7 +364,7 @@ export default function CompanyPage() {
           margin: '0 auto',
           padding: '32px 24px',
         }}>
-          {!legalLoading && !hasAccepted('cgu') && (
+          {!legalLoading && !acceptedCGULocally && !hasAccepted('cgu') && (
             <div style={{
               padding: '16px 20px',
               backgroundColor: '#fef3c7',
