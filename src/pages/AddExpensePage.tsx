@@ -35,6 +35,9 @@ export default function AddExpensePage() {
   const prefillDescription = searchParams.get('description') || '';
   const prefillCategoryId = searchParams.get('category_id') || '';
   const prefillSubcategoryId = searchParams.get('subcategory_id') || '';
+  const prefillReceiptUrl = searchParams.get('receipt_url') || '';
+  const prefillReceiptStoragePath = searchParams.get('receipt_storage_path') || '';
+  const prefillReceiptFilename = searchParams.get('receipt_filename') || '';
 
   const calculatedTVARate = prefillAmountHT && prefillVAT
     ? (parseFloat(prefillVAT) / parseFloat(prefillAmountHT)).toFixed(2)
@@ -189,7 +192,7 @@ export default function AddExpensePage() {
       return;
     }
 
-    const documentData = {
+    const documentData: any = {
       company_id: companyId,
       invoice_date: date,
       total_excl_vat: amountHTNum,
@@ -198,6 +201,12 @@ export default function AddExpensePage() {
       accounting_status: 'draft',
       payment_status: 'unpaid',
     };
+
+    if (prefillReceiptUrl) {
+      documentData.receipt_url = prefillReceiptUrl;
+      documentData.receipt_storage_path = prefillReceiptStoragePath;
+      documentData.receipt_filename = prefillReceiptFilename;
+    }
 
     const { data: docData, error: docError } = await supabase
       .from('expense_documents')
