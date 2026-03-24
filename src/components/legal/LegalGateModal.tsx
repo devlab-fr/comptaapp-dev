@@ -21,22 +21,24 @@ export function LegalGateModal({
   const [error, setError] = useState<string | null>(null);
   const [document, setDocument] = useState<LegalDocument | null>(null);
   const [checkedOnOpen, setCheckedOnOpen] = useState(false);
+  const [acceptedLocally, setAcceptedLocally] = useState(false);
 
   useEffect(() => {
     if (isOpen && !checkedOnOpen) {
       const doc = getActiveDoc(documentKey);
       setDocument(doc);
 
-      if (hasAccepted(documentKey)) {
+      if (acceptedLocally || hasAccepted(documentKey)) {
         onAccepted();
         onClose();
       }
       setCheckedOnOpen(true);
     } else if (!isOpen) {
       setCheckedOnOpen(false);
+      setAcceptedLocally(false);
       setError(null);
     }
-  }, [isOpen, documentKey]);
+  }, [isOpen, documentKey, acceptedLocally]);
 
   const handleAccept = async () => {
     if (!document) return;
@@ -50,6 +52,7 @@ export function LegalGateModal({
     });
 
     if (result.success) {
+      setAcceptedLocally(true);
       onAccepted();
       onClose();
     } else {
