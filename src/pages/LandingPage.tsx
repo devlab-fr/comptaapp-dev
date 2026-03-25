@@ -334,15 +334,11 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">30 dépenses/mois</span>
+                  <span className="text-gray-600">50 transactions/mois</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">30 recettes/mois</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Rapports basiques</span>
+                  <span className="text-gray-600">Trésorerie simple</span>
                 </li>
               </ul>
               <Link
@@ -363,19 +359,19 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Dépenses illimitées</span>
+                  <span className="text-gray-600">Transactions illimitées</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Recettes illimitées</span>
+                  <span className="text-gray-600">Trésorerie</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Déclarations TVA</span>
+                  <span className="text-gray-600">Exports CSV et PDF</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Facturation</span>
+                  <span className="text-gray-600">Facturation PDF</span>
                 </li>
               </ul>
               <Link
@@ -403,15 +399,15 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0">✓</span>
-                  <span>Comptabilité complète</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0">✓</span>
-                  <span>Liasse fiscale</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0">✓</span>
                   <span>Rapports avancés</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0">✓</span>
+                  <span>Scan automatique (OCR)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0">✓</span>
+                  <span>Import bancaire</span>
                 </li>
               </ul>
               <Link
@@ -436,11 +432,19 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Assistant IA</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
                   <span className="text-gray-600">Banque intégrée</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
                   <span className="text-gray-600">Multi-entreprises</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Documents AG</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
