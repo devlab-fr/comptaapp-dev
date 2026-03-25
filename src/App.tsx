@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
@@ -40,6 +40,7 @@ import HistoryImportPage from './pages/HistoryImportPage';
 import CheckEmailPage from './pages/CheckEmailPage';
 import BankPage from './pages/BankPage';
 import TreasuryPage from './pages/TreasuryPage';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
   return (
@@ -108,7 +109,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/app" replace />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
