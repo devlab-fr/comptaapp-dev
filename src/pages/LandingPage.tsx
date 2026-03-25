@@ -8,9 +8,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                C
-              </div>
+              <img src="/comptaapp-logo.svg" alt="ComptaApp Logo" className="w-8 h-8" />
               <span className="text-xl font-semibold text-gray-900">ComptaApp</span>
             </div>
             <div className="flex items-center gap-4">
@@ -474,9 +472,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                  C
-                </div>
+                <img src="/comptaapp-logo.svg" alt="ComptaApp Logo" className="w-8 h-8" />
                 <span className="text-lg font-semibold text-white">ComptaApp</span>
               </div>
               <p className="text-sm">
