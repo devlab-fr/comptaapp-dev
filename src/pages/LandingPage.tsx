@@ -35,9 +35,9 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
-            Gérez votre comptabilité automatiquement,
+            Gérez votre comptabilité simplement,
             <br />
-            <span className="text-blue-600">sans expert-comptable</span>
+            <span className="text-blue-600">sans complexité</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             ComptaApp automatise vos dépenses, TVA et factures en quelques clics.
@@ -196,7 +196,7 @@ export default function LandingPage() {
               Toutes les fonctionnalités dont vous avez besoin
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Une solution complète pour gérer votre entreprise sereinement.
+              Une solution simple pour gérer votre comptabilité efficacement.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -283,7 +283,7 @@ export default function LandingPage() {
                   Expert-comptable
                 </h3>
                 <div className="mb-4">
-                  <span className="text-4xl font-bold text-gray-900">200€+</span>
+                  <span className="text-4xl font-bold text-gray-900">À partir de 200€</span>
                   <span className="text-gray-600">/mois</span>
                 </div>
                 <p className="text-gray-600">
@@ -345,7 +345,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Essayer gratuitement
+                Créer mon compte gratuit
               </Link>
             </div>
 
@@ -359,26 +359,26 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Transactions illimitées</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Trésorerie</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Exports CSV et PDF</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
                   <span className="text-gray-600">Facturation PDF</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Dépenses & recettes</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Export CSV/PDF</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">TVA simplifiée</span>
                 </li>
               </ul>
               <Link
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Essayer gratuitement
+                Passer à Pro
               </Link>
             </div>
 
@@ -414,7 +414,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
               >
-                Essayer gratuitement
+                Passer à Pro+
               </Link>
             </div>
 
@@ -436,26 +436,14 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Banque intégrée</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Multi-entreprises</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Documents AG</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Support prioritaire</span>
+                  <span className="text-gray-600">Documents officiels AG</span>
                 </li>
               </ul>
               <Link
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Essayer gratuitement
+                Passer à Pro++
               </Link>
             </div>
           </div>
