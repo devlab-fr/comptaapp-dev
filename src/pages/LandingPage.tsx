@@ -270,6 +270,48 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Comparison Section */}
+      <section className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-12 text-center">
+            Pourquoi choisir ComptaApp ?
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-gray-200">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Expert-comptable
+                </h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-gray-900">200€+</span>
+                  <span className="text-gray-600">/mois</span>
+                </div>
+                <p className="text-gray-600">
+                  Solution traditionnelle avec des coûts élevés et une dépendance constante
+                </p>
+              </div>
+            </div>
+            <div className="bg-blue-600 rounded-xl p-8 shadow-lg border-2 border-blue-700">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  ComptaApp
+                </h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-white">15€</span>
+                  <span className="text-blue-100">/mois</span>
+                </div>
+                <p className="text-blue-50">
+                  Automatisation complète pour une gestion autonome et économique
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xl text-gray-600 text-center max-w-2xl mx-auto">
+            Une solution simple et accessible pour gérer votre comptabilité sans complexité.
+          </p>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
