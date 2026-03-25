@@ -1,7 +1,32 @@
 import { Link } from 'react-router-dom';
 import { logoUrl } from '../lib/logoUrl';
+import { useEffect, useRef, useState } from 'react';
 
 export default function LandingPage() {
+  const [heroVisible, setHeroVisible] = useState(false);
+  const sectionsRef = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    setHeroVisible(true);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fade-in-up');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    sectionsRef.current.forEach((section) => {
+      if (section) observer.observe(section);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -33,15 +58,15 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className={`text-5xl sm:text-6xl font-bold text-gray-900 mb-6 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             Gérez votre comptabilité simplement,
             <br />
             <span className="text-blue-600">sans complexité</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className={`text-xl text-gray-600 mb-8 max-w-3xl mx-auto transition-all duration-700 delay-100 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             ComptaApp automatise vos dépenses, TVA et factures en quelques clics.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-700 delay-200 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <Link
               to="/app"
               className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -59,7 +84,7 @@ export default function LandingPage() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8">
+      <section ref={(el) => sectionsRef.current.push(el)} className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8 opacity-0 translate-y-8 transition-all duration-700">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -108,7 +133,7 @@ export default function LandingPage() {
       </section>
 
       {/* Solution Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section ref={(el) => sectionsRef.current.push(el)} className="py-20 px-4 sm:px-6 lg:px-8 opacity-0 translate-y-8 transition-all duration-700">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -188,7 +213,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8">
+      <section ref={(el) => sectionsRef.current.push(el)} id="features" className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8 opacity-0 translate-y-8 transition-all duration-700">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -270,7 +295,7 @@ export default function LandingPage() {
       </section>
 
       {/* Comparison Section */}
-      <section className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8">
+      <section ref={(el) => sectionsRef.current.push(el)} className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8 opacity-0 translate-y-8 transition-all duration-700">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-12 text-center">
             Pourquoi choisir ComptaApp ?
@@ -323,7 +348,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-1">Gratuit</h3>
               <p className="text-sm text-gray-500 mb-4">Pour découvrir</p>
               <div className="mb-6">
@@ -348,7 +373,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-1">Pro</h3>
               <p className="text-sm text-gray-500 mb-4">Idéal pour indépendants</p>
               <div className="mb-6">
@@ -381,7 +406,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="bg-blue-600 text-white rounded-2xl p-8 relative shadow-xl">
+            <div className="bg-blue-600 text-white rounded-2xl p-8 relative shadow-xl transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 px-4 py-1 rounded-full text-sm font-semibold">
                 Le plus choisi
               </div>
@@ -417,7 +442,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-1">Pro++</h3>
               <p className="text-sm text-gray-500 mb-4">Pour gestion avancée</p>
               <div className="mb-6">
