@@ -24,7 +24,7 @@ export default function LandingPage() {
                 to="/app"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Commencer
+                Essayer gratuitement
               </Link>
             </div>
           </div>
@@ -35,12 +35,12 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
-            La comptabilité simplifiée
+            Gérez votre comptabilité automatiquement,
             <br />
-            <span className="text-blue-600">pour les entrepreneurs</span>
+            <span className="text-blue-600">sans expert-comptable</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Gérez votre comptabilité en toute autonomie. Suivez vos finances, déclarez votre TVA et éditez vos factures professionnelles en quelques clics.
+            ComptaApp automatise vos dépenses, TVA et factures en quelques clics.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -281,9 +281,10 @@ export default function LandingPage() {
               Choisissez le plan adapté à vos besoins. Sans engagement.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Gratuit</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">Gratuit</h3>
+              <p className="text-sm text-gray-500 mb-4">Pour découvrir</p>
               <div className="mb-6">
                 <span className="text-4xl font-bold text-gray-900">0€</span>
                 <span className="text-gray-600">/mois</span>
@@ -306,71 +307,98 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Commencer
+                Essayer gratuitement
+              </Link>
+            </div>
+
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">Pro</h3>
+              <p className="text-sm text-gray-500 mb-4">Idéal pour indépendants</p>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-gray-900">15€</span>
+                <span className="text-gray-600">/mois</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Dépenses illimitées</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Recettes illimitées</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Déclarations TVA</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Facturation</span>
+                </li>
+              </ul>
+              <Link
+                to="/app"
+                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Essayer gratuitement
               </Link>
             </div>
 
             <div className="bg-blue-600 text-white rounded-2xl p-8 relative shadow-xl">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 px-4 py-1 rounded-full text-sm font-semibold">
-                Populaire
+                Le plus choisi
               </div>
-              <h3 className="text-2xl font-bold mb-2">Essentiel</h3>
+              <h3 className="text-2xl font-bold mb-1">Pro+</h3>
+              <p className="text-sm text-blue-100 mb-4">Le plus choisi</p>
               <div className="mb-6">
-                <span className="text-4xl font-bold">29€</span>
+                <span className="text-4xl font-bold">30€</span>
                 <span className="text-blue-100">/mois</span>
               </div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0">✓</span>
-                  <span>Dépenses illimitées</span>
+                  <span>Tout Pro</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0">✓</span>
-                  <span>Recettes illimitées</span>
+                  <span>Comptabilité complète</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0">✓</span>
-                  <span>Déclarations TVA</span>
+                  <span>Liasse fiscale</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0">✓</span>
-                  <span>Facturation</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0">✓</span>
-                  <span>Rapports complets</span>
+                  <span>Rapports avancés</span>
                 </li>
               </ul>
               <Link
                 to="/app"
                 className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
               >
-                Commencer
+                Essayer gratuitement
               </Link>
             </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">Pro++</h3>
+              <p className="text-sm text-gray-500 mb-4">Pour gestion avancée</p>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900">49€</span>
+                <span className="text-4xl font-bold text-gray-900">59€</span>
                 <span className="text-gray-600">/mois</span>
               </div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Tout Essentiel</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Comptabilité complète</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Liasse fiscale</span>
+                  <span className="text-gray-600">Tout Pro+</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
                   <span className="text-gray-600">Banque intégrée</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-600 flex-shrink-0">✓</span>
+                  <span className="text-gray-600">Multi-entreprises</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
@@ -381,7 +409,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Commencer
+                Essayer gratuitement
               </Link>
             </div>
           </div>
@@ -392,7 +420,7 @@ export default function LandingPage() {
       <section className="py-20 bg-blue-600 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-            Prêt à simplifier votre comptabilité ?
+            Créez votre compte en 30 secondes — Gratuit
           </h2>
           <p className="text-xl text-blue-100 mb-8">
             Rejoignez des centaines d'entrepreneurs qui gèrent leur comptabilité en toute autonomie.
