@@ -297,7 +297,7 @@ export default function LandingPage() {
                   ComptaApp
                 </h3>
                 <div className="mb-4">
-                  <span className="text-4xl font-bold text-white">15€</span>
+                  <span className="text-4xl font-bold text-white">À partir de 15€</span>
                   <span className="text-blue-100">/mois</span>
                 </div>
                 <p className="text-blue-50">
@@ -359,7 +359,7 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Facturation PDF</span>
+                  <span className="text-gray-600">Création de factures</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
@@ -367,7 +367,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
-                  <span className="text-gray-600">Export CSV/PDF</span>
+                  <span className="text-gray-600">Export comptable</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 flex-shrink-0">✓</span>
@@ -378,7 +378,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Passer à Pro
+                Découvrir
               </Link>
             </div>
 
@@ -414,7 +414,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
               >
-                Passer à Pro+
+                Découvrir
               </Link>
             </div>
 
@@ -443,7 +443,7 @@ export default function LandingPage() {
                 to="/app"
                 className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
-                Passer à Pro++
+                Découvrir
               </Link>
             </div>
           </div>
