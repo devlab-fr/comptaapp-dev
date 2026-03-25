@@ -54,73 +54,33 @@ export function AiScanPage() {
     if (!companyId) return;
 
     const { data: expCats } = await supabase
-      .from('categories')
+      .from('expense_categories')
       .select('id, name')
-      .eq('company_id', companyId)
-      .eq('category_type', 'expense')
-      .order('name');
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    const { data: expSubcats } = await supabase
+      .from('expense_subcategories')
+      .select('id, name, category_id')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
     const { data: revCats } = await supabase
-      .from('categories')
+      .from('revenue_categories')
       .select('id, name')
-      .eq('company_id', companyId)
-      .eq('category_type', 'revenue')
-      .order('name');
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-    if (expCats && expCats.length > 0) {
-      setExpenseCategories(expCats);
-    } else {
-      const defaultExpenseCategories = [
-        'Achats & Marchandises',
-        'Services & Prestations',
-        'Loyer & Charges',
-        'Déplacements',
-        'Frais de repas',
-        'Assurances',
-        'Matériel',
-        'Autres charges'
-      ];
+    const { data: revSubcats } = await supabase
+      .from('revenue_subcategories')
+      .select('id, name, category_id')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-      const categoriesToInsert = defaultExpenseCategories.map((name) => ({
-        company_id: companyId,
-        name,
-        category_type: 'expense'
-      }));
-
-      const { data: inserted } = await supabase
-        .from('categories')
-        .insert(categoriesToInsert)
-        .select('id, name');
-
-      if (inserted) setExpenseCategories(inserted);
-    }
-
-    if (revCats && revCats.length > 0) {
-      setRevenueCategories(revCats);
-    } else {
-      const defaultRevenueCategories = [
-        'Ventes de biens',
-        'Prestations de services',
-        'Production vendue',
-        'Autres produits'
-      ];
-
-      const revCategoriesToInsert = defaultRevenueCategories.map((name) => ({
-        company_id: companyId,
-        name,
-        category_type: 'revenue'
-      }));
-
-      const { data: insertedRev } = await supabase
-        .from('categories')
-        .insert(revCategoriesToInsert)
-        .select('id, name');
-
-      if (insertedRev) setRevenueCategories(insertedRev);
-    }
-
-    setExpenseSubcategories([]);
-    setRevenueSubcategories([]);
+    if (expCats) setExpenseCategories(expCats);
+    if (expSubcats) setExpenseSubcategories(expSubcats);
+    if (revCats) setRevenueCategories(revCats);
+    if (revSubcats) setRevenueSubcategories(revSubcats);
   };
 
   const synonyms: Record<string, string[]> = {
