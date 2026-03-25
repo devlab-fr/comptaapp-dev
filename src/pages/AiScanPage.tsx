@@ -371,16 +371,7 @@ export function AiScanPage() {
       setMappedCategory(matchedCat);
       setMappedSubcategory(matchedSubcat);
 
-      let fileToUpload: File | Blob = file;
-      let filenameToUse = file.name;
-
-      if (pdfConvertedImage && file.type === 'application/pdf') {
-        const pngBlob = await fetch(`data:image/png;base64,${pdfConvertedImage.base64}`).then(r => r.blob());
-        fileToUpload = new File([pngBlob], file.name.replace(/\.pdf$/i, '.png'), { type: 'image/png' });
-        filenameToUse = file.name.replace(/\.pdf$/i, '.png');
-      }
-
-      const receiptData = await uploadReceiptToStorage(fileToUpload, filenameToUse);
+      const receiptData = await uploadReceiptToStorage(file, file.name);
       setUploadedReceipt(receiptData);
 
       setToast({ message: 'Scan terminé', type: 'success' });
