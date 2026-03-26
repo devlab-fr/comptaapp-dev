@@ -209,7 +209,7 @@ export default function LandingPage() {
               <img
                 src="/src/assets/dashboard-illustration.svg"
                 alt="Dashboard financier illustration"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain animate-illustration-enter animate-float-gentle"
               />
             </div>
           </div>
