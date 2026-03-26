@@ -459,6 +459,40 @@ export default function CompanyPage() {
             </span>
           </div>
 
+          <div style={{
+            padding: '32px',
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+            textAlign: 'center',
+            animation: 'fadeInUp 0.3s ease-out',
+          }}>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#6b7280',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              Résultat actuel
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '48px',
+              fontWeight: '700',
+              color: revenueSummary.totalTTC - expenseSummary.totalTTC > 0
+                ? '#16a34a'
+                : revenueSummary.totalTTC - expenseSummary.totalTTC < 0
+                ? '#dc2626'
+                : '#6b7280',
+            }}>
+              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
+            </p>
+          </div>
+
           <div className="dashboard-cards" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -1626,6 +1660,16 @@ export default function CompanyPage() {
             @keyframes pulse {
               0%, 100% { opacity: 0.6; }
               50% { opacity: 1; }
+            }
+            @keyframes fadeInUp {
+              from {
+                opacity: 0;
+                transform: translateY(12px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
             }
           `}
         </style>
