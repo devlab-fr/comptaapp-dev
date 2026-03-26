@@ -16,6 +16,10 @@ export default function AppPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadCompanies();
@@ -54,6 +58,61 @@ export default function AppPage() {
       setError('Erreur inattendue lors du chargement');
       setLoading(false);
     }
+  };
+
+  const handleDeleteClick = (company: Company, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCompanyToDelete(company);
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!companyToDelete) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const { data: subscription } = await supabase
+        .from('company_subscriptions')
+        .select('plan_tier, stripe_subscription_id, status')
+        .eq('company_id', companyToDelete.id)
+        .maybeSingle();
+
+      if (subscription && subscription.plan_tier !== 'FREE' && subscription.status === 'active') {
+        setDeleteError('Impossible de supprimer une entreprise avec un abonnement actif');
+        setDeleting(false);
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyToDelete.id);
+
+      if (deleteError) {
+        console.error('Error deleting company:', deleteError);
+        setDeleteError('Erreur lors de la suppression de l\'entreprise');
+        setDeleting(false);
+        return;
+      }
+
+      setShowDeleteModal(false);
+      setCompanyToDelete(null);
+      setDeleting(false);
+      await loadCompanies();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setDeleteError('Erreur inattendue lors de la suppression');
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setCompanyToDelete(null);
+    setDeleteError(null);
   };
 
   if (loading) {
@@ -278,34 +337,198 @@ export default function AppPage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/app/company/${company.id}`);
-                  }}
-                  style={{
-                    padding: '10px 24px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: 'white',
-                    backgroundColor: '#28a745',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#218838';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#28a745';
-                  }}
-                >
-                  Ouvrir l'espace
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/app/company/${company.id}`);
+                    }}
+                    style={{
+                      padding: '10px 24px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: 'white',
+                      backgroundColor: '#28a745',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#218838';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#28a745';
+                    }}
+                  >
+                    Ouvrir l'espace
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteClick(company, e)}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#dc2626',
+                      backgroundColor: 'white',
+                      border: '2px solid #dc2626',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fef2f2';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {showDeleteModal && companyToDelete && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+            }}
+            onClick={handleDeleteCancel}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                width: '90%',
+                maxWidth: '500px',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              <div
+                style={{
+                  padding: '24px',
+                  borderBottom: '1px solid #e5e7eb',
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#dc2626' }}>
+                  Supprimer l'entreprise
+                </h2>
+              </div>
+
+              <div style={{ padding: '24px' }}>
+                <p style={{
+                  margin: '0 0 20px 0',
+                  fontSize: '15px',
+                  color: '#374151',
+                  lineHeight: '1.6',
+                }}>
+                  Êtes-vous sûr de vouloir supprimer l'entreprise <strong>{companyToDelete.name}</strong> ?
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  color: '#dc2626',
+                  fontWeight: '600',
+                  backgroundColor: '#fef2f2',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #fecaca',
+                }}>
+                  Cette action est irréversible.
+                </p>
+
+                {deleteError && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    color: '#dc2626',
+                    fontSize: '14px',
+                  }}>
+                    {deleteError}
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                padding: '20px 24px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+              }}>
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    opacity: deleting ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: deleting ? '#fca5a5' : '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.currentTarget.style.backgroundColor = '#b91c1c';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                    }
+                  }}
+                >
+                  {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
     </div>
