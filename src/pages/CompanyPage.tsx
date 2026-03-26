@@ -470,10 +470,10 @@ export default function CompanyPage() {
             animation: 'fadeInUp 0.3s ease-out',
           }}>
             <h3 style={{
-              margin: '0 0 16px 0',
+              margin: '0 0 20px 0',
               fontSize: '16px',
               fontWeight: '600',
-              color: '#6b7280',
+              color: '#4b5563',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
             }}>
@@ -482,7 +482,7 @@ export default function CompanyPage() {
             <p style={{
               margin: '0 0 8px 0',
               fontSize: '48px',
-              fontWeight: '700',
+              fontWeight: '800',
               color: revenueSummary.totalTTC - expenseSummary.totalTTC > 0
                 ? '#16a34a'
                 : revenueSummary.totalTTC - expenseSummary.totalTTC < 0
@@ -492,7 +492,7 @@ export default function CompanyPage() {
               {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
             </p>
             <p style={{
-              margin: '0 0 24px 0',
+              margin: '0 0 32px 0',
               fontSize: '13px',
               color: '#9ca3af',
             }}>
@@ -502,7 +502,7 @@ export default function CompanyPage() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px',
+              gap: '20px',
               maxWidth: '600px',
               margin: '0 auto',
               animation: 'fadeIn 0.5s ease-out 0.15s backwards',
@@ -516,8 +516,8 @@ export default function CompanyPage() {
                 <p style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
-                  fontWeight: '600',
-                  color: '#15803d',
+                  fontWeight: '500',
+                  color: '#14532d',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}>
@@ -542,8 +542,8 @@ export default function CompanyPage() {
                 <p style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
-                  fontWeight: '600',
-                  color: '#991b1b',
+                  fontWeight: '500',
+                  color: '#7f1d1d',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}>
@@ -568,8 +568,8 @@ export default function CompanyPage() {
                 <p style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
-                  fontWeight: '600',
-                  color: '#c2410c',
+                  fontWeight: '500',
+                  color: '#7c2d12',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}>
