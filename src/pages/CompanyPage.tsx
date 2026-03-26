@@ -471,11 +471,11 @@ export default function CompanyPage() {
           }}>
             <h3 style={{
               margin: '0 0 20px 0',
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#4b5563',
+              fontSize: '22px',
+              fontWeight: '800',
+              color: '#1f2937',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
+              letterSpacing: '1.2px',
             }}>
               Résultat actuel
             </h3>
