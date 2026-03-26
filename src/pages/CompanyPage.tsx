@@ -480,7 +480,7 @@ export default function CompanyPage() {
               Résultat actuel
             </h3>
             <p style={{
-              margin: 0,
+              margin: '0 0 8px 0',
               fontSize: '48px',
               fontWeight: '700',
               color: revenueSummary.totalTTC - expenseSummary.totalTTC > 0
@@ -490,6 +490,13 @@ export default function CompanyPage() {
                 : '#6b7280',
             }}>
               {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
+            </p>
+            <p style={{
+              margin: 0,
+              fontSize: '13px',
+              color: '#9ca3af',
+            }}>
+              Revenus - Dépenses (période en cours)
             </p>
           </div>
 
