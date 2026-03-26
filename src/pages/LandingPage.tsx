@@ -59,12 +59,12 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className={`text-5xl sm:text-6xl font-bold text-gray-900 mb-6 transition-all duration-800 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            Gérez votre comptabilité simplement,
+            Votre comptabilité complète,
             <br />
-            <span className="text-blue-600">sans complexité</span>
+            <span className="text-blue-600">sans expert-comptable</span>
           </h1>
           <p className={`text-xl text-gray-600 mb-8 max-w-3xl mx-auto transition-all duration-800 delay-150 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            ComptaApp automatise vos dépenses, TVA et factures en quelques clics.
+            Factures, TVA et suivi financier automatisés. Gagnez du temps et économisez chaque mois.
           </p>
           <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-800 delay-300 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             <Link
