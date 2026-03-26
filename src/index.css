@@ -37,17 +37,17 @@ button {
 
 @keyframes float-gentle {
   0%, 100% {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(-12px) scale(1.02);
   }
 }
 
 @keyframes illustration-fade-in {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(40px);
   }
   to {
     opacity: 1;
@@ -56,9 +56,9 @@ button {
 }
 
 .animate-illustration-enter {
-  animation: illustration-fade-in 1s ease-out forwards;
+  animation: illustration-fade-in 0.8s ease-out forwards;
 }
 
 .animate-float-gentle {
-  animation: float-gentle 5s ease-in-out infinite;
+  animation: float-gentle 3s ease-in-out infinite;
 }
