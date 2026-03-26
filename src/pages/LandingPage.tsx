@@ -66,19 +66,24 @@ export default function LandingPage() {
           <p className={`text-xl text-gray-600 mb-8 max-w-3xl mx-auto transition-all duration-800 delay-150 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             Factures, TVA et suivi financier automatisés. Gagnez du temps et économisez chaque mois.
           </p>
-          <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-800 delay-300 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <Link
-              to="/app"
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
-            >
-              Créer mon compte gratuit
-            </Link>
-            <a
-              href="#features"
-              className="bg-white text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold border-2 border-gray-200 hover:border-gray-300 hover:scale-105 hover:shadow-md transition-all duration-300"
-            >
-              Découvrir les fonctionnalités
-            </a>
+          <div className={`flex flex-col gap-4 items-center transition-all duration-800 delay-300 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/app"
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
+              >
+                Créer mon compte gratuit
+              </Link>
+              <a
+                href="#features"
+                className="bg-white text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold border-2 border-gray-200 hover:border-gray-300 hover:scale-105 hover:shadow-md transition-all duration-300"
+              >
+                Découvrir les fonctionnalités
+              </a>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              Aucun engagement • Gratuit • Sans carte bancaire
+            </p>
           </div>
         </div>
       </section>
