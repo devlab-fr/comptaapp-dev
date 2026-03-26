@@ -37,7 +37,7 @@ interface ToastState {
 export default function BilanPage() {
   const { companyId } = useParams<{ companyId: string }>();
   useAuth();
-  useNavigate();
+  const navigate = useNavigate();
   const entitlements = useEntitlements();
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -980,6 +980,41 @@ export default function BilanPage() {
                   ? '✓ Bilan équilibré (Actif = Passif)'
                   : '⚠️ Déséquilibre détecté (Actif ≠ Passif)'}
               </p>
+            </div>
+
+            <div
+              style={{
+                textAlign: 'center',
+                marginBottom: '32px',
+              }}
+            >
+              <button
+                onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+                style={{
+                  padding: '14px 32px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: 'white',
+                  backgroundColor: '#3b82f6',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                }}
+              >
+                Voir les offres
+              </button>
             </div>
 
             <div
