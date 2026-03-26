@@ -9,8 +9,6 @@ import AIAssistant from '../components/AIAssistant';
 import { usePlan } from '../lib/usePlan';
 import { useLegalAcceptance } from '../hooks/useLegalAcceptance';
 import { LegalGateModal } from '../components/legal/LegalGateModal';
-import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
-import type { PlanTier } from '../lib/plans';
 
 interface Company {
   id: string;
@@ -45,7 +43,7 @@ export default function CompanyPage() {
   useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { canUse, effectiveTier } = usePlan(companyId);
+  const { canUse } = usePlan(companyId);
   const { hasAccepted, loading: legalLoading } = useLegalAcceptance(companyId);
   const [showLegalGate, setShowLegalGate] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -59,7 +57,6 @@ export default function CompanyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const handleProtectedAction = (action: () => void) => {
     if (legalLoading) {
@@ -80,68 +77,6 @@ export default function CompanyPage() {
       pendingAction();
       setPendingAction(null);
     }
-  };
-
-  const handleUpgradeClick = async () => {
-    if (!companyId || upgradeLoading) return;
-
-    setUpgradeLoading(true);
-
-    try {
-      await ensureFreshSession();
-
-      let targetTier: PlanTier;
-      if (effectiveTier === 'FREE') {
-        targetTier = 'PRO';
-      } else if (effectiveTier === 'PRO') {
-        targetTier = 'PRO_PLUS';
-      } else if (effectiveTier === 'PRO_PLUS') {
-        targetTier = 'PRO_PLUS_PLUS';
-      } else {
-        const { data, error } = await supabase.functions.invoke('create-portal-session', {
-          body: { companyId },
-        });
-
-        if (error) {
-          console.error('PORTAL_ERROR', error);
-          setError('Erreur lors de l\'ouverture du portail d\'abonnement');
-          setUpgradeLoading(false);
-          return;
-        }
-
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { planTier: targetTier, companyId },
-      });
-
-      if (error) {
-        console.error('CHECKOUT_ERROR', error);
-        setError('Erreur lors de la création de la session de paiement');
-        setUpgradeLoading(false);
-        return;
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      console.error('UPGRADE_ERROR', err);
-      setError('Une erreur est survenue');
-      setUpgradeLoading(false);
-    }
-  };
-
-  const getUpgradeButtonText = (): string => {
-    if (upgradeLoading) return 'Chargement...';
-    if (effectiveTier === 'FREE') return 'Passer en PRO';
-    if (effectiveTier === 'PRO') return 'Passer en PRO+';
-    if (effectiveTier === 'PRO_PLUS') return 'Passer en PRO++';
-    return 'Gérer mon abonnement';
   };
 
   useEffect(() => {
@@ -650,41 +585,6 @@ export default function CompanyPage() {
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={handleUpgradeClick}
-              disabled={upgradeLoading}
-              style={{
-                marginTop: '24px',
-                padding: '16px 32px',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: 'white',
-                backgroundColor: upgradeLoading ? '#9ca3af' : '#2563eb',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: upgradeLoading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                opacity: upgradeLoading ? 0.7 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!upgradeLoading) {
-                  e.currentTarget.style.backgroundColor = '#1d4ed8';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.3)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!upgradeLoading) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.2)';
-                }
-              }}
-            >
-              {getUpgradeButtonText()}
-            </button>
           </div>
 
           <div className="dashboard-cards" style={{
