@@ -88,6 +88,38 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Reassurance Section */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white border-t border-b border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 mb-3 flex items-center justify-center">
+                <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-gray-700 text-sm font-medium">Aucune compétence comptable requise</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 mb-3 flex items-center justify-center">
+                <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-700 text-sm font-medium">Conforme aux obligations (TVA, factures)</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 mb-3 flex items-center justify-center">
+                <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <p className="text-gray-700 text-sm font-medium">Données sécurisées</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Problem Section */}
       <section ref={(el) => sectionsRef.current.push(el)} className="py-20 bg-gray-50 px-4 sm:px-6 lg:px-8 opacity-0 translate-y-16 transition-all duration-800 ease-out">
         <div className="max-w-7xl mx-auto">
