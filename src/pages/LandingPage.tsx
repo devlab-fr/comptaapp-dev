@@ -40,13 +40,13 @@ export default function LandingPage() {
             <div className="flex items-center gap-4">
               <Link
                 to="/login"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-gray-600 hover:text-gray-900 transition-all duration-200"
               >
                 Connexion
               </Link>
               <Link
                 to="/app"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
               >
                 Essayer gratuitement
               </Link>
@@ -69,13 +69,13 @@ export default function LandingPage() {
           <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-800 delay-300 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             <Link
               to="/app"
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
             >
               Essayer gratuitement
             </Link>
             <a
               href="#features"
-              className="bg-white text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold border-2 border-gray-200 hover:border-gray-300 transition-colors"
+              className="bg-white text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold border-2 border-gray-200 hover:border-gray-300 hover:scale-105 hover:shadow-md transition-all duration-300"
             >
               Découvrir les fonctionnalités
             </a>
@@ -95,7 +95,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-xl">
+            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">💸</span>
               </div>
@@ -106,7 +106,7 @@ export default function LandingPage() {
                 Les experts-comptables facturent plusieurs centaines d'euros par mois pour des tâches simples.
               </p>
             </div>
-            <div className="bg-white p-8 rounded-xl">
+            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">⏱️</span>
               </div>
@@ -117,7 +117,7 @@ export default function LandingPage() {
                 Saisir manuellement chaque opération, chercher des justificatifs, préparer les déclarations...
               </p>
             </div>
-            <div className="bg-white p-8 rounded-xl">
+            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">😵</span>
               </div>
@@ -224,7 +224,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">📊</span>
               </div>
@@ -235,7 +235,7 @@ export default function LandingPage() {
                 Enregistrez toutes vos opérations avec leurs justificatifs et catégories.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">🧾</span>
               </div>
@@ -246,7 +246,7 @@ export default function LandingPage() {
                 Créez des factures professionnelles conformes et suivez leur paiement.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">📈</span>
               </div>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 Générez vos déclarations de TVA automatiquement avec tous les calculs.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">💰</span>
               </div>
@@ -268,7 +268,7 @@ export default function LandingPage() {
                 Suivez vos flux de trésorerie et synchronisez vos comptes bancaires.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">📑</span>
               </div>
@@ -279,7 +279,7 @@ export default function LandingPage() {
                 Consultez votre bilan comptable et compte de résultat en temps réel.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl">
+            <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">🤖</span>
               </div>
@@ -301,7 +301,7 @@ export default function LandingPage() {
             Pourquoi choisir ComptaApp ?
           </h2>
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-gray-200">
+            <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-gray-200 hover:shadow-lg hover:scale-105 transition-all duration-300 ease-out">
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   Expert-comptable
@@ -315,7 +315,7 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <div className="bg-blue-600 rounded-xl p-8 shadow-lg border-2 border-blue-700">
+            <div className="bg-blue-600 rounded-xl p-8 shadow-lg border-2 border-blue-700 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-white mb-3">
                   ComptaApp
@@ -367,7 +367,7 @@ export default function LandingPage() {
               </ul>
               <Link
                 to="/app"
-                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 hover:scale-105 hover:shadow-md transition-all duration-300"
               >
                 Créer mon compte gratuit
               </Link>
@@ -400,13 +400,13 @@ export default function LandingPage() {
               </ul>
               <Link
                 to="/app"
-                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 hover:scale-105 hover:shadow-md transition-all duration-300"
               >
                 Découvrir
               </Link>
             </div>
 
-            <div className="bg-blue-600 text-white rounded-2xl p-8 relative shadow-xl transition-all duration-300 ease-out hover:scale-[1.05] hover:shadow-[0_20px_50px_rgba(37,99,235,0.3)]">
+            <div className="bg-blue-600 text-white rounded-2xl p-8 relative shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_20px_50px_rgba(37,99,235,0.3)]">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 px-4 py-1 rounded-full text-sm font-semibold">
                 Le plus choisi
               </div>
@@ -436,13 +436,13 @@ export default function LandingPage() {
               </ul>
               <Link
                 to="/app"
-                className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 hover:scale-105 hover:shadow-md transition-all duration-300"
               >
                 Découvrir
               </Link>
             </div>
 
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 ease-out hover:scale-[1.05] hover:shadow-2xl hover:border-gray-300">
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 ease-out hover:scale-105 hover:shadow-2xl hover:border-gray-300">
               <h3 className="text-2xl font-bold text-gray-900 mb-1">Pro++</h3>
               <p className="text-sm text-gray-500 mb-4">Pour gestion avancée</p>
               <div className="mb-6">
@@ -465,7 +465,7 @@ export default function LandingPage() {
               </ul>
               <Link
                 to="/app"
-                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                className="block w-full text-center bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 hover:scale-105 hover:shadow-md transition-all duration-300"
               >
                 Découvrir
               </Link>
@@ -485,7 +485,7 @@ export default function LandingPage() {
           </p>
           <Link
             to="/app"
-            className="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition-colors"
+            className="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 hover:scale-105 hover:shadow-lg transition-all duration-300"
           >
             Essayer gratuitement
           </Link>
