@@ -1009,17 +1009,17 @@ export default function CompanyPage() {
                   border: '2px solid #10b981',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1051,17 +1051,17 @@ export default function CompanyPage() {
                     border: '2px solid #0ea5e9',
                     borderRadius: '12px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.3s ease-out',
                     textAlign: 'left',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#e0f2fe';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
@@ -1170,17 +1170,17 @@ export default function CompanyPage() {
                   border: '2px solid #3b82f6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#eff6ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1211,17 +1211,17 @@ export default function CompanyPage() {
                   border: '2px solid #059669',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1252,17 +1252,17 @@ export default function CompanyPage() {
                   border: '2px solid #7c3aed',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f3e8ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1293,17 +1293,17 @@ export default function CompanyPage() {
                   border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f5f3ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1357,17 +1357,17 @@ export default function CompanyPage() {
                   border: '2px solid #f97316',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ffedd5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1398,17 +1398,17 @@ export default function CompanyPage() {
                   border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ede9fe';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1462,17 +1462,17 @@ export default function CompanyPage() {
                   border: '2px solid #64748b',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1503,17 +1503,17 @@ export default function CompanyPage() {
                   border: '2px solid #3b82f6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#eff6ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1544,17 +1544,17 @@ export default function CompanyPage() {
                   border: '2px solid #f59e0b',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#fffbeb';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1585,17 +1585,17 @@ export default function CompanyPage() {
                   border: '2px solid #0891b2',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ecfeff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
