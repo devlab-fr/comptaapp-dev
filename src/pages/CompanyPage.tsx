@@ -492,12 +492,99 @@ export default function CompanyPage() {
               {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
             </p>
             <p style={{
-              margin: 0,
+              margin: '0 0 24px 0',
               fontSize: '13px',
               color: '#9ca3af',
             }}>
               Revenus - Dépenses (période en cours)
             </p>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '16px',
+              maxWidth: '600px',
+              margin: '0 auto',
+              animation: 'fadeIn 0.5s ease-out 0.15s backwards',
+            }}>
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '12px',
+                border: '1px solid #d1fae5',
+              }}>
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: '#15803d',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  Revenus
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#16a34a',
+                }}>
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC)}
+                </p>
+              </div>
+
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#fef2f2',
+                borderRadius: '12px',
+                border: '1px solid #fee2e2',
+              }}>
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: '#991b1b',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  Dépenses
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#dc2626',
+                }}>
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(expenseSummary.totalTTC)}
+                </p>
+              </div>
+
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#fff7ed',
+                borderRadius: '12px',
+                border: '1px solid #fed7aa',
+              }}>
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: '#c2410c',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  TVA
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#ea580c',
+                }}>
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTVA + expenseSummary.totalTVA)}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="dashboard-cards" style={{
@@ -1676,6 +1763,14 @@ export default function CompanyPage() {
               to {
                 opacity: 1;
                 transform: translateY(0);
+              }
+            }
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+              }
+              to {
+                opacity: 1;
               }
             }
           `}
