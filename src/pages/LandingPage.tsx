@@ -337,7 +337,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -516,7 +516,7 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Ressources</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/app/guide" className="hover:text-white transition-colors">Guide utilisateur</Link></li>
+                <li><Link to="/app" className="hover:text-white transition-colors">Guide utilisateur</Link></li>
               </ul>
             </div>
             <div>
