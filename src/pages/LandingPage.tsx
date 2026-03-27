@@ -33,22 +33,28 @@ export default function LandingPage() {
       <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <img src={logoUrl} alt="ComptaApp Logo" className="h-14 w-auto" />
-              <span className="text-xl font-semibold text-gray-900">ComptaApp</span>
+            <div className="flex items-center gap-2 sm:gap-4">
+              <img src={logoUrl} alt="ComptaApp Logo" className="h-10 sm:h-14 w-auto" />
+              <span className="text-base sm:text-xl font-semibold text-gray-900">ComptaApp</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 to="/login"
-                className="border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 hover:scale-105 hover:shadow-lg transition-all duration-300 font-medium"
+                className="border-2 border-blue-600 text-blue-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-50 hover:scale-105 hover:shadow-lg transition-all duration-300 font-medium text-sm sm:text-base whitespace-nowrap"
               >
                 Se connecter
               </Link>
               <Link
                 to="/app"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
+                className="bg-blue-600 text-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300 text-sm sm:text-base whitespace-nowrap hidden sm:inline-block"
               >
                 Créer mon compte gratuit
+              </Link>
+              <Link
+                to="/app"
+                className="bg-blue-600 text-white px-2 py-1.5 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm whitespace-nowrap sm:hidden"
+              >
+                Créer compte
               </Link>
             </div>
           </div>
