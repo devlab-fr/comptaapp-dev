@@ -140,6 +140,9 @@ export default function ViewFacturePage() {
           montant_total_ht,
           montant_total_tva,
           montant_total_ttc,
+          remise_type,
+          remise_value,
+          montant_remise,
           client_id,
           recipient_id
         `)
