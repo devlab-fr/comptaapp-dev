@@ -280,13 +280,13 @@ export default function AppPage() {
               <div
                 key={company.id}
                 style={{
-                  padding: '24px 28px',
+                  padding: '20px',
                   backgroundColor: 'white',
                   border: '2px solid #e5e7eb',
                   borderRadius: '16px',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  gap: '16px',
                   transition: 'all 0.3s ease',
                   cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
@@ -316,6 +316,7 @@ export default function AppPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
+                    flexWrap: 'wrap',
                   }}>
                     <span style={{
                       display: 'inline-block',
@@ -337,14 +338,14 @@ export default function AppPage() {
                     </span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/app/company/${company.id}`);
                     }}
                     style={{
-                      padding: '10px 24px',
+                      padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
                       color: 'white',
@@ -353,7 +354,7 @@ export default function AppPage() {
                       borderRadius: '8px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap',
+                      width: '100%',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#218838';
@@ -367,7 +368,7 @@ export default function AppPage() {
                   <button
                     onClick={(e) => handleDeleteClick(company, e)}
                     style={{
-                      padding: '10px 16px',
+                      padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
                       color: '#dc2626',
@@ -376,7 +377,7 @@ export default function AppPage() {
                       borderRadius: '8px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap',
+                      width: '100%',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#fef2f2';
