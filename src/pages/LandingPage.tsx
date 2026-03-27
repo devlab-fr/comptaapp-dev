@@ -40,7 +40,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-3">
               <Link
                 to="/login"
-                className="border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium"
+                className="border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 hover:scale-105 hover:shadow-lg transition-all duration-300 font-medium"
               >
                 Se connecter
               </Link>
