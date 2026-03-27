@@ -259,7 +259,7 @@ export default function LandingPage() {
               Une solution simple pour gérer votre comptabilité efficacement.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 ease-out">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <span className="text-2xl">📊</span>
@@ -383,7 +383,7 @@ export default function LandingPage() {
               Choisissez le plan adapté à vos besoins. Sans engagement.
             </p>
           </div>
-          <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 transition-all duration-300 ease-out hover:scale-[1.05] hover:shadow-2xl hover:border-gray-300">
               <h3 className="text-2xl font-bold text-gray-900 mb-1">Gratuit</h3>
               <p className="text-sm text-gray-500 mb-4">Pour découvrir</p>
@@ -531,7 +531,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <img src={logoUrl} alt="ComptaApp Logo" className="h-8 w-auto" />

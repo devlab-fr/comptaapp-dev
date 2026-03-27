@@ -80,6 +80,13 @@ export function ComptabilitePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .tabs-container::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      `}</style>
       {toast && (
         <Toast
           message={toast.message}
@@ -116,11 +123,15 @@ export function ComptabilitePage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           overflow: 'hidden'
         }}>
-          <div style={{
+          <div className="tabs-container" style={{
             display: 'flex',
             borderBottom: '2px solid #e5e7eb',
             padding: '0 24px',
-            gap: '8px'
+            gap: '8px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
           }}>
             <TabButton
               active={activeTab === 'plan'}

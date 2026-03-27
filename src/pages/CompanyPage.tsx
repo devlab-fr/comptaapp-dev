@@ -351,6 +351,7 @@ export default function CompanyPage() {
           .dashboard-cards { grid-template-columns: 1fr !important; }
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .kpi-cards { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
@@ -499,7 +500,7 @@ export default function CompanyPage() {
               Revenus - Dépenses (période en cours)
             </p>
 
-            <div style={{
+            <div className="kpi-cards" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '20px',
