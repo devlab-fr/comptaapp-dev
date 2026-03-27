@@ -352,6 +352,9 @@ export default function CompanyPage() {
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .kpi-cards { grid-template-columns: 1fr !important; }
+          .summary-stats { grid-template-columns: 1fr !important; }
+          .dashboard-main { padding: 20px 16px !important; }
+          .dashboard-result-box { padding: 24px 16px !important; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
@@ -360,7 +363,7 @@ export default function CompanyPage() {
       `}</style>
 
       <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
-        <main style={{
+        <main className="dashboard-main" style={{
           maxWidth: '1200px',
           margin: '0 auto',
           padding: '32px 24px',
@@ -460,7 +463,7 @@ export default function CompanyPage() {
             </span>
           </div>
 
-          <div style={{
+          <div className="dashboard-result-box" style={{
             padding: '32px',
             backgroundColor: 'white',
             borderRadius: '16px',
@@ -646,7 +649,7 @@ export default function CompanyPage() {
                 </h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div className="summary-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
                 <div style={{
                   padding: '14px',
                   backgroundColor: '#fef2f2',
@@ -841,7 +844,7 @@ export default function CompanyPage() {
                 </h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div className="summary-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
                 <div style={{
                   padding: '14px',
                   backgroundColor: '#f0fdf4',
