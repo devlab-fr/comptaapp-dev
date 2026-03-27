@@ -587,6 +587,39 @@ export default function CompanyPage() {
             </div>
           </div>
 
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '32px',
+          }}>
+            <button
+              onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+              style={{
+                padding: '14px 32px',
+                fontSize: '15px',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: '#2563eb',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1d4ed8';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+              }}
+            >
+              Voir les offres
+            </button>
+          </div>
+
           <div className="dashboard-cards" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
