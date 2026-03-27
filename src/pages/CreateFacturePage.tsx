@@ -51,6 +51,9 @@ export default function CreateFacturePage() {
     { description: '', quantite: 0, prix_unitaire_ht: 0, taux_tva: 20, category_id: '' }
   ]);
 
+  const [remiseType, setRemiseType] = useState<'aucune' | 'pct' | 'fixe'>('aucune');
+  const [remiseValue, setRemiseValue] = useState(0);
+
   useEffect(() => {
     if (companyId) {
       loadClients();
@@ -122,7 +125,32 @@ export default function CreateFacturePage() {
       totalTTC += montantTTC;
     });
 
-    return { totalHT, totalTVA, totalTTC };
+    let montantRemise = 0;
+    if (remiseType === 'pct') {
+      montantRemise = totalHT * (remiseValue / 100);
+    } else if (remiseType === 'fixe') {
+      montantRemise = remiseValue;
+    }
+
+    const totalHTApresRemise = totalHT - montantRemise;
+
+    let totalTVAApresRemise = 0;
+    if (montantRemise > 0 && totalHT > 0) {
+      const ratioRemise = totalHTApresRemise / totalHT;
+      totalTVAApresRemise = totalTVA * ratioRemise;
+    } else {
+      totalTVAApresRemise = totalTVA;
+    }
+
+    const totalTTCApresRemise = totalHTApresRemise + totalTVAApresRemise;
+
+    return {
+      totalHT,
+      montantRemise,
+      totalHTApresRemise,
+      totalTVA: totalTVAApresRemise,
+      totalTTC: totalTTCApresRemise
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,9 +241,12 @@ export default function CreateFacturePage() {
           date_facture: dateFacture,
           statut_paiement: statutPaiement,
           date_paiement: statutPaiement === 'payee' ? datePaiement : null,
-          montant_total_ht: totals.totalHT,
+          montant_total_ht: totals.totalHTApresRemise,
           montant_total_tva: totals.totalTVA,
           montant_total_ttc: totals.totalTTC,
+          remise_type: remiseType,
+          remise_value: remiseValue,
+          montant_remise: totals.montantRemise,
         })
         .select()
         .single();
@@ -622,6 +653,55 @@ export default function CreateFacturePage() {
 
           <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Remise
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Type de remise
+                </label>
+                <select
+                  value={remiseType}
+                  onChange={(e) => {
+                    setRemiseType(e.target.value as 'aucune' | 'pct' | 'fixe');
+                    if (e.target.value === 'aucune') {
+                      setRemiseValue(0);
+                    }
+                  }}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                >
+                  <option value="aucune">Aucune remise</option>
+                  <option value="pct">Pourcentage (%)</option>
+                  <option value="fixe">Montant fixe (€)</option>
+                </select>
+              </div>
+              {remiseType !== 'aucune' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    {remiseType === 'pct' ? 'Pourcentage de remise' : 'Montant de la remise (€)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={remiseType === 'pct' ? '100' : undefined}
+                    value={remiseValue === 0 ? '' : remiseValue}
+                    onChange={(e) => setRemiseValue(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    placeholder={remiseType === 'pct' ? '10' : '0.00'}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                  />
+                </div>
+              )}
+            </div>
+            {remiseType !== 'aucune' && remiseValue > 0 && (
+              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '14px', color: '#92400e' }}>
+                <strong>Remise appliquée:</strong> -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totals.montantRemise)}
+              </div>
+            )}
+          </div>
+
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
               Récapitulatif
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
@@ -630,6 +710,22 @@ export default function CreateFacturePage() {
                 {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totals.totalHT)}
               </span>
             </div>
+            {totals.montantRemise > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                  <span style={{ color: '#dc2626' }}>Remise:</span>
+                  <span style={{ fontWeight: '600', color: '#dc2626' }}>
+                    -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totals.montantRemise)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                  <span style={{ color: '#6b7280' }}>Total HT après remise:</span>
+                  <span style={{ fontWeight: '600', color: '#111827' }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totals.totalHTApresRemise)}
+                  </span>
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
               <span style={{ color: '#6b7280' }}>Total TVA:</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>

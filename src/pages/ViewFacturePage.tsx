@@ -16,6 +16,9 @@ interface Facture {
   montant_total_ht: number;
   montant_total_tva: number;
   montant_total_ttc: number;
+  remise_type?: string;
+  remise_value?: number;
+  montant_remise?: number;
 }
 
 interface Client {
@@ -337,6 +340,10 @@ export default function ViewFacturePage() {
     const dueDate = new Date(facture.date_facture);
     dueDate.setDate(dueDate.getDate() + 30);
 
+    const totalHTBrut = (facture.montant_remise && facture.montant_remise > 0)
+      ? facture.montant_total_ht + facture.montant_remise
+      : facture.montant_total_ht;
+
     // Statut de paiement
     const statutLabels: Record<string, string> = {
       'brouillon': 'Brouillon',
@@ -441,8 +448,18 @@ export default function ViewFacturePage() {
             <div style="width: 260px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px; background-color: #f8fafc;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
                 <span style="color: #64748b; font-weight: 500;">Total HT</span>
-                <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_ht.toFixed(2)} €</span>
+                <span style="color: #1e293b; font-weight: 600;">${totalHTBrut.toFixed(2)} €</span>
               </div>
+              ${facture.montant_remise && facture.montant_remise > 0 ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
+                  <span style="color: #dc2626; font-weight: 500;">Remise</span>
+                  <span style="color: #dc2626; font-weight: 600;">-${facture.montant_remise.toFixed(2)} €</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
+                  <span style="color: #64748b; font-weight: 500;">Total HT après remise</span>
+                  <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_ht.toFixed(2)} €</span>
+                </div>
+              ` : ''}
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
                 <span style="color: #64748b; font-weight: 500;">Total TVA</span>
                 <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_tva.toFixed(2)} €</span>
@@ -785,9 +802,29 @@ export default function ViewFacturePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
               <span style={{ color: '#6b7280' }}>Total HT:</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>
-                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ht)}
+                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
+                  (facture.montant_remise && facture.montant_remise > 0)
+                    ? facture.montant_total_ht + facture.montant_remise
+                    : facture.montant_total_ht
+                )}
               </span>
             </div>
+            {facture.montant_remise && facture.montant_remise > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
+                  <span style={{ color: '#dc2626' }}>Remise:</span>
+                  <span style={{ fontWeight: '600', color: '#dc2626' }}>
+                    -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_remise)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
+                  <span style={{ color: '#6b7280' }}>Total HT après remise:</span>
+                  <span style={{ fontWeight: '600', color: '#111827' }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ht)}
+                  </span>
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
               <span style={{ color: '#6b7280' }}>Total TVA:</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>
