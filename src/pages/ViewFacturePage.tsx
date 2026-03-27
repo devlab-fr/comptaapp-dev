@@ -455,11 +455,11 @@ export default function ViewFacturePage() {
               </div>
               ${facture.montant_remise && facture.montant_remise > 0 ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
-                  <span style="color: #dc2626; font-weight: 500;">Remise</span>
+                  <span style="color: #dc2626; font-weight: 600;">Remise${facture.remise_type === 'percentage' ? ` (${facture.remise_value}%)` : ''}</span>
                   <span style="color: #dc2626; font-weight: 600;">-${facture.montant_remise.toFixed(2)} €</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
-                  <span style="color: #64748b; font-weight: 500;">Total HT après remise</span>
+                  <span style="color: #64748b; font-weight: 500;">Sous-total HT</span>
                   <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_ht.toFixed(2)} €</span>
                 </div>
               ` : ''}
@@ -815,13 +815,15 @@ export default function ViewFacturePage() {
             {facture.montant_remise && facture.montant_remise > 0 && (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
-                  <span style={{ color: '#dc2626' }}>Remise:</span>
+                  <span style={{ color: '#dc2626', fontWeight: '600' }}>
+                    Remise{facture.remise_type === 'percentage' ? ` (${facture.remise_value}%)` : ''}:
+                  </span>
                   <span style={{ fontWeight: '600', color: '#dc2626' }}>
                     -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_remise)}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
-                  <span style={{ color: '#6b7280' }}>Total HT après remise:</span>
+                  <span style={{ color: '#6b7280' }}>Sous-total HT:</span>
                   <span style={{ fontWeight: '600', color: '#111827' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ht)}
                   </span>
