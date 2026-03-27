@@ -351,10 +351,16 @@ export default function CompanyPage() {
           .dashboard-cards { grid-template-columns: 1fr !important; }
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .kpi-cards { grid-template-columns: 1fr !important; }
+          .kpi-cards { grid-template-columns: 1fr !important; gap: 12px !important; }
           .summary-stats { grid-template-columns: 1fr !important; }
           .dashboard-main { padding: 20px 16px !important; }
-          .dashboard-result-box { padding: 24px 16px !important; }
+          .dashboard-result-box { padding: 20px 16px !important; margin-bottom: 20px !important; }
+          .result-title { fontSize: 18px !important; margin: 0 0 12px 0 !important; letterSpacing: 0.8px !important; }
+          .result-amount { fontSize: 32px !important; margin: 0 0 6px 0 !important; }
+          .result-subtitle { fontSize: 12px !important; margin: 0 0 20px 0 !important; }
+          .kpi-card { padding: 12px !important; }
+          .kpi-label { fontSize: 10px !important; margin: 0 0 6px 0 !important; }
+          .kpi-value { fontSize: 16px !important; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
@@ -473,7 +479,7 @@ export default function CompanyPage() {
             textAlign: 'center',
             animation: 'fadeInUp 0.3s ease-out',
           }}>
-            <h3 style={{
+            <h3 className="result-title" style={{
               margin: '0 0 20px 0',
               fontSize: '22px',
               fontWeight: '800',
@@ -483,7 +489,7 @@ export default function CompanyPage() {
             }}>
               Résultat actuel
             </h3>
-            <p style={{
+            <p className="result-amount" style={{
               margin: '0 0 8px 0',
               fontSize: '48px',
               fontWeight: '800',
@@ -495,7 +501,7 @@ export default function CompanyPage() {
             }}>
               {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
             </p>
-            <p style={{
+            <p className="result-subtitle" style={{
               margin: '0 0 32px 0',
               fontSize: '13px',
               color: '#9ca3af',
@@ -511,13 +517,13 @@ export default function CompanyPage() {
               margin: '0 auto',
               animation: 'fadeIn 0.5s ease-out 0.15s backwards',
             }}>
-              <div style={{
+              <div className="kpi-card" style={{
                 padding: '16px',
                 backgroundColor: '#f0fdf4',
                 borderRadius: '12px',
                 border: '1px solid #d1fae5',
               }}>
-                <p style={{
+                <p className="kpi-label" style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
@@ -527,7 +533,7 @@ export default function CompanyPage() {
                 }}>
                   Revenus
                 </p>
-                <p style={{
+                <p className="kpi-value" style={{
                   margin: 0,
                   fontSize: '20px',
                   fontWeight: '700',
@@ -537,13 +543,13 @@ export default function CompanyPage() {
                 </p>
               </div>
 
-              <div style={{
+              <div className="kpi-card" style={{
                 padding: '16px',
                 backgroundColor: '#fef2f2',
                 borderRadius: '12px',
                 border: '1px solid #fee2e2',
               }}>
-                <p style={{
+                <p className="kpi-label" style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
@@ -553,7 +559,7 @@ export default function CompanyPage() {
                 }}>
                   Dépenses
                 </p>
-                <p style={{
+                <p className="kpi-value" style={{
                   margin: 0,
                   fontSize: '20px',
                   fontWeight: '700',
@@ -563,13 +569,13 @@ export default function CompanyPage() {
                 </p>
               </div>
 
-              <div style={{
+              <div className="kpi-card" style={{
                 padding: '16px',
                 backgroundColor: '#fff7ed',
                 borderRadius: '12px',
                 border: '1px solid #fed7aa',
               }}>
-                <p style={{
+                <p className="kpi-label" style={{
                   margin: '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
@@ -579,7 +585,7 @@ export default function CompanyPage() {
                 }}>
                   TVA
                 </p>
-                <p style={{
+                <p className="kpi-value" style={{
                   margin: 0,
                   fontSize: '20px',
                   fontWeight: '700',
