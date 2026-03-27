@@ -37,12 +37,12 @@ export default function LandingPage() {
               <img src={logoUrl} alt="ComptaApp Logo" className="h-14 w-auto" />
               <span className="text-xl font-semibold text-gray-900">ComptaApp</span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Link
                 to="/login"
-                className="text-gray-600 hover:text-gray-900 transition-all duration-200"
+                className="border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium"
               >
-                Connexion
+                Se connecter
               </Link>
               <Link
                 to="/app"
