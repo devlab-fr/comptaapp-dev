@@ -455,7 +455,7 @@ export default function ViewFacturePage() {
               </div>
               ${facture.montant_remise && facture.montant_remise > 0 ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
-                  <span style="color: #dc2626; font-weight: 600;">Remise${facture.remise_type === 'percentage' ? ` (${facture.remise_value}%)` : ''}</span>
+                  <span style="color: #dc2626; font-weight: 600;">Remise${facture.remise_type === 'pct' ? ` (${facture.remise_value}%)` : ''}</span>
                   <span style="color: #dc2626; font-weight: 600;">-${facture.montant_remise.toFixed(2)} €</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
@@ -816,7 +816,7 @@ export default function ViewFacturePage() {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
                   <span style={{ color: '#dc2626', fontWeight: '600' }}>
-                    Remise{facture.remise_type === 'percentage' ? ` (${facture.remise_value}%)` : ''}:
+                    Remise{facture.remise_type === 'pct' ? ` (${facture.remise_value}%)` : ''}:
                   </span>
                   <span style={{ fontWeight: '600', color: '#dc2626' }}>
                     -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_remise)}
