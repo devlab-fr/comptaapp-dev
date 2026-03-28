@@ -104,6 +104,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
     return (
       <button
         onClick={() => setIsOpen(true)}
+        className="ai-assistant-button"
         style={{
           position: 'fixed',
           bottom: '24px',

@@ -351,16 +351,38 @@ export default function CompanyPage() {
           .dashboard-cards { grid-template-columns: 1fr !important; }
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .kpi-cards { grid-template-columns: 1fr !important; gap: 12px !important; max-width: 100% !important; }
+          .kpi-cards {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
           .summary-stats { grid-template-columns: 1fr !important; }
-          .dashboard-main { padding: 20px 16px !important; }
-          .dashboard-result-box { padding: 20px 16px !important; margin-bottom: 20px !important; }
+          .dashboard-main { padding: 20px 16px !important; overflow-x: hidden !important; }
+          .dashboard-result-box {
+            padding: 20px 16px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
           .result-title { fontSize: 18px !important; margin: 0 0 12px 0 !important; letterSpacing: 0.8px !important; }
           .result-amount { fontSize: 32px !important; margin: 0 0 6px 0 !important; }
           .result-subtitle { fontSize: 12px !important; margin: 0 0 20px 0 !important; }
-          .kpi-card { padding: 12px !important; }
+          .kpi-card {
+            padding: 12px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
           .kpi-label { fontSize: 10px !important; margin: 0 0 6px 0 !important; }
           .kpi-value { fontSize: 16px !important; }
+          .ai-assistant-button {
+            bottom: 80px !important;
+            right: 16px !important;
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+          }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
@@ -478,6 +500,8 @@ export default function CompanyPage() {
             marginBottom: '32px',
             textAlign: 'center',
             animation: 'fadeInUp 0.3s ease-out',
+            width: '100%',
+            boxSizing: 'border-box',
           }}>
             <h3 className="result-title" style={{
               margin: '0 0 20px 0',
@@ -516,6 +540,8 @@ export default function CompanyPage() {
               maxWidth: '600px',
               margin: '0 auto',
               animation: 'fadeIn 0.5s ease-out 0.15s backwards',
+              width: '100%',
+              boxSizing: 'border-box',
             }}>
               <div className="kpi-card" style={{
                 padding: '16px',
