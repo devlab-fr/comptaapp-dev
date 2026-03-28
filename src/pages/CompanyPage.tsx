@@ -351,7 +351,7 @@ export default function CompanyPage() {
           .dashboard-cards { grid-template-columns: 1fr !important; }
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .kpi-cards { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .kpi-cards { grid-template-columns: 1fr !important; gap: 12px !important; max-width: 100% !important; }
           .summary-stats { grid-template-columns: 1fr !important; }
           .dashboard-main { padding: 20px 16px !important; }
           .dashboard-result-box { padding: 20px 16px !important; margin-bottom: 20px !important; }
