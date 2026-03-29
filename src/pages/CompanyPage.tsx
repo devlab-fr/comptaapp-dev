@@ -352,7 +352,8 @@ export default function CompanyPage() {
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .kpi-cards {
-            grid-template-columns: 1fr !important;
+            display: flex !important;
+            flex-direction: column !important;
             gap: 12px !important;
             max-width: 100% !important;
             width: 100% !important;
