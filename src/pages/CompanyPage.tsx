@@ -57,6 +57,7 @@ export default function CompanyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const handleProtectedAction = (action: () => void) => {
     if (legalLoading) {
@@ -292,6 +293,14 @@ export default function CompanyPage() {
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showFacturesUpsell]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (loading) {
     return (
@@ -547,17 +556,28 @@ export default function CompanyPage() {
             </p>
 
             <div className="kpi-cards" style={{
-              maxWidth: '600px',
+              maxWidth: isMobile ? '100%' : '600px',
+              width: '100%',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? '8px' : '16px',
+              justifyContent: isMobile ? 'stretch' : 'center',
               animation: 'fadeIn 0.5s ease-out 0.15s backwards',
             }}>
               <div className="kpi-card" style={{
-                padding: '16px',
+                padding: isMobile ? '10px 14px' : '16px',
                 backgroundColor: '#f0fdf4',
                 borderRadius: '12px',
                 border: '1px solid #d1fae5',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                width: '100%',
+                boxSizing: 'border-box',
               }}>
                 <p className="kpi-label" style={{
-                  margin: '0 0 8px 0',
+                  margin: isMobile ? 0 : '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
                   color: '#14532d',
@@ -568,22 +588,29 @@ export default function CompanyPage() {
                 </p>
                 <p className="kpi-value" style={{
                   margin: 0,
-                  fontSize: '20px',
+                  fontSize: isMobile ? '16px' : '20px',
                   fontWeight: '700',
                   color: '#16a34a',
+                  textAlign: isMobile ? 'right' : 'left',
                 }}>
                   {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC)}
                 </p>
               </div>
 
               <div className="kpi-card" style={{
-                padding: '16px',
+                padding: isMobile ? '10px 14px' : '16px',
                 backgroundColor: '#fef2f2',
                 borderRadius: '12px',
                 border: '1px solid #fee2e2',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                width: '100%',
+                boxSizing: 'border-box',
               }}>
                 <p className="kpi-label" style={{
-                  margin: '0 0 8px 0',
+                  margin: isMobile ? 0 : '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
                   color: '#7f1d1d',
@@ -594,22 +621,29 @@ export default function CompanyPage() {
                 </p>
                 <p className="kpi-value" style={{
                   margin: 0,
-                  fontSize: '20px',
+                  fontSize: isMobile ? '16px' : '20px',
                   fontWeight: '700',
                   color: '#dc2626',
+                  textAlign: isMobile ? 'right' : 'left',
                 }}>
                   {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(expenseSummary.totalTTC)}
                 </p>
               </div>
 
               <div className="kpi-card" style={{
-                padding: '16px',
+                padding: isMobile ? '10px 14px' : '16px',
                 backgroundColor: '#fff7ed',
                 borderRadius: '12px',
                 border: '1px solid #fed7aa',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                width: '100%',
+                boxSizing: 'border-box',
               }}>
                 <p className="kpi-label" style={{
-                  margin: '0 0 8px 0',
+                  margin: isMobile ? 0 : '0 0 8px 0',
                   fontSize: '11px',
                   fontWeight: '500',
                   color: '#7c2d12',
@@ -620,9 +654,10 @@ export default function CompanyPage() {
                 </p>
                 <p className="kpi-value" style={{
                   margin: 0,
-                  fontSize: '20px',
+                  fontSize: isMobile ? '16px' : '20px',
                   fontWeight: '700',
                   color: '#ea580c',
+                  textAlign: isMobile ? 'right' : 'left',
                 }}>
                   {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTVA + expenseSummary.totalTVA)}
                 </p>
