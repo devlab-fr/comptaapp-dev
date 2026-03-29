@@ -23,6 +23,7 @@ export default function VerificationV1Page() {
   const { companyId } = useParams<{ companyId: string }>();
   const [data, setData] = useState<VerificationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
     const loadData = async () => {
@@ -82,6 +83,14 @@ export default function VerificationV1Page() {
 
     loadData();
   }, [companyId]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (loading) {
     return (
@@ -175,7 +184,7 @@ export default function VerificationV1Page() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
           <div
             style={{
               padding: '24px',
@@ -269,7 +278,7 @@ export default function VerificationV1Page() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
           <div
             style={{
               padding: '24px',
@@ -354,7 +363,7 @@ export default function VerificationV1Page() {
           >
             Bilan (simplifié)
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px' }}>
             <div>
               <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
                 Actif
