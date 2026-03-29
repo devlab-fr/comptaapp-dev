@@ -354,11 +354,11 @@ export default function CompanyPage() {
           .kpi-cards {
             display: flex !important;
             flex-direction: column !important;
-            gap: 12px !important;
+            gap: 8px !important;
             max-width: 100% !important;
             width: 100% !important;
             padding: 0 !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
           }
           .summary-stats { grid-template-columns: 1fr !important; }
           .dashboard-main { padding: 20px 16px !important; overflow-x: hidden !important; }
@@ -370,14 +370,26 @@ export default function CompanyPage() {
           }
           .result-title { fontSize: 18px !important; margin: 0 0 12px 0 !important; letterSpacing: 0.8px !important; }
           .result-amount { fontSize: 32px !important; margin: 0 0 6px 0 !important; }
-          .result-subtitle { fontSize: 12px !important; margin: 0 0 20px 0 !important; }
+          .result-subtitle { fontSize: 12px !important; margin: 0 0 16px 0 !important; }
           .kpi-card {
-            padding: 12px !important;
+            padding: 10px 14px !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
           }
-          .kpi-label { fontSize: 10px !important; margin: 0 0 6px 0 !important; }
-          .kpi-value { fontSize: 16px !important; }
+          .kpi-label {
+            fontSize: 11px !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+          }
+          .kpi-value {
+            fontSize: 16px !important;
+            margin: 0 !important;
+            text-align: right !important;
+          }
           .ai-assistant-button {
             bottom: 80px !important;
             right: 16px !important;
