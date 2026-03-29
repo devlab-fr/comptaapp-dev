@@ -535,8 +535,6 @@ export default function CompanyPage() {
             </p>
 
             <div className="kpi-cards" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '20px',
               maxWidth: '600px',
               margin: '0 auto',
