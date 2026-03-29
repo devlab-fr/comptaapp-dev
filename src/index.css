@@ -62,3 +62,38 @@ button {
 .animate-float-gentle {
   animation: float-gentle 3s ease-in-out infinite;
 }
+
+/* KPI Cards Layout */
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 767px) {
+  .kpi-cards {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 16px !important;
+    margin: 0 auto !important;
+  }
+
+  .kpi-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .kpi-label {
+    font-size: 10px !important;
+    margin: 0 0 6px 0 !important;
+  }
+
+  .kpi-value {
+    font-size: 18px !important;
+  }
+}

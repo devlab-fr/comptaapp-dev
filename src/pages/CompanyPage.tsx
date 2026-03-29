@@ -535,12 +535,8 @@ export default function CompanyPage() {
             </p>
 
             <div className="kpi-cards" style={{
-              gap: '20px',
               maxWidth: '600px',
-              margin: '0 auto',
               animation: 'fadeIn 0.5s ease-out 0.15s backwards',
-              width: '100%',
-              boxSizing: 'border-box',
             }}>
               <div className="kpi-card" style={{
                 padding: '16px',
