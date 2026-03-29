@@ -33,10 +33,17 @@ export default function KPIGraphs({ companyId }: KPIGraphsProps) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [totalEntriesCount, setTotalEntriesCount] = useState(0);
   const [monthsWithData, setMonthsWithData] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
     loadKPIData();
   }, [companyId]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadKPIData = async () => {
     setLoading(true);
@@ -544,7 +551,7 @@ export default function KPIGraphs({ companyId }: KPIGraphsProps) {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         gap: '24px',
       }}>
         <div style={{
