@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exemple - Lignes comptables Revenue</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 40px;
+      background: #f3f4f6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 24px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 24px;
+    }
+    .section {
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead tr {
+      border-bottom: 2px solid #e5e7eb;
+    }
+    th {
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+    }
+    th.left {
+      text-align: left;
+    }
+    th.right {
+      text-align: right;
+    }
+    tbody tr {
+      border-bottom: 1px solid #e5e7eb;
+    }
+    td {
+      padding: 10px 8px;
+      font-size: 13px;
+      color: #111827;
+    }
+    td.code {
+      font-weight: 500;
+    }
+    td.right {
+      text-align: right;
+      font-family: monospace;
+    }
+    .total-row {
+      border-top: 2px solid #1f2937;
+      background: #f3f4f6;
+    }
+    .total-row td {
+      font-weight: 600;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .info-label {
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .badge-unlocked {
+      background: #d1fae5;
+      color: #065f46;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Revenu du 30/03/2026 - 1 800,00 €</h1>
+
+    <div class="section">
+      <div class="section-title">Écriture de vente</div>
+      <div class="info-grid">
+        <div><span class="info-label">Numéro:</span> VT-2026-00003</div>
+        <div><span class="info-label">Journal:</span> VT - Ventes</div>
+        <div><span class="info-label">Date:</span> 30/03/2026</div>
+        <div>
+          <span class="info-label">Statut:</span>
+          <span class="badge badge-unlocked">Déverrouillée</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Lignes comptables</div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th class="left">Compte</th>
+              <th class="left">Libellé</th>
+              <th class="right">Débit</th>
+              <th class="right">Crédit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="code">411</td>
+              <td>Clients</td>
+              <td class="right">1 800,00 €</td>
+              <td class="right">—</td>
+            </tr>
+            <tr>
+              <td class="code">706</td>
+              <td>Prestations de services</td>
+              <td class="right">—</td>
+              <td class="right">1 500,00 €</td>
+            </tr>
+            <tr>
+              <td class="code">44571</td>
+              <td>TVA collectée</td>
+              <td class="right">—</td>
+              <td class="right">300,00 €</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Total</td>
+              <td class="right">1 800,00 €</td>
+              <td class="right">1 800,00 €</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 20px;">✅</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 600; color: #1e40af; margin-bottom: 4px;">
+            Écriture équilibrée
+          </div>
+          <div style="font-size: 13px; color: #1e3a8a;">
+            Le total des débits (1 800,00 €) est égal au total des crédits (1 800,00 €), conformément au principe de la partie double.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px; padding: 16px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;">
+      <div style="font-weight: 600; color: #92400e; margin-bottom: 8px;">
+        Explication comptable
+      </div>
+      <div style="font-size: 13px; color: #78350f; line-height: 1.6;">
+        <p style="margin: 0 0 8px 0;"><strong>Débit 411 (Clients) :</strong> Enregistre la créance client de 1 800,00 € TTC.</p>
+        <p style="margin: 0 0 8px 0;"><strong>Crédit 706 (Prestations) :</strong> Enregistre le produit hors taxe de 1 500,00 €.</p>
+        <p style="margin: 0;"><strong>Crédit 44571 (TVA collectée) :</strong> Enregistre la TVA collectée de 300,00 € (20%).</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
