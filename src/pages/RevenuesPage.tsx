@@ -20,6 +20,8 @@ interface RevenueDocument {
   category_id?: string;
   source_type?: string;
   source_invoice_id?: string;
+  linked_accounting_entry_id?: string | null;
+  payment_entry_id?: string | null;
 }
 
 interface Category {
@@ -219,6 +221,8 @@ export default function RevenuesPage() {
           category_id,
           source_type: doc.source_type,
           source_invoice_id: doc.source_invoice_id,
+          linked_accounting_entry_id: doc.linked_accounting_entry_id ?? null,
+          payment_entry_id: doc.payment_entry_id ?? null,
         };
       });
 
@@ -634,18 +638,25 @@ export default function RevenuesPage() {
                               <StatusBadges
                                 accountingStatus={rev.accounting_status}
                                 paymentStatus={rev.payment_status}
+                                paymentEntryId={rev.payment_entry_id}
                               />
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                              <ActionsDropdown
-                                onView={() => navigate(`/app/company/${companyId}/revenues/${rev.id}`)}
-                                onEdit={rev.source_type !== 'invoice' ? () => navigate(`/app/company/${companyId}/revenues/${rev.id}/edit`) : undefined}
-                                onDelete={rev.source_type !== 'invoice' ? () => setDeleteModal({ show: true, id: rev.id }) : undefined}
-                                onToggleValidation={() => handleToggleValidation(rev.id, rev.accounting_status)}
-                                onTogglePaid={() => handleTogglePaid(rev.id, rev.payment_status)}
-                                accountingStatus={rev.accounting_status}
-                                paymentStatus={rev.payment_status}
-                              />
+                              {(() => {
+                                const revLocked = !!rev.linked_accounting_entry_id || !!rev.payment_entry_id;
+                                const canTogglePaid = !rev.payment_entry_id;
+                                return (
+                                  <ActionsDropdown
+                                    onView={() => navigate(`/app/company/${companyId}/revenues/${rev.id}`)}
+                                    onEdit={!revLocked && rev.source_type !== 'invoice' ? () => navigate(`/app/company/${companyId}/revenues/${rev.id}/edit`) : undefined}
+                                    onDelete={!revLocked && rev.source_type !== 'invoice' ? () => setDeleteModal({ show: true, id: rev.id }) : undefined}
+                                    onToggleValidation={!revLocked ? () => handleToggleValidation(rev.id, rev.accounting_status) : undefined}
+                                    onTogglePaid={canTogglePaid ? () => handleTogglePaid(rev.id, rev.payment_status) : undefined}
+                                    accountingStatus={rev.accounting_status}
+                                    paymentStatus={rev.payment_status}
+                                  />
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))}
@@ -704,22 +715,26 @@ export default function RevenuesPage() {
               </div>
 
               <div className="mobile-only">
-                {revenues.map((rev) => (
-                  <RevenueMobileCard
-                    key={rev.id}
-                    revenue={{
-                      ...rev,
-                      amount_excl_vat: rev.total_excl_vat,
-                      vat_amount: rev.total_vat,
-                      amount_incl_vat: rev.total_incl_vat,
-                    }}
-                    onView={(id) => navigate(`/app/company/${companyId}/revenues/${id}`)}
-                    onEdit={rev.source_type !== 'invoice' ? (id) => navigate(`/app/company/${companyId}/revenues/${id}/edit`) : undefined}
-                    onDelete={rev.source_type !== 'invoice' ? (id) => setDeleteModal({ show: true, id }) : undefined}
-                    onToggleValidation={(id) => handleToggleValidation(id, rev.accounting_status)}
-                    onTogglePaid={(id) => handleTogglePaid(id, rev.payment_status)}
-                  />
-                ))}
+                {revenues.map((rev) => {
+                  const revLocked = !!rev.linked_accounting_entry_id || !!rev.payment_entry_id;
+                  const canTogglePaid = !rev.payment_entry_id;
+                  return (
+                    <RevenueMobileCard
+                      key={rev.id}
+                      revenue={{
+                        ...rev,
+                        amount_excl_vat: rev.total_excl_vat,
+                        vat_amount: rev.total_vat,
+                        amount_incl_vat: rev.total_incl_vat,
+                      }}
+                      onView={(id) => navigate(`/app/company/${companyId}/revenues/${id}`)}
+                      onEdit={!revLocked && rev.source_type !== 'invoice' ? (id) => navigate(`/app/company/${companyId}/revenues/${id}/edit`) : undefined}
+                      onDelete={!revLocked && rev.source_type !== 'invoice' ? (id) => setDeleteModal({ show: true, id }) : undefined}
+                      onToggleValidation={!revLocked ? (id) => handleToggleValidation(id, rev.accounting_status) : undefined}
+                      onTogglePaid={canTogglePaid ? (id) => handleTogglePaid(id, rev.payment_status) : undefined}
+                    />
+                  );
+                })}
 
                 {totalPages > 1 && (
                   <div style={{

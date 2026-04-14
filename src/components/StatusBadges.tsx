@@ -1,9 +1,11 @@
 interface StatusBadgesProps {
   accountingStatus: string;
   paymentStatus: string;
+  paymentEntryId?: string | null;
 }
 
-export function StatusBadges({ accountingStatus, paymentStatus }: StatusBadgesProps) {
+export function StatusBadges({ accountingStatus, paymentStatus, paymentEntryId }: StatusBadgesProps) {
+  const effectivePaymentStatus = paymentEntryId ? 'paid' : paymentStatus;
   const getAccountingBadgeStyle = (status: string) => {
     if (status === 'validated') {
       return {
@@ -35,7 +37,7 @@ export function StatusBadges({ accountingStatus, paymentStatus }: StatusBadgesPr
   };
 
   const accountingBadge = getAccountingBadgeStyle(accountingStatus);
-  const paymentBadge = getPaymentBadgeStyle(paymentStatus);
+  const paymentBadge = getPaymentBadgeStyle(effectivePaymentStatus);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>

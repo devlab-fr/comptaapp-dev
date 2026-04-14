@@ -17,6 +17,11 @@ interface ExpenseDocument {
   paid_at?: string;
   linked_accounting_entry_id?: string;
   payment_entry_id?: string;
+  third_party_id?: string | null;
+  third_party?: {
+    name: string;
+    code: string | null;
+  } | null;
 }
 
 interface ExpenseLine {
@@ -100,7 +105,7 @@ export default function ViewExpensePage() {
     try {
       const { data: docData, error: docError } = await supabase
         .from('expense_documents')
-        .select('*')
+        .select('*, third_party:third_parties(name, code)')
         .eq('id', documentId)
         .single();
 
@@ -202,6 +207,20 @@ export default function ViewExpensePage() {
     }
   };
 
+  const handleTogglePaid = async () => {
+    if (!canModify || !document) return;
+    const newStatus = document.payment_status === 'paid' ? 'unpaid' : 'paid';
+    const { error } = await supabase
+      .from('expense_documents')
+      .update({ payment_status: newStatus })
+      .eq('id', documentId);
+    if (!error) {
+      loadDocument();
+    } else {
+      alert('Erreur lors de la mise à jour du statut de paiement');
+    }
+  };
+
   const handleDelete = () => {
     if (!canModify || !document) return;
 
@@ -266,6 +285,10 @@ export default function ViewExpensePage() {
     );
   }
 
+  const isLocked =
+    !!document.linked_accounting_entry_id ||
+    !!document.payment_entry_id;
+
   return (
     <>
       <div style={{ padding: '32px 20px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -274,14 +297,14 @@ export default function ViewExpensePage() {
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 }}>
             Dépense du {new Date(document.invoice_date).toLocaleDateString('fr-FR')}
           </h1>
-          {canModify && (
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {canModify && !document.payment_entry_id && (
               <button
-                onClick={() => navigate(`/app/company/${companyId}/expenses/${documentId}/edit`)}
+                onClick={handleTogglePaid}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
+                  backgroundColor: document.payment_status === 'paid' ? '#fef3c7' : '#d1fae5',
+                  color: document.payment_status === 'paid' ? '#92400e' : '#065f46',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
@@ -289,25 +312,44 @@ export default function ViewExpensePage() {
                   cursor: 'pointer',
                 }}
               >
-                Modifier
+                {document.payment_status === 'paid' ? 'Marquer comme non payé' : 'Marquer comme payé'}
               </button>
-              <button
-                onClick={handleDelete}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                Supprimer
-              </button>
-            </div>
-          )}
+            )}
+            {canModify && !isLocked && (
+              <>
+                <button
+                  onClick={() => navigate(`/app/company/${companyId}/expenses/${documentId}/edit`)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Modifier
+                </button>
+                <button
+                  onClick={handleDelete}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#fee2e2',
+                    color: '#991b1b',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Supprimer
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
@@ -318,10 +360,18 @@ export default function ViewExpensePage() {
               </h3>
               <div style={{ fontSize: '14px', color: '#111827', lineHeight: '1.8' }}>
                 <div><strong>Date:</strong> {new Date(document.invoice_date).toLocaleDateString('fr-FR')}</div>
+                {document.third_party && (
+                  <div>
+                    <strong>Fournisseur:</strong>{' '}
+                    {document.third_party.code
+                      ? `${document.third_party.code} — ${document.third_party.name}`
+                      : document.third_party.name}
+                  </div>
+                )}
                 <div>
                   <strong>Statut comptable:</strong>
                   <span style={{ marginLeft: '8px' }}>
-                    <StatusBadges accountingStatus={document.accounting_status} paymentStatus={document.payment_status} />
+                    <StatusBadges accountingStatus={document.accounting_status} paymentStatus={document.payment_status} paymentEntryId={document.payment_entry_id} />
                   </span>
                 </div>
                 {document.payment_status === 'paid' && document.paid_at && (

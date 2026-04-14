@@ -21,6 +21,8 @@ interface ExpenseDocument {
   subcategory_name?: string;
   category_id?: string;
   subcategory_id?: string;
+  linked_accounting_entry_id?: string | null;
+  payment_entry_id?: string | null;
 }
 
 interface Category {
@@ -246,6 +248,8 @@ export default function ExpensesPage() {
           subcategory_name,
           category_id,
           subcategory_id,
+          linked_accounting_entry_id: doc.linked_accounting_entry_id ?? null,
+          payment_entry_id: doc.payment_entry_id ?? null,
         };
       });
 
@@ -779,19 +783,26 @@ export default function ExpensesPage() {
                               <StatusBadges
                                 accountingStatus={exp.accounting_status}
                                 paymentStatus={exp.payment_status}
+                                paymentEntryId={exp.payment_entry_id}
                               />
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                              <ActionsDropdown
-                                onView={() => navigate(`/app/company/${companyId}/expenses/${exp.id}`)}
-                                onEdit={() => navigate(`/app/company/${companyId}/expenses/${exp.id}/edit`)}
-                                onDelete={() => setDeleteModal({ show: true, id: exp.id })}
-                                onToggleValidation={() => handleToggleValidation(exp.id, exp.accounting_status)}
-                                onTogglePaid={() => handleTogglePaid(exp.id, exp.payment_status)}
-                                accountingStatus={exp.accounting_status}
-                                paymentStatus={exp.payment_status}
-                                readOnly={!canModify}
-                              />
+                              {(() => {
+                                const expLocked = !!exp.linked_accounting_entry_id || !!exp.payment_entry_id;
+                                const canTogglePaid = !exp.payment_entry_id;
+                                return (
+                                  <ActionsDropdown
+                                    onView={() => navigate(`/app/company/${companyId}/expenses/${exp.id}`)}
+                                    onEdit={!expLocked ? () => navigate(`/app/company/${companyId}/expenses/${exp.id}/edit`) : undefined}
+                                    onDelete={!expLocked ? () => setDeleteModal({ show: true, id: exp.id }) : undefined}
+                                    onToggleValidation={!expLocked ? () => handleToggleValidation(exp.id, exp.accounting_status) : undefined}
+                                    onTogglePaid={canTogglePaid ? () => handleTogglePaid(exp.id, exp.payment_status) : undefined}
+                                    accountingStatus={exp.accounting_status}
+                                    paymentStatus={exp.payment_status}
+                                    readOnly={!canModify}
+                                  />
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))}
@@ -850,23 +861,27 @@ export default function ExpensesPage() {
               </div>
 
               <div className="mobile-only">
-                {expenses.map((exp) => (
-                  <ExpenseMobileCard
-                    key={exp.id}
-                    expense={{
-                      ...exp,
-                      amount_excl_vat: exp.total_excl_vat,
-                      vat_amount: exp.total_vat,
-                      amount_incl_vat: exp.total_incl_vat,
-                    }}
-                    onView={(id) => navigate(`/app/company/${companyId}/expenses/${id}`)}
-                    onEdit={(id) => navigate(`/app/company/${companyId}/expenses/${id}/edit`)}
-                    onDelete={(id) => setDeleteModal({ show: true, id })}
-                    onToggleValidation={(id) => handleToggleValidation(id, exp.accounting_status)}
-                    onTogglePaid={(id) => handleTogglePaid(id, exp.payment_status)}
-                    readOnly={!canModify}
-                  />
-                ))}
+                {expenses.map((exp) => {
+                  const expLocked = !!exp.linked_accounting_entry_id || !!exp.payment_entry_id;
+                  const canTogglePaid = !exp.payment_entry_id;
+                  return (
+                    <ExpenseMobileCard
+                      key={exp.id}
+                      expense={{
+                        ...exp,
+                        amount_excl_vat: exp.total_excl_vat,
+                        vat_amount: exp.total_vat,
+                        amount_incl_vat: exp.total_incl_vat,
+                      }}
+                      onView={(id) => navigate(`/app/company/${companyId}/expenses/${id}`)}
+                      onEdit={!expLocked ? (id) => navigate(`/app/company/${companyId}/expenses/${id}/edit`) : undefined}
+                      onDelete={!expLocked ? (id) => setDeleteModal({ show: true, id }) : undefined}
+                      onToggleValidation={!expLocked ? (id) => handleToggleValidation(id, exp.accounting_status) : undefined}
+                      onTogglePaid={canTogglePaid ? (id) => handleTogglePaid(id, exp.payment_status) : undefined}
+                      readOnly={!canModify}
+                    />
+                  );
+                })}
 
                 {totalPages > 1 && (
                   <div style={{

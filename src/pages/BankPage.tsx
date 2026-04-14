@@ -6,6 +6,7 @@ import { exportBankStatementCSV, exportReconciliationCSV, downloadCSV } from '..
 import { CreateBankAccountDialog } from '../banking/components/CreateBankAccountDialog';
 import { CreateBankEntryModal } from '../banking/components/CreateBankEntryModal';
 import { BankReconciliationModal, MatchSuggestion } from '../banking/components/BankReconciliationModal';
+import { applyBusinessRanking, normalize } from '../banking/rankingUtils';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
@@ -209,12 +210,98 @@ export default function BankPage() {
 
       const suggestions = (data || []) as MatchSuggestion[];
 
+      // ÉTAPE 1 : Récupérer les comptes métier des suggestions (batch query)
+      const entryIds = suggestions.map((s) => s.entry_id);
+      const accountCodeMap = new Map<string, string>();
+
+      if (entryIds.length > 0) {
+        try {
+          const { data: accountData } = await supabase
+            .from('accounting_lines')
+            .select('entry_id, chart_of_accounts!inner(code)')
+            .in('entry_id', entryIds)
+            .order('line_order');
+
+          if (accountData) {
+            // Filtrer les comptes pertinents et garder le premier par entry_id
+            const processedEntries = new Set<string>();
+
+            for (const row of accountData) {
+              const code = (row.chart_of_accounts as any).code;
+              const entryId = row.entry_id;
+
+              // Ignorer 512
+              if (code === '512') continue;
+
+              // Si déjà traité, passer
+              if (processedEntries.has(entryId)) continue;
+
+              // Priorité 1 : 6xx / 7xx
+              if (code.startsWith('6') || code.startsWith('7')) {
+                accountCodeMap.set(entryId, code);
+                processedEntries.add(entryId);
+                continue;
+              }
+
+              // Priorité 2 : 401 / 411 (uniquement si pas déjà de 6xx/7xx)
+              if (code === '401' || code === '411') {
+                if (!accountCodeMap.has(entryId)) {
+                  accountCodeMap.set(entryId, code);
+                  processedEntries.add(entryId);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error loading account codes:', err);
+        }
+      }
+
+      // ÉTAPE 2 : Récupérer la mémoire utilisateur pour ce libellé bancaire
+      let memoryAccountCode: string | null = null;
+      try {
+        const normalizedLabel = normalize(line.label);
+        const { data: memoryData } = await supabase
+          .from('bank_match_memory')
+          .select('account_code')
+          .eq('company_id', companyId)
+          .eq('normalized_label', normalizedLabel)
+          .order('usage_count', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (memoryData?.account_code) {
+          memoryAccountCode = memoryData.account_code;
+        }
+      } catch (err) {
+        console.error('Error loading memory:', err);
+      }
+
+      // ÉTAPE 3 : Appliquer le ranking métier local + mémoire ciblée
+      const rankedSuggestions = applyBusinessRanking(suggestions, line, accountCodeMap, memoryAccountCode);
+
       // TEST AUTOMATCH AVANT TOUTE OUVERTURE MODALE
-      const shouldAutoMatch =
-        suggestions.length === 1 &&
-        suggestions[0]?.entry_id &&
-        suggestions[0].score >= AUTOMATCH_THRESHOLD &&
-        !line.linked_accounting_entry_id;
+      let shouldAutoMatch = false;
+
+      if (rankedSuggestions.length === 1) {
+        // Cas 1 suggestion : comportement inchangé
+        shouldAutoMatch =
+          !!rankedSuggestions[0]?.entry_id &&
+          rankedSuggestions[0].score >= AUTOMATCH_THRESHOLD &&
+          !line.linked_accounting_entry_id;
+      } else if (rankedSuggestions.length > 1) {
+        // Cas plusieurs suggestions : automatch uniquement si écart significatif
+        const top1 = rankedSuggestions[0];
+        const top2 = rankedSuggestions[1];
+        const scoreFinal1 = 'score_final' in top1 ? (top1 as any).score_final : (top1 as MatchSuggestion).score;
+        const scoreFinal2 = 'score_final' in top2 ? (top2 as any).score_final : (top2 as MatchSuggestion).score;
+
+        shouldAutoMatch =
+          !!top1?.entry_id &&
+          scoreFinal1 >= AUTOMATCH_THRESHOLD &&
+          scoreFinal1 - scoreFinal2 >= 15 &&
+          !line.linked_accounting_entry_id;
+      }
 
       if (shouldAutoMatch) {
         // Automatch invisible - AUCUNE MODALE
@@ -224,7 +311,7 @@ export default function BankPage() {
 
           const { data: validateData, error: validateError } = await supabase.rpc('validate_bank_match', {
             p_company_id: companyId,
-            p_entry_id: suggestions[0].entry_id,
+            p_entry_id: rankedSuggestions[0].entry_id,
             p_line_id: line.id,
           });
 
@@ -249,7 +336,7 @@ export default function BankPage() {
       }
 
       // Fallback : ouvrir la modale uniquement si pas d'automatch
-      setInitialSuggestions(suggestions);
+      setInitialSuggestions(rankedSuggestions);
       setSelectedLineForReconciliation(line);
       setShowReconciliationModal(true);
     } catch (err) {

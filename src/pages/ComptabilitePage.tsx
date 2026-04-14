@@ -5,7 +5,7 @@ import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
 import { compareVat, getVatAccountDetails, VatComparison, VatAccountDetail } from '../utils/accountingVat';
 import { checkClosureStatus, getAccountingStatements, ClosureStatus, AccountingStatement, ControlStatus } from '../utils/closureControls';
-import { exportFECLike, exportBalance, exportVATComptable } from '../utils/closureExports';
+import { exportFECLike, exportFEC, exportBalance, exportVATComptable } from '../utils/closureExports';
 import { getFiscalYearStatus, updateFiscalYearStatus, getUserRole, getStatusLabel, getStatusColor, getStatusBgColor, FiscalYearStatusType } from '../utils/cabinetMode';
 import { EntryCommentsModal } from '../components/EntryCommentsModal';
 import { useEntitlements } from '../billing/useEntitlements';
@@ -2334,6 +2334,34 @@ function ClosureTab({ companyId, setToast, entitlements, selectedYear }: { compa
         )}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <button
+              onClick={() => {
+                const planTier = convertEntitlementsPlanToTier(entitlements.plan);
+                if (!hasFeature(planTier, 'exports_csv')) {
+                  setToast({ message: getFeatureBlockedMessage('exports_csv'), type: 'error' });
+                  return;
+                }
+                exportFEC(companyId, selectedYear);
+              }}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: '#1e40af',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Export FEC (DGFiP)
+            </button>
+            <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
+              Export FEC basé uniquement sur les écritures comptables verrouillées de l'exercice sélectionné.
+            </p>
+          </div>
+
           <button
             onClick={() => {
               const planTier = convertEntitlementsPlanToTier(entitlements.plan);

@@ -11,6 +11,7 @@ interface RevenueMobileCardProps {
     amount_incl_vat: number;
     accounting_status: string;
     payment_status: string;
+    payment_entry_id?: string | null;
   };
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -64,6 +65,7 @@ export function RevenueMobileCard({
         <StatusBadges
           accountingStatus={revenue.accounting_status}
           paymentStatus={revenue.payment_status}
+          paymentEntryId={revenue.payment_entry_id}
         />
         <ActionsDropdown
           onView={onView ? () => onView(revenue.id) : undefined}

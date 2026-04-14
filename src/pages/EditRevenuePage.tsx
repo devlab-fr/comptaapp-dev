@@ -27,12 +27,21 @@ interface RevenueLine {
   tvaRate: string;
 }
 
+interface ThirdParty {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 export default function EditRevenuePage() {
   const { companyId, documentId } = useParams<{ companyId: string; documentId: string }>();
   useAuth();
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [thirdPartyId, setThirdPartyId] = useState<string>('');
+  const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
   const [sourceType, setSourceType] = useState<'manual' | 'cash'>('manual');
   const [inputMode, setInputMode] = useState<'ht' | 'ttc'>('ht');
   const [lines, setLines] = useState<RevenueLine[]>([]);
@@ -42,11 +51,15 @@ export default function EditRevenuePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [docStatus, setDocStatus] = useState<{ accounting_status: string | null; payment_status: string | null }>({ accounting_status: null, payment_status: null });
+  const [showLockedModal, setShowLockedModal] = useState(false);
+  const [lockedMessage, setLockedMessage] = useState('');
 
   useEffect(() => {
     loadDocument();
     loadCategories();
     loadAllSubcategories();
+    loadThirdParties();
   }, [documentId]);
 
   const loadDocument = async () => {
@@ -72,7 +85,10 @@ export default function EditRevenuePage() {
       return;
     }
 
+    setDocStatus({ accounting_status: doc.accounting_status ?? null, payment_status: doc.payment_status ?? null });
     setDate(doc.invoice_date);
+    setDocumentNumber(doc.document_number ?? '');
+    setThirdPartyId(doc.third_party_id ?? '');
     if (doc.source_type === 'manual' || doc.source_type === 'cash') {
       setSourceType(doc.source_type);
     }
@@ -132,6 +148,19 @@ export default function EditRevenuePage() {
         });
       });
       setSubcategoriesMap(map);
+    }
+  };
+
+  const loadThirdParties = async () => {
+    if (!companyId) return;
+    const { data, error: fetchError } = await supabase
+      .from('third_parties')
+      .select('id, name, code')
+      .eq('company_id', companyId)
+      .eq('type', 'client')
+      .order('name', { ascending: true });
+    if (!fetchError && data) {
+      setThirdParties(data);
     }
   };
 
@@ -260,15 +289,19 @@ export default function EditRevenuePage() {
 
     const totals = calculateTotals();
 
+    const docUpdate: Record<string, unknown> = {
+      invoice_date: date,
+      total_excl_vat: totals.totalHT,
+      total_vat: totals.totalTVA,
+      total_incl_vat: totals.totalTTC,
+      source_type: sourceType,
+      document_number: documentNumber.trim() ? documentNumber.trim() : null,
+      third_party_id: thirdPartyId || null,
+    };
+
     const { error: docError } = await supabase
       .from('revenue_documents')
-      .update({
-        invoice_date: date,
-        total_excl_vat: totals.totalHT,
-        total_vat: totals.totalTVA,
-        total_incl_vat: totals.totalTTC,
-        source_type: sourceType,
-      })
+      .update(docUpdate)
       .eq('id', documentId);
 
     if (docError) {
@@ -277,7 +310,48 @@ export default function EditRevenuePage() {
       return;
     }
 
-    await supabase.from('revenue_lines').delete().eq('document_id', documentId);
+    if (!documentId) {
+      setError("ID du document manquant");
+      setSaving(false);
+      return;
+    }
+
+    const isNonDraft =
+      !!docStatus.accounting_status &&
+      docStatus.accounting_status !== 'draft';
+
+    const isPaid =
+      docStatus.payment_status === 'paid';
+
+    if (isNonDraft || isPaid) {
+      setLockedMessage("Ce revenu est déjà comptabilisé ou payé. Pour préserver la cohérence comptable, sa modification est bloquée.");
+      setShowLockedModal(true);
+      setSaving(false);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from('revenue_lines')
+      .delete()
+      .eq('document_id', documentId);
+
+    if (deleteError) {
+      console.error('Delete revenue_lines error:', {
+        message: deleteError?.message,
+        details: deleteError?.details,
+        hint: deleteError?.hint,
+        code: deleteError?.code
+      });
+
+      setError(
+        deleteError?.message
+          ? deleteError.message
+          : "Erreur lors de la suppression des anciennes lignes"
+      );
+
+      setSaving(false);
+      return;
+    }
 
     const lineInserts = lines.map((line, index) => {
       const amountHTNum = parseFloat(line.amountHT);
@@ -306,6 +380,39 @@ export default function EditRevenuePage() {
       return;
     }
 
+    if (!documentId) {
+      setError('ID du document manquant');
+      setSaving(false);
+      return;
+    }
+
+    const { data: recomputeResult, error: recomputeError } = await supabase.rpc(
+      'recompute_revenue_accounting_entry',
+      { p_revenue_id: documentId }
+    );
+
+    if (recomputeError) {
+      console.error('Recompute error:', recomputeError);
+      setError(
+        recomputeError?.message
+          ? recomputeError.message
+          : 'Erreur lors de la recomptabilisation du revenu'
+      );
+      setSaving(false);
+      return;
+    }
+
+    if (recomputeResult?.success === false) {
+      console.error('Recompute failed:', recomputeResult.error);
+      setError(
+        recomputeResult?.error
+          ? `Erreur de comptabilisation : ${recomputeResult.error}`
+          : 'Erreur lors de la recomptabilisation du revenu'
+      );
+      setSaving(false);
+      return;
+    }
+
     navigate(`/app/company/${companyId}?success=revenue_updated`);
   };
 
@@ -320,6 +427,7 @@ export default function EditRevenuePage() {
   }
 
   return (
+    <>
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       <main
         style={{
@@ -448,6 +556,82 @@ export default function EditRevenuePage() {
             </div>
 
             <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                }}
+              >
+                Réf. document
+                <span style={{ marginLeft: '6px', fontSize: '12px', color: '#9ca3af', fontWeight: '400' }}>(optionnel)</span>
+              </label>
+              <input
+                type="text"
+                value={documentNumber}
+                onChange={(e) => setDocumentNumber(e.target.value)}
+                placeholder="N° de bon de commande, devis, référence client..."
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#28a745';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
+
+            {(sourceType === 'manual' || sourceType === 'cash') && (
+              <div style={{ marginBottom: '24px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                  }}
+                >
+                  Client
+                  <span style={{ marginLeft: '6px', fontSize: '12px', color: '#9ca3af', fontWeight: '400' }}>(optionnel)</span>
+                </label>
+                <select
+                  value={thirdPartyId}
+                  onChange={(e) => setThirdPartyId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease',
+                    cursor: 'pointer',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#28a745'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; }}
+                >
+                  <option value="">— Aucun client —</option>
+                  {thirdParties.map((tp) => (
+                    <option key={tp.id} value={tp.id}>
+                      {tp.code ? `${tp.code} — ${tp.name}` : tp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '24px' }}>
               <div
                 style={{
                   display: 'flex',
@@ -471,29 +655,45 @@ export default function EditRevenuePage() {
                     <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
                       Mode de saisie :
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setInputMode(inputMode === 'ht' ? 'ttc' : 'ht')}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: 'white',
-                        backgroundColor: inputMode === 'ht' ? '#28a745' : '#0ea5e9',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = '0.9';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = '1';
-                      }}
-                    >
-                      {inputMode === 'ht' ? 'HT' : 'TTC'}
-                    </button>
+                    <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                      <button
+                        type="button"
+                        onClick={() => setInputMode('ht')}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: inputMode === 'ht' ? 'white' : '#374151',
+                          backgroundColor: inputMode === 'ht' ? '#dc2626' : '#f9fafb',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease, color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { if (inputMode !== 'ht') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                        onMouseLeave={(e) => { if (inputMode !== 'ht') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                      >
+                        HT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInputMode('ttc')}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: inputMode === 'ttc' ? 'white' : '#374151',
+                          backgroundColor: inputMode === 'ttc' ? '#0ea5e9' : '#f9fafb',
+                          border: 'none',
+                          borderLeft: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease, color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { if (inputMode !== 'ttc') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                        onMouseLeave={(e) => { if (inputMode !== 'ttc') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                      >
+                        TTC
+                      </button>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -1048,5 +1248,68 @@ export default function EditRevenuePage() {
         </div>
       </main>
     </div>
+
+      {showLockedModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '420px',
+              width: '90%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+          >
+            <h3
+              style={{
+                margin: '0 0 16px 0',
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#1a1a1a',
+              }}
+            >
+              Modification impossible
+            </h3>
+            <p
+              style={{
+                margin: '0 0 24px 0',
+                fontSize: '14px',
+                color: '#4b5563',
+                lineHeight: '1.6',
+              }}
+            >
+              {lockedMessage}
+            </p>
+            <button
+              onClick={() => setShowLockedModal(false)}
+              style={{
+                width: '100%',
+                padding: '10px 0',
+                backgroundColor: '#1a1a1a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

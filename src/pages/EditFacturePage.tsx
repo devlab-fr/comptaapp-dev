@@ -141,6 +141,11 @@ export default function EditFacturePage() {
 
       if (factureError) throw factureError;
 
+      if (factureData.statut_paiement === 'payee') {
+        navigate(`/app/company/${companyId}/factures/${factureId}`);
+        return;
+      }
+
       setSelectedClientId(factureData.client_id);
       setDateFacture(factureData.date_facture);
       setStatutPaiement(factureData.statut_paiement);
@@ -274,6 +279,44 @@ export default function EditFacturePage() {
           return;
         }
       }
+
+      const totals = calculateTotals();
+
+      const lignesData = lignes.map((ligne, index) => {
+        const { montantHT, montantTVA, montantTTC } = calculateLigneTotals(ligne);
+        return {
+          description: ligne.description,
+          quantite: ligne.quantite,
+          prix_unitaire_ht: ligne.prix_unitaire_ht,
+          taux_tva: ligne.taux_tva,
+          montant_ht: montantHT,
+          montant_tva: montantTVA,
+          montant_ttc: montantTTC,
+          ordre: index,
+          category_id: ligne.category_id,
+        };
+      });
+
+      const { error: rpcError } = await supabase.rpc('update_facture_with_lines', {
+        p_facture_id: factureId,
+        p_client_id: selectedClientId,
+        p_date_facture: dateFacture,
+        p_statut_paiement: statutPaiement,
+        p_date_paiement: statutPaiement === 'payee' ? datePaiement : null,
+        p_montant_total_ht: totals.totalHTApresRemise,
+        p_montant_total_tva: totals.totalTVA,
+        p_montant_total_ttc: totals.totalTTC,
+        p_remise_type: remiseType,
+        p_remise_value: remiseValue,
+        p_montant_remise: totals.montantRemise,
+        p_lignes: lignesData,
+      });
+
+      if (rpcError) {
+        console.error('Erreur RPC update_facture_with_lines:', JSON.stringify(rpcError, null, 2));
+        throw rpcError;
+      }
+
       if (recipientId) {
         const { error: recipientError } = await supabase
           .from('invoice_recipients')
@@ -295,65 +338,6 @@ export default function EditFacturePage() {
           console.error('Erreur recipient:', JSON.stringify(recipientError, null, 2));
           throw recipientError;
         }
-      }
-
-      const totals = calculateTotals();
-
-      const { error: factureError } = await supabase
-        .from('factures')
-        .update({
-          client_id: selectedClientId,
-          date_facture: dateFacture,
-          statut_paiement: statutPaiement,
-          date_paiement: statutPaiement === 'payee' ? datePaiement : null,
-          montant_total_ht: totals.totalHTApresRemise,
-          montant_total_tva: totals.totalTVA,
-          montant_total_ttc: totals.totalTTC,
-          remise_type: remiseType,
-          remise_value: remiseValue,
-          montant_remise: totals.montantRemise,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', factureId);
-
-      if (factureError) {
-        console.error('Erreur facture:', JSON.stringify(factureError, null, 2));
-        throw factureError;
-      }
-
-      const { error: deleteLignesError } = await supabase
-        .from('lignes_factures')
-        .delete()
-        .eq('facture_id', factureId);
-
-      if (deleteLignesError) {
-        console.error('Erreur suppression lignes:', JSON.stringify(deleteLignesError, null, 2));
-        throw deleteLignesError;
-      }
-
-      const lignesData = lignes.map((ligne, index) => {
-        const { montantHT, montantTVA, montantTTC } = calculateLigneTotals(ligne);
-        return {
-          facture_id: factureId,
-          description: ligne.description,
-          quantite: ligne.quantite,
-          prix_unitaire_ht: ligne.prix_unitaire_ht,
-          taux_tva: ligne.taux_tva,
-          montant_ht: montantHT,
-          montant_tva: montantTVA,
-          montant_ttc: montantTTC,
-          ordre: index,
-          category_id: ligne.category_id,
-        };
-      });
-
-      const { error: lignesError } = await supabase
-        .from('lignes_factures')
-        .insert(lignesData);
-
-      if (lignesError) {
-        console.error('Erreur lignes:', JSON.stringify(lignesError, null, 2));
-        throw lignesError;
       }
 
       navigate(`/app/company/${companyId}/factures/${factureId}`);
@@ -385,7 +369,7 @@ export default function EditFacturePage() {
           Modifier la facture
         </h1>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') e.preventDefault(); }}>
           <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>
               Informations générales

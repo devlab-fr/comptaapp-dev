@@ -21,6 +21,12 @@ interface Subcategory {
   sort_order: number;
 }
 
+interface ThirdParty {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 export default function AddExpensePage() {
   const { companyId } = useParams<{ companyId: string }>();
   useAuth();
@@ -44,6 +50,7 @@ export default function AddExpensePage() {
     : '0.20';
 
   const [date, setDate] = useState(prefillDate);
+  const [documentNumber, setDocumentNumber] = useState('');
   const [description, setDescription] = useState(prefillDescription || prefillSupplier || '');
   const [categoryId, setCategoryId] = useState(prefillCategoryId || '');
   const [subcategoryId, setSubcategoryId] = useState(prefillSubcategoryId || '');
@@ -51,7 +58,10 @@ export default function AddExpensePage() {
   const [amountTTC, setAmountTTC] = useState('');
   const [tvaRate, setTvaRate] = useState(calculatedTVARate);
   const [inputMode, setInputMode] = useState<'ht' | 'ttc'>('ht');
+  const [paymentTiming, setPaymentTiming] = useState<'immediate' | 'deferred'>('immediate');
   const [companyVatRegime, setCompanyVatRegime] = useState<string>('');
+  const [thirdPartyId, setThirdPartyId] = useState<string>('');
+  const [thirdParties, setThirdParties] = useState<ThirdParty[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,8 +99,22 @@ export default function AddExpensePage() {
       }
     };
 
+    const loadThirdParties = async () => {
+      if (!companyId) return;
+      const { data, error: fetchError } = await supabase
+        .from('third_parties')
+        .select('id, name, code')
+        .eq('company_id', companyId)
+        .eq('type', 'fournisseur')
+        .order('name', { ascending: true });
+      if (!fetchError && data) {
+        setThirdParties(data);
+      }
+    };
+
     loadCompanyVatRegime();
     loadCategories();
+    loadThirdParties();
   }, [companyId]);
 
   useEffect(() => {
@@ -261,7 +285,13 @@ export default function AddExpensePage() {
       total_incl_vat: amountTtc,
       accounting_status: 'draft',
       payment_status: 'unpaid',
+      payment_timing: paymentTiming,
+      third_party_id: thirdPartyId || null,
     };
+
+    if (documentNumber.trim()) {
+      documentData.document_number = documentNumber.trim();
+    }
 
     if (prefillReceiptUrl) {
       documentData.receipt_url = prefillReceiptUrl;
@@ -501,34 +531,94 @@ export default function AddExpensePage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                  Type :
+                </span>
+                <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTiming('immediate')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: paymentTiming === 'immediate' ? 'white' : '#374151',
+                      backgroundColor: paymentTiming === 'immediate' ? '#059669' : '#f9fafb',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease, color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { if (paymentTiming !== 'immediate') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { if (paymentTiming !== 'immediate') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                  >
+                    Immédiat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTiming('deferred')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: paymentTiming === 'deferred' ? 'white' : '#374151',
+                      backgroundColor: paymentTiming === 'deferred' ? '#ea580c' : '#f9fafb',
+                      border: 'none',
+                      borderLeft: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease, color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { if (paymentTiming !== 'deferred') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { if (paymentTiming !== 'deferred') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                  >
+                    Différé
+                  </button>
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
                   Mode de saisie :
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setInputMode(inputMode === 'ht' ? 'ttc' : 'ht')}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: 'white',
-                    backgroundColor: inputMode === 'ht' ? '#dc2626' : '#0ea5e9',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.9';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  {inputMode === 'ht' ? 'HT' : 'TTC'}
-                </button>
+                <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode('ht')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: inputMode === 'ht' ? 'white' : '#374151',
+                      backgroundColor: inputMode === 'ht' ? '#dc2626' : '#f9fafb',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease, color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { if (inputMode !== 'ht') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { if (inputMode !== 'ht') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                  >
+                    HT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode('ttc')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: inputMode === 'ttc' ? 'white' : '#374151',
+                      backgroundColor: inputMode === 'ttc' ? '#0ea5e9' : '#f9fafb',
+                      border: 'none',
+                      borderLeft: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease, color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { if (inputMode !== 'ttc') e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { if (inputMode !== 'ttc') e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+                  >
+                    TTC
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -601,6 +691,80 @@ export default function AddExpensePage() {
                   e.currentTarget.style.borderColor = '#d1d5db';
                 }}
               />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                }}
+              >
+                Réf. document fournisseur
+                <span style={{ marginLeft: '6px', fontSize: '12px', color: '#9ca3af', fontWeight: '400' }}>(optionnel)</span>
+              </label>
+              <input
+                type="text"
+                value={documentNumber}
+                onChange={(e) => setDocumentNumber(e.target.value)}
+                placeholder="N° de facture fournisseur"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#dc2626';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                }}
+              >
+                Fournisseur
+                <span style={{ marginLeft: '6px', fontSize: '12px', color: '#9ca3af', fontWeight: '400' }}>(optionnel)</span>
+              </label>
+              <select
+                value={thirdPartyId}
+                onChange={(e) => setThirdPartyId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                  cursor: 'pointer',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#dc2626'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; }}
+              >
+                <option value="">— Aucun fournisseur —</option>
+                {thirdParties.map((tp) => (
+                  <option key={tp.id} value={tp.id}>
+                    {tp.code ? `${tp.code} — ${tp.name}` : tp.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>

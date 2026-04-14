@@ -476,7 +476,7 @@ export default function FacturesPage() {
                                 >
                                   Voir
                                 </button>
-                                {canModify && facture.statut_paiement !== 'annulee' && (
+                                {canModify && facture.statut_paiement !== 'annulee' && facture.statut_paiement !== 'payee' && (
                                   <>
                                     <button
                                       onClick={() => navigate(`/app/company/${companyId}/factures/${facture.id}/edit`)}

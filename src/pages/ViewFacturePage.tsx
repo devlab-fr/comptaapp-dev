@@ -435,7 +435,7 @@ export default function ViewFacturePage() {
                 <td style="padding: 10px 12px 10px 18px; font-size: 11px; color: #0f172a; vertical-align: top;">${ligne.description}</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${ligne.quantite}</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: right; vertical-align: top; white-space: nowrap;">${ligne.prix_unitaire_ht.toFixed(2)} €</td>
-                <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${(ligne.taux_tva * 100).toFixed(2).replace(/\.00$/, '')}%</td>
+                <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${Number(ligne.taux_tva).toString()}%</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #0f172a; text-align: right; vertical-align: top; font-weight: 600; white-space: nowrap;">${ligne.montant_ttc.toFixed(2)} €</td>
               </tr>
             `).join('')}
@@ -575,7 +575,7 @@ export default function ViewFacturePage() {
             Facture {facture.numero_facture}
           </h1>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {canModify && facture.statut_paiement !== 'annulee' && (
+            {canModify && facture.statut_paiement !== 'annulee' && facture.statut_paiement !== 'payee' && (
               <>
                 <button
                   onClick={() => navigate(`/app/company/${companyId}/factures/${factureId}/edit`)}
@@ -677,8 +677,7 @@ export default function ViewFacturePage() {
                 Document commercial uniquement
               </p>
               <p style={{ margin: 0, fontSize: '13px', color: '#1e3a8a', lineHeight: '1.6' }}>
-                Cette facture est un document commercial (PDF). Elle n'est pas automatiquement enregistrée en comptabilité.
-                Pour qu'elle impacte votre résultat et votre TVA, vous devez créer un revenu séparément dans le module Revenus.
+                Cette facture est un document commercial (PDF). Lorsqu'elle est marquée comme payée, un revenu est automatiquement créé.
               </p>
             </div>
           </div>
@@ -785,7 +784,7 @@ export default function ViewFacturePage() {
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(ligne.prix_unitaire_ht)}
                   </td>
                   <td style={{ padding: '12px 8px', fontSize: '14px', color: '#111827', textAlign: 'right' }}>
-                    {(ligne.taux_tva * 100).toFixed(2).replace(/\.00$/, '')}%
+                    {Number(ligne.taux_tva).toString()}%
                   </td>
                   <td style={{ padding: '12px 8px', fontSize: '14px', color: '#111827', textAlign: 'right', fontWeight: '600' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(ligne.montant_ttc)}

@@ -13,10 +13,11 @@ interface ExpenseMobileCardProps {
     amount_incl_vat: number;
     accounting_status: string;
     payment_status: string;
+    payment_entry_id?: string | null;
   };
   onView?: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
   onToggleValidation?: (id: string) => void;
   onTogglePaid?: (id: string) => void;
   readOnly?: boolean;
@@ -95,11 +96,12 @@ export function ExpenseMobileCard({
         <StatusBadges
           accountingStatus={expense.accounting_status}
           paymentStatus={expense.payment_status}
+          paymentEntryId={expense.payment_entry_id}
         />
         <ActionsDropdown
           onView={onView ? () => onView(expense.id) : undefined}
-          onEdit={() => onEdit(expense.id)}
-          onDelete={() => onDelete(expense.id)}
+          onEdit={onEdit ? () => onEdit(expense.id) : undefined}
+          onDelete={onDelete ? () => onDelete(expense.id) : undefined}
           onToggleValidation={onToggleValidation ? () => onToggleValidation(expense.id) : undefined}
           onTogglePaid={onTogglePaid ? () => onTogglePaid(expense.id) : undefined}
           accountingStatus={expense.accounting_status}

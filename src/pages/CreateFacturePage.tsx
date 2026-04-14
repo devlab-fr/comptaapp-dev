@@ -183,6 +183,14 @@ export default function CreateFacturePage() {
     e.preventDefault();
     setLoading(true);
 
+    const normalizedDatePaiement = datePaiement && datePaiement.trim() !== '' ? datePaiement.trim() : null;
+
+    if (statutPaiement === 'payee' && !normalizedDatePaiement) {
+      alert('Veuillez renseigner la date de paiement');
+      setLoading(false);
+      return;
+    }
+
     try {
       for (const ligne of lignes) {
         if (!ligne.category_id) {
@@ -257,6 +265,8 @@ export default function CreateFacturePage() {
 
       const totals = calculateTotals();
 
+      const insertStatut = statutPaiement === 'payee' ? 'non_payee' : statutPaiement;
+
       const { data: facture, error: factureError } = await supabase
         .from('factures')
         .insert({
@@ -265,8 +275,8 @@ export default function CreateFacturePage() {
           recipient_id: recipientId,
           numero_facture: numeroData,
           date_facture: dateFacture,
-          statut_paiement: statutPaiement,
-          date_paiement: statutPaiement === 'payee' ? datePaiement : null,
+          statut_paiement: insertStatut,
+          date_paiement: null,
           montant_total_ht: totals.totalHTApresRemise,
           montant_total_tva: totals.totalTVA,
           montant_total_ttc: totals.totalTTC,
@@ -305,6 +315,21 @@ export default function CreateFacturePage() {
       if (lignesError) {
         console.error('Erreur lignes:', JSON.stringify(lignesError, null, 2));
         throw lignesError;
+      }
+
+      if (statutPaiement === 'payee') {
+        const { error: updateError } = await supabase
+          .from('factures')
+          .update({
+            statut_paiement: 'payee',
+            date_paiement: normalizedDatePaiement,
+          })
+          .eq('id', facture.id);
+
+        if (updateError) {
+          console.error('Erreur mise à jour statut payee:', JSON.stringify(updateError, null, 2));
+          throw updateError;
+        }
       }
 
       navigate(`/app/company/${companyId}/factures/${facture.id}`);
