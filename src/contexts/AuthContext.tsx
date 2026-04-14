@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isRefreshing: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null; data: any }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const expectedUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -58,12 +60,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.location.href = '/reset-password';
         return;
       }
-      setSession(session);
-      setUser(session?.user ?? null);
+
+      if (event === 'TOKEN_REFRESHED') {
+        setIsRefreshing(true);
+        if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+        }
+        setTimeout(() => setIsRefreshing(false), 300);
+        return;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        setSession(session);
+        setUser(session?.user ?? null);
+        return;
+      }
+
+      if (session?.user) {
+        setSession(session);
+        setUser(session.user);
+      } else if (!isRefreshing) {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isRefreshing]);
 
   const signUp = async (email: string, password: string) => {
     try {
@@ -100,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
+    isRefreshing,
     signUp,
     signIn,
     signOut,

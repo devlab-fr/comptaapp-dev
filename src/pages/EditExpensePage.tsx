@@ -23,6 +23,7 @@ interface ExpenseLine {
   categoryId: string;
   subcategoryId: string;
   amountHT: string;
+  amountTTC: string;
   tvaRate: string;
 }
 
@@ -32,6 +33,7 @@ export default function EditExpensePage() {
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [inputMode, setInputMode] = useState<'ht' | 'ttc'>('ht');
   const [lines, setLines] = useState<ExpenseLine[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategoriesMap, setSubcategoriesMap] = useState<Record<string, Subcategory[]>>({});
@@ -78,6 +80,7 @@ export default function EditExpensePage() {
           categoryId: line.category_id,
           subcategoryId: line.subcategory_id ?? '',
           amountHT: line.amount_excl_vat.toString(),
+          amountTTC: line.amount_incl_vat.toString(),
           tvaRate: line.vat_rate.toString(),
         }))
       );
@@ -134,6 +137,7 @@ export default function EditExpensePage() {
         categoryId: '',
         subcategoryId: '',
         amountHT: '',
+        amountTTC: '',
         tvaRate: '0.20',
       },
     ]);
@@ -150,14 +154,45 @@ export default function EditExpensePage() {
   const updateLine = (id: string, field: keyof ExpenseLine, value: string) => {
     setLines(
       lines.map((line) => {
-        if (line.id === id) {
-          const updated = { ...line, [field]: value };
-          if (field === 'categoryId') {
-            updated.subcategoryId = '';
-          }
-          return updated;
+        if (line.id !== id) return line;
+
+        const updated = { ...line, [field]: value };
+
+        if (field === 'categoryId') {
+          updated.subcategoryId = '';
         }
-        return line;
+
+        if (field === 'amountHT' && inputMode === 'ht') {
+          const ht = parseFloat(value) || 0;
+          const taux = parseFloat(line.tvaRate) || 0;
+          const tva = Math.round(ht * taux * 100) / 100;
+          const ttc = ht + tva;
+          updated.amountTTC = ttc.toFixed(2);
+        }
+
+        if (field === 'amountTTC' && inputMode === 'ttc') {
+          const ttc = parseFloat(value) || 0;
+          const taux = parseFloat(line.tvaRate) || 0;
+          const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+          updated.amountHT = ht.toFixed(2);
+        }
+
+        if (field === 'tvaRate') {
+          if (inputMode === 'ht') {
+            const ht = parseFloat(line.amountHT) || 0;
+            const taux = parseFloat(value) || 0;
+            const tva = Math.round(ht * taux * 100) / 100;
+            const ttc = ht + tva;
+            updated.amountTTC = ttc.toFixed(2);
+          } else {
+            const ttc = parseFloat(line.amountTTC) || 0;
+            const taux = parseFloat(value) || 0;
+            const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+            updated.amountHT = ht.toFixed(2);
+          }
+        }
+
+        return updated;
       })
     );
   };
@@ -384,29 +419,59 @@ export default function EditExpensePage() {
                 >
                   Lignes de dépense
                 </h3>
-                <button
-                  type="button"
-                  onClick={addLine}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#dc2626',
-                    backgroundColor: 'white',
-                    border: '1px solid #dc2626',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#fef2f2';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  + Ajouter une ligne
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                      Mode de saisie :
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode(inputMode === 'ht' ? 'ttc' : 'ht')}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: 'white',
+                        backgroundColor: inputMode === 'ht' ? '#dc2626' : '#0ea5e9',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      {inputMode === 'ht' ? 'HT' : 'TTC'}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#dc2626',
+                      backgroundColor: 'white',
+                      border: '1px solid #dc2626',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fef2f2';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    + Ajouter une ligne
+                  </button>
+                </div>
               </div>
 
               {lines.map((line, index) => (
@@ -607,44 +672,95 @@ export default function EditExpensePage() {
                       </select>
                     </div>
 
-                    <div>
-                      <label
-                        style={{
-                          display: 'block',
-                          marginBottom: '8px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: '#374151',
-                        }}
-                      >
-                        Montant HT (€)
-                      </label>
-                      <input
-                        type="number"
-                        value={line.amountHT}
-                        onChange={(e) => updateLine(line.id, 'amountHT', e.target.value)}
-                        required
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          backgroundColor: 'white',
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = '#dc2626';
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db';
-                        }}
-                      />
-                    </div>
+                    {inputMode === 'ht' ? (
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#374151',
+                          }}
+                        >
+                          Montant HT (€)
+                        </label>
+                        <input
+                          type="number"
+                          value={line.amountHT}
+                          onChange={(e) => updateLine(line.id, 'amountHT', e.target.value)}
+                          required
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            backgroundColor: 'white',
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#dc2626';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = '#d1d5db';
+                          }}
+                        />
+                        {line.amountTTC && (
+                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            TTC calculé : {parseFloat(line.amountTTC).toFixed(2)} €
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#374151',
+                          }}
+                        >
+                          Montant TTC (€)
+                        </label>
+                        <input
+                          type="number"
+                          value={line.amountTTC}
+                          onChange={(e) => updateLine(line.id, 'amountTTC', e.target.value)}
+                          required
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            backgroundColor: 'white',
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#0ea5e9';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = '#d1d5db';
+                          }}
+                        />
+                        {line.amountHT && (
+                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            HT calculé : {parseFloat(line.amountHT).toFixed(2)} €
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label

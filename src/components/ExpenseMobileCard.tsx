@@ -14,6 +14,7 @@ interface ExpenseMobileCardProps {
     accounting_status: string;
     payment_status: string;
   };
+  onView?: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleValidation?: (id: string) => void;
@@ -23,6 +24,7 @@ interface ExpenseMobileCardProps {
 
 export function ExpenseMobileCard({
   expense,
+  onView,
   onEdit,
   onDelete,
   onToggleValidation,
@@ -95,6 +97,7 @@ export function ExpenseMobileCard({
           paymentStatus={expense.payment_status}
         />
         <ActionsDropdown
+          onView={onView ? () => onView(expense.id) : undefined}
           onEdit={() => onEdit(expense.id)}
           onDelete={() => onDelete(expense.id)}
           onToggleValidation={onToggleValidation ? () => onToggleValidation(expense.id) : undefined}

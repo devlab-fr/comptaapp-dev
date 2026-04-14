@@ -54,73 +54,33 @@ export function AiScanPage() {
     if (!companyId) return;
 
     const { data: expCats } = await supabase
-      .from('categories')
+      .from('expense_categories')
       .select('id, name')
-      .eq('company_id', companyId)
-      .eq('category_type', 'expense')
-      .order('name');
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    const { data: expSubcats } = await supabase
+      .from('expense_subcategories')
+      .select('id, name, category_id')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
     const { data: revCats } = await supabase
-      .from('categories')
+      .from('revenue_categories')
       .select('id, name')
-      .eq('company_id', companyId)
-      .eq('category_type', 'revenue')
-      .order('name');
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-    if (expCats && expCats.length > 0) {
-      setExpenseCategories(expCats);
-    } else {
-      const defaultExpenseCategories = [
-        'Achats & Marchandises',
-        'Services & Prestations',
-        'Loyer & Charges',
-        'Déplacements',
-        'Frais de repas',
-        'Assurances',
-        'Matériel',
-        'Autres charges'
-      ];
+    const { data: revSubcats } = await supabase
+      .from('revenue_subcategories')
+      .select('id, name, category_id')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-      const categoriesToInsert = defaultExpenseCategories.map((name) => ({
-        company_id: companyId,
-        name,
-        category_type: 'expense'
-      }));
-
-      const { data: inserted } = await supabase
-        .from('categories')
-        .insert(categoriesToInsert)
-        .select('id, name');
-
-      if (inserted) setExpenseCategories(inserted);
-    }
-
-    if (revCats && revCats.length > 0) {
-      setRevenueCategories(revCats);
-    } else {
-      const defaultRevenueCategories = [
-        'Ventes de biens',
-        'Prestations de services',
-        'Production vendue',
-        'Autres produits'
-      ];
-
-      const revCategoriesToInsert = defaultRevenueCategories.map((name) => ({
-        company_id: companyId,
-        name,
-        category_type: 'revenue'
-      }));
-
-      const { data: insertedRev } = await supabase
-        .from('categories')
-        .insert(revCategoriesToInsert)
-        .select('id, name');
-
-      if (insertedRev) setRevenueCategories(insertedRev);
-    }
-
-    setExpenseSubcategories([]);
-    setRevenueSubcategories([]);
+    if (expCats) setExpenseCategories(expCats);
+    if (expSubcats) setExpenseSubcategories(expSubcats);
+    if (revCats) setRevenueCategories(revCats);
+    if (revSubcats) setRevenueSubcategories(revSubcats);
   };
 
   const synonyms: Record<string, string[]> = {
@@ -333,7 +293,7 @@ export function AiScanPage() {
 
     setScanning(true);
     try {
-      const { result, requestId: scanRequestId } = await scanReceipt(file, pdfConvertedImage || undefined);
+      const { result, requestId: scanRequestId } = await scanReceipt(file, pdfConvertedImage || undefined, companyId);
 
       let normalizedResult = { ...result };
       if (normalizedResult.tva_rate !== null && normalizedResult.tva_rate !== undefined) {
@@ -371,16 +331,7 @@ export function AiScanPage() {
       setMappedCategory(matchedCat);
       setMappedSubcategory(matchedSubcat);
 
-      let fileToUpload: File | Blob = file;
-      let filenameToUse = file.name;
-
-      if (pdfConvertedImage && file.type === 'application/pdf') {
-        const pngBlob = await fetch(`data:image/png;base64,${pdfConvertedImage.base64}`).then(r => r.blob());
-        fileToUpload = new File([pngBlob], file.name.replace(/\.pdf$/i, '.png'), { type: 'image/png' });
-        filenameToUse = file.name.replace(/\.pdf$/i, '.png');
-      }
-
-      const receiptData = await uploadReceiptToStorage(fileToUpload, filenameToUse);
+      const receiptData = await uploadReceiptToStorage(file, file.name);
       setUploadedReceipt(receiptData);
 
       setToast({ message: 'Scan terminé', type: 'success' });
@@ -627,17 +578,17 @@ export function AiScanPage() {
 
           <button
             onClick={handleScan}
-            disabled={scanning}
+            disabled={scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)}
             style={{
               width: '100%',
               padding: '16px',
-              backgroundColor: scanning ? '#d1d5db' : '#3b82f6',
+              backgroundColor: (scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)) ? '#d1d5db' : '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: scanning ? 'not-allowed' : 'pointer',
+              cursor: (scanning || (file?.type === 'application/pdf' && !pdfConvertedImage)) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s'
             }}
           >

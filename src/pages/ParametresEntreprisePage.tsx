@@ -16,6 +16,7 @@ interface CompanyData {
   address: string;
   country: string;
   vat_regime: string;
+  activity_type: string;
   fiscal_year_start: string;
   fiscal_year_end: string;
   is_locked: boolean;
@@ -59,6 +60,7 @@ export default function ParametresEntreprisePage() {
     address: '',
     country: 'FR',
     vat_regime: '',
+    activity_type: '',
     fiscal_year_start: '',
     fiscal_year_end: '',
     is_locked: false,
@@ -153,6 +155,7 @@ export default function ParametresEntreprisePage() {
         address: companyData.address,
         country: companyData.country,
         vat_regime: companyData.vat_regime,
+        activity_type: companyData.activity_type || null,
         fiscal_year_start: companyData.fiscal_year_start || null,
         fiscal_year_end: companyData.fiscal_year_end || null,
         updated_at: new Date().toISOString(),
@@ -486,7 +489,7 @@ export default function ParametresEntreprisePage() {
                     }}
                   >
                     <option value="">Sélectionner</option>
-                    <option value="EI">EI - Entreprise Individuelle</option>
+                    <option value="EI">EI - Entreprise Individuelle (auto-entrepreneur)</option>
                     <option value="EIRL">EIRL - Entrepreneur Individuel à Responsabilité Limitée</option>
                     <option value="EURL">EURL - Entreprise Unipersonnelle à Responsabilité Limitée</option>
                     <option value="SARL">SARL - Société à Responsabilité Limitée</option>
@@ -495,6 +498,13 @@ export default function ParametresEntreprisePage() {
                     <option value="SA">SA - Société Anonyme</option>
                     <option value="SNC">SNC - Société en Nom Collectif</option>
                   </select>
+                  <p style={{
+                    margin: '8px 0 0 0',
+                    fontSize: '13px',
+                    color: '#6b7280',
+                  }}>
+                    Le statut auto-entrepreneur (micro-entrepreneur) correspond juridiquement à une entreprise individuelle (EI).
+                  </p>
                 </div>
 
                 <div>
@@ -657,6 +667,38 @@ export default function ParametresEntreprisePage() {
                     <option value="franchise">Franchise en base de TVA</option>
                     <option value="reel_simplifie">Réel simplifié</option>
                     <option value="reel_normal">Réel normal</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                    }}
+                  >
+                    Type d'activité
+                  </label>
+                  <select
+                    value={companyData.activity_type}
+                    onChange={(e) => setCompanyData({ ...companyData, activity_type: e.target.value })}
+                    disabled={companyData.is_locked}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      backgroundColor: companyData.is_locked ? '#f3f4f6' : 'white',
+                    }}
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="service">Prestations de service</option>
+                    <option value="commerce">Commerce / Vente</option>
                   </select>
                 </div>
 

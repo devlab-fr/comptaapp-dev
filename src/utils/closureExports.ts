@@ -23,7 +23,7 @@ export async function exportFECLike(
     `)
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (filters?.startDate) {
     query = query.gte('entry_date', filters.startDate);
@@ -123,7 +123,7 @@ export async function exportBalance(companyId: string, fiscalYear: number): Prom
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (!entries || entries.length === 0) {
     alert('Aucune écriture verrouillée à exporter pour cet exercice.');

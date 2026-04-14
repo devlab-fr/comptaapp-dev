@@ -16,6 +16,9 @@ interface Facture {
   montant_total_ht: number;
   montant_total_tva: number;
   montant_total_ttc: number;
+  remise_type?: string;
+  remise_value?: number;
+  montant_remise?: number;
 }
 
 interface Client {
@@ -137,6 +140,9 @@ export default function ViewFacturePage() {
           montant_total_ht,
           montant_total_tva,
           montant_total_ttc,
+          remise_type,
+          remise_value,
+          montant_remise,
           client_id,
           recipient_id
         `)
@@ -337,6 +343,10 @@ export default function ViewFacturePage() {
     const dueDate = new Date(facture.date_facture);
     dueDate.setDate(dueDate.getDate() + 30);
 
+    const totalHTBrut = (facture.montant_remise && facture.montant_remise > 0)
+      ? facture.montant_total_ht + facture.montant_remise
+      : facture.montant_total_ht;
+
     // Statut de paiement
     const statutLabels: Record<string, string> = {
       'brouillon': 'Brouillon',
@@ -361,12 +371,8 @@ export default function ViewFacturePage() {
 
     conditionsLines.push('Conditions de paiement : paiement à réception');
 
-    if (company.vat_regime) {
-      if (company.vat_regime.toLowerCase().includes('293b') || company.vat_regime.toLowerCase().includes('non applicable')) {
-        conditionsLines.push('TVA non applicable art 293B');
-      } else {
-        conditionsLines.push('TVA incluse');
-      }
+    if (company.vat_regime === 'franchise') {
+      conditionsLines.push('TVA non applicable – article 293 B du CGI');
     } else {
       conditionsLines.push('TVA incluse');
     }
@@ -429,7 +435,7 @@ export default function ViewFacturePage() {
                 <td style="padding: 10px 12px 10px 18px; font-size: 11px; color: #0f172a; vertical-align: top;">${ligne.description}</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${ligne.quantite}</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: right; vertical-align: top; white-space: nowrap;">${ligne.prix_unitaire_ht.toFixed(2)} €</td>
-                <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${ligne.taux_tva}%</td>
+                <td style="padding: 10px 12px; font-size: 11px; color: #334155; text-align: center; vertical-align: top;">${(ligne.taux_tva * 100).toFixed(2).replace(/\.00$/, '')}%</td>
                 <td style="padding: 10px 12px; font-size: 11px; color: #0f172a; text-align: right; vertical-align: top; font-weight: 600; white-space: nowrap;">${ligne.montant_ttc.toFixed(2)} €</td>
               </tr>
             `).join('')}
@@ -441,8 +447,18 @@ export default function ViewFacturePage() {
             <div style="width: 260px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px; background-color: #f8fafc;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
                 <span style="color: #64748b; font-weight: 500;">Total HT</span>
-                <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_ht.toFixed(2)} €</span>
+                <span style="color: #1e293b; font-weight: 600;">${totalHTBrut.toFixed(2)} €</span>
               </div>
+              ${facture.montant_remise && facture.montant_remise > 0 ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
+                  <span style="color: #dc2626; font-weight: 600;">Remise${facture.remise_type === 'pct' ? ` (${facture.remise_value}%)` : ''}</span>
+                  <span style="color: #dc2626; font-weight: 600;">-${facture.montant_remise.toFixed(2)} €</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
+                  <span style="color: #64748b; font-weight: 500;">Sous-total HT</span>
+                  <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_ht.toFixed(2)} €</span>
+                </div>
+              ` : ''}
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #cbd5e1; font-size: 11px;">
                 <span style="color: #64748b; font-weight: 500;">Total TVA</span>
                 <span style="color: #1e293b; font-weight: 600;">${facture.montant_total_tva.toFixed(2)} €</span>
@@ -769,7 +785,7 @@ export default function ViewFacturePage() {
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(ligne.prix_unitaire_ht)}
                   </td>
                   <td style={{ padding: '12px 8px', fontSize: '14px', color: '#111827', textAlign: 'right' }}>
-                    {ligne.taux_tva}%
+                    {(ligne.taux_tva * 100).toFixed(2).replace(/\.00$/, '')}%
                   </td>
                   <td style={{ padding: '12px 8px', fontSize: '14px', color: '#111827', textAlign: 'right', fontWeight: '600' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(ligne.montant_ttc)}
@@ -785,9 +801,31 @@ export default function ViewFacturePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
               <span style={{ color: '#6b7280' }}>Total HT:</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>
-                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ht)}
+                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
+                  (facture.montant_remise && facture.montant_remise > 0)
+                    ? facture.montant_total_ht + facture.montant_remise
+                    : facture.montant_total_ht
+                )}
               </span>
             </div>
+            {facture.montant_remise && facture.montant_remise > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
+                  <span style={{ color: '#dc2626', fontWeight: '600' }}>
+                    Remise{facture.remise_type === 'pct' ? ` (${facture.remise_value}%)` : ''}:
+                  </span>
+                  <span style={{ fontWeight: '600', color: '#dc2626' }}>
+                    -{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_remise)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
+                  <span style={{ color: '#6b7280' }}>Sous-total HT:</span>
+                  <span style={{ fontWeight: '600', color: '#111827' }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(facture.montant_total_ht)}
+                  </span>
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', fontSize: '14px' }}>
               <span style={{ color: '#6b7280' }}>Total TVA:</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>

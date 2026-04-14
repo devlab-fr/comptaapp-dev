@@ -3,6 +3,7 @@ import { defaultEntitlements, type Entitlements } from './entitlements';
 import { supabase } from '../lib/supabase';
 import { shouldApplyDevOverride } from '../utils/devOverride';
 import { useCurrentCompany } from '../lib/useCurrentCompany';
+import { ensureFreshSession } from '../lib/auth/ensureFreshSession';
 
 const CACHE_DURATION_MS = 60000;
 
@@ -46,8 +47,9 @@ export function invalidateEntitlementsCache() {
   entitlementsCache.clear();
 }
 
-export function useEntitlements(): Entitlements {
+export function useEntitlements(): Entitlements & { isLoading?: boolean } {
   const companyId = useCurrentCompany();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [entitlements, setEntitlements] = useState<Entitlements>(() => {
     if (companyId) {
       const cached = entitlementsCache.get(companyId);
@@ -70,6 +72,7 @@ export function useEntitlements(): Entitlements {
       if (!companyId) {
         if (isMounted) {
           setEntitlements(defaultEntitlements);
+          setIsLoading(false);
         }
         return;
       }
@@ -77,20 +80,37 @@ export function useEntitlements(): Entitlements {
       const cached = entitlementsCache.get(companyId);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
         setEntitlements(cached.entitlements);
+        setIsLoading(false);
         return;
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let userEmail: string | undefined;
+        let accessToken: string;
 
-        if (!session) {
+        try {
+          const freshSession = await ensureFreshSession();
+          accessToken = freshSession.accessToken;
+
+          const { data: { session } } = await supabase.auth.getSession();
+          userEmail = session?.user?.email;
+
+          if (!accessToken) {
+            if (isMounted) {
+              setEntitlements(defaultEntitlements);
+              setIsLoading(false);
+            }
+            return;
+          }
+        } catch (error) {
           if (isMounted) {
             setEntitlements(defaultEntitlements);
+            setIsLoading(false);
           }
           return;
         }
 
-        if (shouldApplyDevOverride(session.user?.email)) {
+        if (shouldApplyDevOverride(userEmail)) {
           const devEntitlements: Entitlements = {
             plan: 'pro_pp',
             status: 'active',
@@ -106,12 +126,16 @@ export function useEntitlements(): Entitlements {
             });
             setSessionStorageCache(companyId, devEntitlements);
             setEntitlements(devEntitlements);
+            setIsLoading(false);
           }
           return;
         }
 
         const { data, error } = await supabase.functions.invoke('get-user-entitlements', {
           body: { companyId },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         if (error) {
@@ -120,6 +144,9 @@ export function useEntitlements(): Entitlements {
             setEntitlements(cached.entitlements);
           } else if (isMounted) {
             setEntitlements(defaultEntitlements);
+          }
+          if (isMounted) {
+            setIsLoading(false);
           }
           return;
         }
@@ -133,6 +160,7 @@ export function useEntitlements(): Entitlements {
             });
             setSessionStorageCache(companyId, data);
             setEntitlements(data);
+            setIsLoading(false);
           }
         }
       } catch (error) {
@@ -141,6 +169,9 @@ export function useEntitlements(): Entitlements {
           setEntitlements(cached.entitlements);
         } else if (isMounted) {
           setEntitlements(defaultEntitlements);
+        }
+        if (isMounted) {
+          setIsLoading(false);
         }
       }
     };
@@ -152,5 +183,5 @@ export function useEntitlements(): Entitlements {
     };
   }, [companyId]);
 
-  return entitlements;
+  return { ...entitlements, isLoading };
 }

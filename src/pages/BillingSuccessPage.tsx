@@ -7,7 +7,7 @@ import { normalizePlanTier, formatPlanLabel } from '../billing/planRules';
 export default function BillingSuccessPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<string>('');
+  const [, setPlan] = useState<string>('');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -95,7 +95,7 @@ export default function BillingSuccessPage() {
                 color: '#6b7280',
                 margin: '0 0 32px 0',
               }}>
-                {plan ? `Votre plan ${plan} a été activé avec succès.` : 'Votre abonnement a été activé avec succès.'}
+                Votre abonnement a été activé avec succès.
               </p>
               <button
                 onClick={() => navigate('/app')}

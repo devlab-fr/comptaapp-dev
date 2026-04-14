@@ -23,6 +23,7 @@ interface RevenueLine {
   categoryId: string;
   subcategoryId: string;
   amountHT: string;
+  amountTTC: string;
   tvaRate: string;
 }
 
@@ -39,9 +40,6 @@ export default function AddRevenuePage() {
   const prefillDescription = searchParams.get('description') || '';
   const prefillCategoryId = searchParams.get('category_id') || '';
   const prefillSubcategoryId = searchParams.get('subcategory_id') || '';
-  const prefillReceiptUrl = searchParams.get('receipt_url') || '';
-  const prefillReceiptStoragePath = searchParams.get('receipt_storage_path') || '';
-  const prefillReceiptFilename = searchParams.get('receipt_filename') || '';
 
   const calculatedTVARate = prefillAmountHT && prefillVAT
     ? (parseFloat(prefillVAT) / parseFloat(prefillAmountHT)).toFixed(2)
@@ -49,6 +47,8 @@ export default function AddRevenuePage() {
 
   const [date, setDate] = useState(prefillDate);
   const [sourceType, setSourceType] = useState<'manual' | 'cash'>('manual');
+  const [companyVatRegime, setCompanyVatRegime] = useState<string>('');
+  const [inputMode, setInputMode] = useState<'ht' | 'ttc'>('ht');
   const [lines, setLines] = useState<RevenueLine[]>([
     {
       id: crypto.randomUUID(),
@@ -56,12 +56,10 @@ export default function AddRevenuePage() {
       categoryId: prefillCategoryId || '',
       subcategoryId: prefillSubcategoryId || '',
       amountHT: prefillAmountHT || '',
+      amountTTC: '',
       tvaRate: calculatedTVARate,
     },
   ]);
-  const [receiptUrl] = useState(prefillReceiptUrl);
-  const [receiptStoragePath] = useState(prefillReceiptStoragePath);
-  const [receiptFilename] = useState(prefillReceiptFilename);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategoriesMap, setSubcategoriesMap] = useState<Record<string, Subcategory[]>>({});
   const [loading, setLoading] = useState(false);
@@ -70,6 +68,20 @@ export default function AddRevenuePage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
+    const loadCompanyVatRegime = async () => {
+      if (!companyId) return;
+
+      const { data, error: fetchError } = await supabase
+        .from('companies')
+        .select('vat_regime')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!fetchError && data) {
+        setCompanyVatRegime(data.vat_regime || '');
+      }
+    };
+
     const loadCategories = async () => {
       const { data, error: fetchError } = await supabase
         .from('revenue_categories')
@@ -82,8 +94,9 @@ export default function AddRevenuePage() {
       }
     };
 
+    loadCompanyVatRegime();
     loadCategories();
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     const loadAllSubcategories = async () => {
@@ -112,7 +125,14 @@ export default function AddRevenuePage() {
     loadAllSubcategories();
   }, []);
 
+  useEffect(() => {
+    if (companyVatRegime === 'franchise') {
+      setLines(prevLines => prevLines.map(line => ({ ...line, tvaRate: '0' })));
+    }
+  }, [companyVatRegime]);
+
   const addLine = () => {
+    const tvaRate = companyVatRegime === 'franchise' ? '0' : '0.20';
     setLines([
       ...lines,
       {
@@ -121,7 +141,8 @@ export default function AddRevenuePage() {
         categoryId: '',
         subcategoryId: '',
         amountHT: '',
-        tvaRate: '0.20',
+        amountTTC: '',
+        tvaRate: tvaRate,
       },
     ]);
   };
@@ -137,14 +158,45 @@ export default function AddRevenuePage() {
   const updateLine = (id: string, field: keyof RevenueLine, value: string) => {
     setLines(
       lines.map((line) => {
-        if (line.id === id) {
-          const updated = { ...line, [field]: value };
-          if (field === 'categoryId') {
-            updated.subcategoryId = '';
-          }
-          return updated;
+        if (line.id !== id) return line;
+
+        const updated = { ...line, [field]: value };
+
+        if (field === 'categoryId') {
+          updated.subcategoryId = '';
         }
-        return line;
+
+        if (field === 'amountHT' && inputMode === 'ht') {
+          const ht = parseFloat(value) || 0;
+          const taux = parseFloat(line.tvaRate) || 0;
+          const tva = Math.round(ht * taux * 100) / 100;
+          const ttc = ht + tva;
+          updated.amountTTC = ttc.toFixed(2);
+        }
+
+        if (field === 'amountTTC' && inputMode === 'ttc') {
+          const ttc = parseFloat(value) || 0;
+          const taux = parseFloat(line.tvaRate) || 0;
+          const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+          updated.amountHT = ht.toFixed(2);
+        }
+
+        if (field === 'tvaRate') {
+          if (inputMode === 'ht') {
+            const ht = parseFloat(line.amountHT) || 0;
+            const taux = parseFloat(value) || 0;
+            const tva = Math.round(ht * taux * 100) / 100;
+            const ttc = ht + tva;
+            updated.amountTTC = ttc.toFixed(2);
+          } else {
+            const ttc = parseFloat(line.amountTTC) || 0;
+            const taux = parseFloat(value) || 0;
+            const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+            updated.amountHT = ht.toFixed(2);
+          }
+        }
+
+        return updated;
       })
     );
   };
@@ -183,6 +235,7 @@ export default function AddRevenuePage() {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const amountHTNum = parseFloat(line.amountHT);
+      const tvaRateNum = parseFloat(line.tvaRate);
 
       if (isNaN(amountHTNum) || amountHTNum < 0) {
         setError(`Ligne ${i + 1}: Le montant HT doit être un nombre positif`);
@@ -201,6 +254,12 @@ export default function AddRevenuePage() {
         setLoading(false);
         return;
       }
+
+      if (companyVatRegime === 'franchise' && tvaRateNum !== 0) {
+        setError(`Ligne ${i + 1}: La TVA doit être à 0% pour le régime franchise`);
+        setLoading(false);
+        return;
+      }
     }
 
     const totals = calculateTotals();
@@ -213,14 +272,7 @@ export default function AddRevenuePage() {
       total_incl_vat: totals.totalTTC,
       accounting_status: 'draft',
       payment_status: 'unpaid',
-      source_type: sourceType,
     };
-
-    if (receiptUrl) {
-      documentData.receipt_url = receiptUrl;
-      documentData.receipt_storage_path = receiptStoragePath;
-      documentData.receipt_filename = receiptFilename;
-    }
 
     const { data: document, error: docError } = await supabase
       .from('revenue_documents')
@@ -259,6 +311,17 @@ export default function AddRevenuePage() {
       setError('Erreur lors de l\'ajout des lignes');
       setLoading(false);
       return;
+    }
+
+    // Générer l'écriture comptable maintenant que les lignes existent
+    const { error: accountingError } = await supabase.rpc(
+      'auto_create_revenue_accounting_entry_manual',
+      { p_revenue_id: document.id }
+    );
+
+    if (accountingError) {
+      console.warn('Avertissement: écriture comptable non générée', accountingError);
+      // Ne pas bloquer la création du revenu si la génération comptable échoue
     }
 
     setCreatedDocumentId(document.id);
@@ -535,29 +598,59 @@ export default function AddRevenuePage() {
                 >
                   Lignes de revenu
                 </h3>
-                <button
-                  type="button"
-                  onClick={addLine}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#28a745',
-                    backgroundColor: 'white',
-                    border: '1px solid #28a745',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f0f9f4';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  + Ajouter une ligne
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                      Mode de saisie :
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode(inputMode === 'ht' ? 'ttc' : 'ht')}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: 'white',
+                        backgroundColor: inputMode === 'ht' ? '#28a745' : '#0ea5e9',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      {inputMode === 'ht' ? 'HT' : 'TTC'}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#28a745',
+                      backgroundColor: 'white',
+                      border: '1px solid #28a745',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f0f9f4';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    + Ajouter une ligne
+                  </button>
+                </div>
               </div>
 
               {lines.map((line, index) => (
@@ -758,44 +851,95 @@ export default function AddRevenuePage() {
                       </select>
                     </div>
 
-                    <div>
-                      <label
-                        style={{
-                          display: 'block',
-                          marginBottom: '8px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: '#374151',
-                        }}
-                      >
-                        Montant HT (€)
-                      </label>
-                      <input
-                        type="number"
-                        value={line.amountHT}
-                        onChange={(e) => updateLine(line.id, 'amountHT', e.target.value)}
-                        required
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          backgroundColor: 'white',
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = '#28a745';
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db';
-                        }}
-                      />
-                    </div>
+                    {inputMode === 'ht' ? (
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#374151',
+                          }}
+                        >
+                          Montant HT (€)
+                        </label>
+                        <input
+                          type="number"
+                          value={line.amountHT}
+                          onChange={(e) => updateLine(line.id, 'amountHT', e.target.value)}
+                          required
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            backgroundColor: 'white',
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#28a745';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = '#d1d5db';
+                          }}
+                        />
+                        {line.amountTTC && (
+                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            TTC calculé : {parseFloat(line.amountTTC).toFixed(2)} €
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#374151',
+                          }}
+                        >
+                          Montant TTC (€)
+                        </label>
+                        <input
+                          type="number"
+                          value={line.amountTTC}
+                          onChange={(e) => updateLine(line.id, 'amountTTC', e.target.value)}
+                          required
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            backgroundColor: 'white',
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#0ea5e9';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = '#d1d5db';
+                          }}
+                        />
+                        {line.amountHT && (
+                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            HT calculé : {parseFloat(line.amountHT).toFixed(2)} €
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label
@@ -809,33 +953,52 @@ export default function AddRevenuePage() {
                       >
                         Taux de TVA
                       </label>
-                      <select
-                        value={line.tvaRate}
-                        onChange={(e) => updateLine(line.id, 'tvaRate', e.target.value)}
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          backgroundColor: 'white',
-                          cursor: 'pointer',
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = '#28a745';
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db';
-                        }}
-                      >
-                        <option value="0">0% - TVA non applicable</option>
-                        <option value="0.055">5,5% - Taux réduit</option>
-                        <option value="0.10">10% - Taux intermédiaire</option>
-                        <option value="0.20">20% - Taux normal</option>
-                      </select>
+                      {companyVatRegime === 'franchise' ? (
+                        <input
+                          type="text"
+                          value="0% - TVA non applicable"
+                          disabled
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            backgroundColor: '#f3f4f6',
+                            color: '#6b7280',
+                            cursor: 'not-allowed',
+                          }}
+                        />
+                      ) : (
+                        <select
+                          value={line.tvaRate}
+                          onChange={(e) => updateLine(line.id, 'tvaRate', e.target.value)}
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#28a745';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = '#d1d5db';
+                          }}
+                        >
+                          <option value="0">0% - TVA non applicable</option>
+                          <option value="0.055">5,5% - Taux réduit</option>
+                          <option value="0.10">10% - Taux intermédiaire</option>
+                          <option value="0.20">20% - Taux normal</option>
+                        </select>
+                      )}
                     </div>
                   </div>
                 </div>

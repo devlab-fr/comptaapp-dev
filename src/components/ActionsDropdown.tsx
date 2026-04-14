@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
 interface ActionsDropdownProps {
+  onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onToggleValidation?: () => void;
@@ -11,6 +12,7 @@ interface ActionsDropdownProps {
 }
 
 export function ActionsDropdown({
+  onView,
   onEdit,
   onDelete,
   onToggleValidation,
@@ -82,6 +84,35 @@ export function ActionsDropdown({
             overflow: 'hidden',
           }}
         >
+          {onView && (
+            <button
+              onClick={() => {
+                onView();
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                textAlign: 'left',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#1f2937',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Voir
+            </button>
+          )}
+
           {onEdit && (
             <button
               onClick={() => {
@@ -97,6 +128,7 @@ export function ActionsDropdown({
                 color: '#1f2937',
                 backgroundColor: 'transparent',
                 border: 'none',
+                borderTop: onView ? '1px solid #f3f4f6' : 'none',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s',
               }}

@@ -12,6 +12,7 @@ interface RevenueMobileCardProps {
     accounting_status: string;
     payment_status: string;
   };
+  onView?: (id: string) => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onToggleValidation?: (id: string) => void;
@@ -20,6 +21,7 @@ interface RevenueMobileCardProps {
 
 export function RevenueMobileCard({
   revenue,
+  onView,
   onEdit,
   onDelete,
   onToggleValidation,
@@ -64,6 +66,7 @@ export function RevenueMobileCard({
           paymentStatus={revenue.payment_status}
         />
         <ActionsDropdown
+          onView={onView ? () => onView(revenue.id) : undefined}
           onEdit={onEdit ? () => onEdit(revenue.id) : undefined}
           onDelete={onDelete ? () => onDelete(revenue.id) : undefined}
           onToggleValidation={onToggleValidation ? () => onToggleValidation(revenue.id) : undefined}

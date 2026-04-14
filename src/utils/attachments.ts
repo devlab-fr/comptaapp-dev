@@ -109,8 +109,10 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
 }
 
 export async function getAttachmentUrl(filePath: string): Promise<string> {
+  const bucketName = filePath.includes('/justificatifs/') ? 'justificatifs' : 'receipts';
+
   const { data } = await supabase.storage
-    .from('justificatifs')
+    .from(bucketName)
     .createSignedUrl(filePath, 3600);
 
   if (!data?.signedUrl) throw new Error('Impossible de générer l\'URL');

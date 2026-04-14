@@ -27,6 +27,7 @@ export function ComptabilitePage() {
   const [activeTab, setActiveTab] = useState<TabType>('plan');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadCompany();
@@ -80,6 +81,13 @@ export function ComptabilitePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .tabs-container::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      `}</style>
       {toast && (
         <Toast
           message={toast.message}
@@ -118,45 +126,75 @@ export function ComptabilitePage() {
         }}>
           <div style={{
             display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            padding: '0 24px',
-            gap: '8px'
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 24px',
+            borderBottom: '1px solid #e5e7eb'
           }}>
-            <TabButton
-              active={activeTab === 'plan'}
-              onClick={() => setActiveTab('plan')}
-              label="Plan Comptable"
-            />
-            <TabButton
-              active={activeTab === 'journals'}
-              onClick={() => setActiveTab('journals')}
-              label="Journaux"
-            />
-            <TabButton
-              active={activeTab === 'entry'}
-              onClick={() => setActiveTab('entry')}
-              label="Saisie"
-            />
-            <TabButton
-              active={activeTab === 'list'}
-              onClick={() => setActiveTab('list')}
-              label="Journal"
-            />
-            <TabButton
-              active={activeTab === 'balance'}
-              onClick={() => setActiveTab('balance')}
-              label="Balance"
-            />
-            <TabButton
-              active={activeTab === 'vat'}
-              onClick={() => setActiveTab('vat')}
-              label="TVA (comptable)"
-            />
-            <TabButton
-              active={activeTab === 'closure'}
-              onClick={() => setActiveTab('closure')}
-              label="Clôture"
-            />
+            <div className="tabs-container" style={{
+              display: 'flex',
+              gap: '8px',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              flex: 1
+            }}>
+              <TabButton
+                active={activeTab === 'plan'}
+                onClick={() => setActiveTab('plan')}
+                label="Plan Comptable"
+              />
+              <TabButton
+                active={activeTab === 'journals'}
+                onClick={() => setActiveTab('journals')}
+                label="Journaux"
+              />
+              <TabButton
+                active={activeTab === 'entry'}
+                onClick={() => setActiveTab('entry')}
+                label="Saisie"
+              />
+              <TabButton
+                active={activeTab === 'list'}
+                onClick={() => setActiveTab('list')}
+                label="Journal"
+              />
+              <TabButton
+                active={activeTab === 'balance'}
+                onClick={() => setActiveTab('balance')}
+                label="Balance"
+              />
+              <TabButton
+                active={activeTab === 'vat'}
+                onClick={() => setActiveTab('vat')}
+                label="TVA (comptable)"
+              />
+              <TabButton
+                active={activeTab === 'closure'}
+                onClick={() => setActiveTab('closure')}
+                label="Clôture"
+              />
+            </div>
+            <div style={{ marginLeft: '16px' }}>
+              <label style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>Exercice:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                {[2022, 2023, 2024, 2025, 2026].map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div style={{ padding: '32px 24px' }}>
@@ -170,10 +208,10 @@ export function ComptabilitePage() {
                 sourceDocumentId={searchParams.get('documentId')}
               />
             )}
-            {activeTab === 'list' && <JournalListTab companyId={companyId!} setToast={setToast} />}
-            {activeTab === 'balance' && <BalanceTab companyId={companyId!} setToast={setToast} />}
-            {activeTab === 'vat' && <VatTab companyId={companyId!} setToast={setToast} />}
-            {activeTab === 'closure' && <ClosureTab companyId={companyId!} setToast={setToast} entitlements={entitlements} />}
+            {activeTab === 'list' && <JournalListTab companyId={companyId!} setToast={setToast} selectedYear={selectedYear} />}
+            {activeTab === 'balance' && <BalanceTab companyId={companyId!} setToast={setToast} selectedYear={selectedYear} />}
+            {activeTab === 'vat' && <VatTab companyId={companyId!} setToast={setToast} selectedYear={selectedYear} />}
+            {activeTab === 'closure' && <ClosureTab companyId={companyId!} setToast={setToast} entitlements={entitlements} selectedYear={selectedYear} />}
           </div>
         </div>
       </div>
@@ -1070,18 +1108,34 @@ interface EntryWithDetails {
   entry_date: string;
   description: string;
   locked: boolean;
+  is_locked: boolean;
   journal: { code: string; name: string };
 }
 
-function JournalListTab({ companyId, setToast }: { companyId: string; setToast: (t: any) => void }) {
+function JournalListTab({ companyId, setToast, selectedYear }: { companyId: string; setToast: (t: any) => void; selectedYear: number }) {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<EntryWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedEntryForComments, setSelectedEntryForComments] = useState<EntryWithDetails | null>(null);
 
   useEffect(() => {
     loadEntries();
   }, [selectedYear]);
+
+  const handleLockEntry = async (entryId: string) => {
+    try {
+      const { error } = await supabase.rpc('lock_accounting_entry', {
+        p_entry_id: entryId
+      });
+
+      if (error) throw error;
+
+      setToast({ message: 'Écriture verrouillée avec succès', type: 'success' });
+      loadEntries();
+    } catch (err: any) {
+      setToast({ message: err.message, type: 'error' });
+    }
+  };
 
   const loadEntries = async () => {
     try {
@@ -1093,6 +1147,7 @@ function JournalListTab({ companyId, setToast }: { companyId: string; setToast: 
           entry_date,
           description,
           locked,
+          is_locked,
           journals!inner(code, name)
         `)
         .eq('company_id', companyId)
@@ -1107,6 +1162,7 @@ function JournalListTab({ companyId, setToast }: { companyId: string; setToast: 
         entry_date: entry.entry_date,
         description: entry.description,
         locked: entry.locked,
+        is_locked: entry.is_locked,
         journal: entry.journals
       }));
 
@@ -1122,37 +1178,20 @@ function JournalListTab({ companyId, setToast }: { companyId: string; setToast: 
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Journal des écritures</h2>
-        <div>
-          <label style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>Exercice:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
-          >
-            {[2025, 2024, 2023, 2022].map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+      <div style={{ marginBottom: '24px' }}>
+        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Journal des écritures {selectedYear}</h2>
       </div>
 
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>N° Écriture</th>
-              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Date</th>
-              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Journal</th>
+              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600', width: '140px' }}>N° Écriture</th>
+              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600', width: '110px' }}>Date</th>
+              <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600', width: '220px' }}>Journal</th>
               <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Description</th>
-              <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Statut</th>
-              <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Actions</th>
+              <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', width: '120px' }}>Statut</th>
+              <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', width: '260px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1164,65 +1203,147 @@ function JournalListTab({ companyId, setToast }: { companyId: string; setToast: 
               </tr>
             ) : (
               entries.map((entry) => (
-                <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace' }}>
+                <tr
+                  key={entry.id}
+                  onClick={() => navigate(`/app/company/${companyId}/accounting-entry/${entry.id}`)}
+                  style={{
+                    borderBottom: '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                     {entry.entry_number}
                   </td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
+                  <td style={{ padding: '12px', fontSize: '14px', whiteSpace: 'nowrap' }}>
                     {new Date(entry.entry_date).toLocaleDateString('fr-FR')}
                   </td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      backgroundColor: '#dbeafe',
-                      color: '#1e40af'
-                    }}>
-                      {entry.journal.code}
-                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                      <span style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        backgroundColor: '#dbeafe',
+                        color: '#1e40af',
+                        lineHeight: '1.2',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {entry.journal.code}
+                      </span>
+                      <span style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        lineHeight: '1.2',
+                        whiteSpace: 'nowrap',
+                        backgroundColor: (() => {
+                          const code = entry.journal.code.toUpperCase();
+                          if (code === 'ACH') return '#fed7aa';
+                          if (code === 'VT') return '#d1fae5';
+                          if (code === 'BQ') return '#dbeafe';
+                          return '#e5e7eb';
+                        })(),
+                        color: (() => {
+                          const code = entry.journal.code.toUpperCase();
+                          if (code === 'ACH') return '#92400e';
+                          if (code === 'VT') return '#065f46';
+                          if (code === 'BQ') return '#1e40af';
+                          return '#374151';
+                        })()
+                      }}>
+                        {(() => {
+                          const code = entry.journal.code.toUpperCase();
+                          if (code === 'ACH') return 'Achat';
+                          if (code === 'VT') return 'Vente';
+                          if (code === 'BQ') return 'Banque';
+                          return 'OD';
+                        })()}
+                      </span>
+                    </div>
                   </td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>{entry.description}</td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
-                    {entry.locked ? (
+                    {entry.is_locked ? (
                       <span style={{
                         padding: '4px 8px',
                         borderRadius: '4px',
                         fontSize: '12px',
-                        backgroundColor: '#fee2e2',
-                        color: '#991b1b'
+                        backgroundColor: '#dcfce7',
+                        color: '#166534',
+                        whiteSpace: 'nowrap'
                       }}>
-                        🔒 Verrouillée
+                        Verrouillée
                       </span>
                     ) : (
                       <span style={{
                         padding: '4px 8px',
                         borderRadius: '4px',
                         fontSize: '12px',
-                        backgroundColor: '#dcfce7',
-                        color: '#166534'
+                        backgroundColor: '#f3f4f6',
+                        color: '#6b7280',
+                        whiteSpace: 'nowrap'
                       }}>
-                        ✓ Ouverte
+                        Brouillon
                       </span>
                     )}
                   </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => setSelectedEntryForComments(entry)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      💬
-                    </button>
+                  <td style={{ padding: '12px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'nowrap' }}>
+                      <button
+                        onClick={() => navigate(`/app/company/${companyId}/accounting-entry/${entry.id}`)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Voir détails
+                      </button>
+                      <button
+                        onClick={() => setSelectedEntryForComments(entry)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        💬
+                      </button>
+                      {!entry.is_locked && (
+                        <button
+                          onClick={() => handleLockEntry(entry.id)}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#059669',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Verrouiller
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1252,10 +1373,9 @@ interface BalanceRow {
   solde_credit: number;
 }
 
-function BalanceTab({ companyId, setToast }: { companyId: string; setToast: (t: any) => void }) {
+function BalanceTab({ companyId, setToast, selectedYear }: { companyId: string; setToast: (t: any) => void; selectedYear: number }) {
   const [balance, setBalance] = useState<BalanceRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadBalance();
@@ -1269,10 +1389,11 @@ function BalanceTab({ companyId, setToast }: { companyId: string; setToast: (t: 
           debit,
           credit,
           account:chart_of_accounts(code, name),
-          entry:accounting_entries!inner(company_id, fiscal_year)
+          entry:accounting_entries!inner(company_id, fiscal_year, is_locked)
         `)
         .eq('entry.company_id', companyId)
-        .eq('entry.fiscal_year', selectedYear);
+        .eq('entry.fiscal_year', selectedYear)
+        .eq('entry.is_locked', true);
 
       if (error) throw error;
 
@@ -1330,25 +1451,8 @@ function BalanceTab({ companyId, setToast }: { companyId: string; setToast: (t: 
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Balance</h2>
-        <div>
-          <label style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>Exercice:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
-          >
-            {[2025, 2024, 2023, 2022].map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+      <div style={{ marginBottom: '24px' }}>
+        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Balance {selectedYear}</h2>
       </div>
 
       <div style={{ overflowX: 'auto' }}>
@@ -1419,11 +1523,10 @@ function BalanceTab({ companyId, setToast }: { companyId: string; setToast: (t: 
   );
 }
 
-function VatTab({ companyId, setToast }: { companyId: string; setToast: (t: any) => void }) {
+function VatTab({ companyId, setToast, selectedYear }: { companyId: string; setToast: (t: any) => void; selectedYear: number }) {
   const [comparison, setComparison] = useState<VatComparison | null>(null);
   const [accountDetails, setAccountDetails] = useState<VatAccountDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadVatData();
@@ -1459,30 +1562,10 @@ function VatTab({ companyId, setToast }: { companyId: string; setToast: (t: any)
 
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
+      <div style={{ marginBottom: '24px' }}>
         <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-          TVA Comptable
+          TVA Comptable {selectedYear}
         </h2>
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-          style={{
-            padding: '8px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '6px',
-            fontSize: '14px',
-            cursor: 'pointer'
-          }}
-        >
-          {[2024, 2025, 2026].map(year => (
-            <option key={year} value={year}>{year}</option>
-          ))}
-        </select>
       </div>
 
       {!hasAccountingEntries && (
@@ -1741,11 +1824,10 @@ function VatTab({ companyId, setToast }: { companyId: string; setToast: (t: any)
   );
 }
 
-function ClosureTab({ companyId, setToast, entitlements }: { companyId: string; setToast: (t: any) => void; entitlements: any }) {
+function ClosureTab({ companyId, setToast, entitlements, selectedYear }: { companyId: string; setToast: (t: any) => void; entitlements: any; selectedYear: number }) {
   const [closureStatus, setClosureStatus] = useState<ClosureStatus | null>(null);
   const [statements, setStatements] = useState<AccountingStatement | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [fiscalYearStatus, setFiscalYearStatus] = useState<FiscalYearStatusType>('en_cours');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showExportFilters, setShowExportFilters] = useState(false);
@@ -1931,21 +2013,6 @@ function ClosureTab({ companyId, setToast, entitlements }: { companyId: string; 
               <option value="cloture">Clôturé</option>
             </select>
           )}
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            {[2024, 2025, 2026].map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
         </div>
       </div>
 

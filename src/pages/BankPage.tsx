@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getBankAccounts, getBankStatementLines, updateReconciliation, BankAccount, BankStatementLine } from '../banking/queries';
 import { importCSVToBank } from '../banking/csvImport';
 import { exportBankStatementCSV, exportReconciliationCSV, downloadCSV } from '../banking/csvExport';
 import { CreateBankAccountDialog } from '../banking/components/CreateBankAccountDialog';
+import { CreateBankEntryModal } from '../banking/components/CreateBankEntryModal';
+import { BankReconciliationModal, MatchSuggestion } from '../banking/components/BankReconciliationModal';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import Toast from '../components/Toast';
@@ -27,6 +29,15 @@ export default function BankPage() {
   const [savedStartDate, setSavedStartDate] = useState<string>('');
   const [savingStartDate, setSavingStartDate] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [showCreateEntryModal, setShowCreateEntryModal] = useState(false);
+  const [selectedLineForEntry, setSelectedLineForEntry] = useState<BankStatementLine | null>(null);
+  const [openMenuLineId, setOpenMenuLineId] = useState<string | null>(null);
+  const [showReconciliationModal, setShowReconciliationModal] = useState(false);
+  const [selectedLineForReconciliation, setSelectedLineForReconciliation] = useState<BankStatementLine | null>(null);
+  const [initialSuggestions, setInitialSuggestions] = useState<MatchSuggestion[]>([]);
+  const [autoMatchingLineId, setAutoMatchingLineId] = useState<string | null>(null);
+  const [autoMatchToast, setAutoMatchToast] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (companyId) {
@@ -45,6 +56,21 @@ export default function BankPage() {
       setSavedStartDate(accountStartDate);
     }
   }, [selectedAccountId, companyId, accounts]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuLineId(null);
+      }
+    }
+
+    if (openMenuLineId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openMenuLineId]);
 
   async function loadAccounts() {
     if (!companyId) return;
@@ -140,6 +166,129 @@ export default function BankPage() {
 
   function cancelEditing() {
     setEditingLine(null);
+  }
+
+  function handleCreateEntry(line: BankStatementLine) {
+    setSelectedLineForEntry(line);
+    setShowCreateEntryModal(true);
+    setOpenMenuLineId(null);
+  }
+
+  function handleEntryCreated() {
+    setShowCreateEntryModal(false);
+    setSelectedLineForEntry(null);
+    loadLines();
+  }
+
+  function handleViewEntry(entryId: string) {
+    if (!companyId) return;
+    navigate(`/app/company/${companyId}/accounting-entry/${entryId}`);
+  }
+
+  async function handleReconcile(line: BankStatementLine) {
+    if (!companyId) return;
+
+    // Protection anti-double validation
+    if (autoMatchingLineId === line.id) return;
+
+    setOpenMenuLineId(null);
+
+    const AUTOMATCH_THRESHOLD = 95;
+
+    try {
+      // Appeler suggest_bank_matches UNE SEULE FOIS
+      const { data, error: rpcError } = await supabase.rpc('suggest_bank_matches', {
+        p_company_id: companyId,
+        p_line_id: line.id,
+        p_line_amount: line.amount_cents / 100,
+        p_line_date: line.date,
+        p_line_description: line.label,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const suggestions = (data || []) as MatchSuggestion[];
+
+      // TEST AUTOMATCH AVANT TOUTE OUVERTURE MODALE
+      const shouldAutoMatch =
+        suggestions.length === 1 &&
+        suggestions[0]?.entry_id &&
+        suggestions[0].score >= AUTOMATCH_THRESHOLD &&
+        !line.linked_accounting_entry_id;
+
+      if (shouldAutoMatch) {
+        // Automatch invisible - AUCUNE MODALE
+        try {
+          setAutoMatchingLineId(line.id);
+          setAutoMatchToast(true);
+
+          const { data: validateData, error: validateError } = await supabase.rpc('validate_bank_match', {
+            p_company_id: companyId,
+            p_entry_id: suggestions[0].entry_id,
+            p_line_id: line.id,
+          });
+
+          if (validateError) throw validateError;
+
+          const result = validateData as { success: boolean; error?: string };
+          if (!result.success) {
+            throw new Error(result.error || 'Erreur inconnue');
+          }
+
+          // Rafraîchir les lignes
+          await loadLines();
+
+          // Cacher toast après 2s
+          setTimeout(() => setAutoMatchToast(false), 2000);
+        } finally {
+          setAutoMatchingLineId(null);
+        }
+
+        // STOP ICI - ne pas ouvrir la modale
+        return;
+      }
+
+      // Fallback : ouvrir la modale uniquement si pas d'automatch
+      setInitialSuggestions(suggestions);
+      setSelectedLineForReconciliation(line);
+      setShowReconciliationModal(true);
+    } catch (err) {
+      console.error('Error during reconciliation:', err);
+      setAutoMatchingLineId(null);
+      // En cas d'erreur, ouvrir la modale en fallback
+      setInitialSuggestions([]);
+      setSelectedLineForReconciliation(line);
+      setShowReconciliationModal(true);
+    }
+  }
+
+  function handleReconciliationSuccess() {
+    setShowReconciliationModal(false);
+    setSelectedLineForReconciliation(null);
+    loadLines();
+  }
+
+  async function handleCancelReconciliation(lineId: string) {
+    if (!companyId) return;
+    try {
+      const { data, error: rpcError } = await supabase.rpc('cancel_bank_match', {
+        p_company_id: companyId,
+        p_line_id: lineId,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur inconnue');
+      }
+
+      await loadLines();
+      setOpenMenuLineId(null);
+    } catch (err) {
+      console.error('Error canceling reconciliation:', err);
+      alert(err instanceof Error ? err.message : 'Erreur lors de l\'annulation');
+    }
   }
 
   async function handleSaveStartDate() {
@@ -323,6 +472,7 @@ export default function BankPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Libellé</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comptabilité</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Note</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -354,13 +504,24 @@ export default function BankPage() {
                       </select>
                     ) : (
                       <span className={`px-2 py-1 rounded ${
-                        line.match_status === 'matched' ? 'bg-green-100 text-green-800' :
+                        line.linked_accounting_entry_id ? 'bg-green-100 text-green-800' :
                         line.match_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {line.match_status === 'matched' ? 'Rapproché' :
+                        {line.linked_accounting_entry_id ? 'Rapproché' :
                          line.match_status === 'partial' ? 'Partiel' :
                          'Non rapproché'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {line.linked_accounting_entry_id ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800">
+                        Comptabilisé
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded bg-gray-100 text-gray-600">
+                        Non comptabilisé
                       </span>
                     )}
                   </td>
@@ -394,12 +555,66 @@ export default function BankPage() {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => startEditing(line)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Modifier
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuLineId(openMenuLineId === line.id ? null : line.id)}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                        </button>
+                        {openMenuLineId === line.id && (
+                          <div
+                            ref={menuRef}
+                            className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-10 flex flex-col py-1"
+                          >
+                            <button
+                              onClick={() => {
+                                startEditing(line);
+                                setOpenMenuLineId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              Modifier statut
+                            </button>
+                            {!line.linked_accounting_entry_id ? (
+                              <>
+                                <button
+                                  onClick={() => handleReconcile(line)}
+                                  className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+                                >
+                                  Rapprocher automatiquement
+                                </button>
+                                <button
+                                  onClick={() => handleCreateEntry(line)}
+                                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                                >
+                                  Créer écriture comptable
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    handleViewEntry(line.linked_accounting_entry_id!);
+                                    setOpenMenuLineId(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                                >
+                                  Voir écriture liée
+                                </button>
+                                <button
+                                  onClick={() => handleCancelReconciliation(line.id)}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                  Annuler rapprochement
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -420,11 +635,45 @@ export default function BankPage() {
           onCreated={handleAccountCreated}
         />
 
+        {showCreateEntryModal && selectedLineForEntry && (
+          <CreateBankEntryModal
+            open={showCreateEntryModal}
+            onClose={() => {
+              setShowCreateEntryModal(false);
+              setSelectedLineForEntry(null);
+            }}
+            companyId={companyId}
+            bankLine={selectedLineForEntry}
+            onSuccess={handleEntryCreated}
+          />
+        )}
+
         {showToast && (
           <Toast
             message="Date de reprise enregistrée"
             type="success"
             onClose={() => setShowToast(false)}
+          />
+        )}
+
+        {autoMatchToast && (
+          <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg">
+            Rapprochement automatique effectué
+          </div>
+        )}
+
+        {showReconciliationModal && selectedLineForReconciliation && (
+          <BankReconciliationModal
+            open={showReconciliationModal}
+            onClose={() => {
+              setShowReconciliationModal(false);
+              setSelectedLineForReconciliation(null);
+              setInitialSuggestions([]);
+            }}
+            companyId={companyId}
+            bankLine={selectedLineForReconciliation}
+            onSuccess={handleReconciliationSuccess}
+            initialSuggestions={initialSuggestions.length > 0 ? initialSuggestions : undefined}
           />
         )}
       </main>

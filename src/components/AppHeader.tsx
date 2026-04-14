@@ -59,8 +59,8 @@ export default function AppHeader({
               padding: 12px 16px !important;
             }
             .app-header-logo {
-              width: 36px !important;
-              height: 36px !important;
+              width: 44px !important;
+              height: 44px !important;
             }
             .app-header-title {
               font-size: 20px !important;
@@ -117,8 +117,8 @@ export default function AppHeader({
                   src={logoUrl}
                   alt="ComptaApp Logo"
                   className="app-header-logo"
-                  width="40"
-                  height="40"
+                  width="56"
+                  height="56"
                   style={{
                     flexShrink: 0,
                     display: 'block'

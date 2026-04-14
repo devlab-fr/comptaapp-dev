@@ -147,7 +147,7 @@ export default function RevenuesPage() {
     if (docs) {
       const { data: lines } = await supabase
         .from('revenue_lines')
-        .select('document_id, description, category_id')
+        .select('document_id, description, category_id, revenue_categories(id, name)')
         .in('document_id', docs.map(d => d.id))
         .order('line_order');
 
@@ -193,8 +193,7 @@ export default function RevenuesPage() {
 
         // Tenter de résoudre la catégorie réelle depuis les lignes
         if (firstLine && firstLine.category_id) {
-          const cat = categories.find((c) => c.id === firstLine.category_id);
-          category_name = cat?.name || '';
+          category_name = (firstLine as any).revenue_categories?.name || '';
           category_id = firstLine.category_id;
         }
 
@@ -579,7 +578,7 @@ export default function RevenuesPage() {
                   }}
                 >
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                           <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
@@ -639,6 +638,7 @@ export default function RevenuesPage() {
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                               <ActionsDropdown
+                                onView={() => navigate(`/app/company/${companyId}/revenues/${rev.id}`)}
                                 onEdit={rev.source_type !== 'invoice' ? () => navigate(`/app/company/${companyId}/revenues/${rev.id}/edit`) : undefined}
                                 onDelete={rev.source_type !== 'invoice' ? () => setDeleteModal({ show: true, id: rev.id }) : undefined}
                                 onToggleValidation={() => handleToggleValidation(rev.id, rev.accounting_status)}
@@ -713,6 +713,7 @@ export default function RevenuesPage() {
                       vat_amount: rev.total_vat,
                       amount_incl_vat: rev.total_incl_vat,
                     }}
+                    onView={(id) => navigate(`/app/company/${companyId}/revenues/${id}`)}
                     onEdit={rev.source_type !== 'invoice' ? (id) => navigate(`/app/company/${companyId}/revenues/${id}/edit`) : undefined}
                     onDelete={rev.source_type !== 'invoice' ? (id) => setDeleteModal({ show: true, id }) : undefined}
                     onToggleValidation={(id) => handleToggleValidation(id, rev.accounting_status)}

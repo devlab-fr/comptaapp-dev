@@ -3,6 +3,7 @@ import { usePlan } from '../lib/usePlan';
 import { useNavigate } from 'react-router-dom';
 import { useLegalAcceptance } from '../hooks/useLegalAcceptance';
 import { LegalGateModal } from './legal/LegalGateModal';
+import { supabase } from '../lib/supabase';
 
 interface AIAssistantProps {
   context: 'synthese' | 'compte-resultat' | 'tva';
@@ -16,7 +17,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [userInput, setUserInput] = useState('');
   const [showLegalGate, setShowLegalGate] = useState(false);
-  const { canUse } = usePlan(companyId);
+  const { canUse, loading: planLoading } = usePlan(companyId);
   const { hasAccepted, loading: legalLoading } = useLegalAcceptance(companyId);
   const navigate = useNavigate();
 
@@ -47,9 +48,21 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
+      console.log('[AI AUTH DEBUG]', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        tokenPreview: session?.access_token?.slice(0, 20),
+        tokenLength: session?.access_token?.length
+      });
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       };
 
@@ -61,6 +74,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
           data,
           userMessage: userInput,
           conversationHistory: messages,
+          companyId,
         }),
       });
 
@@ -90,6 +104,7 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
     return (
       <button
         onClick={() => setIsOpen(true)}
+        className="ai-assistant-button"
         style={{
           position: 'fixed',
           bottom: '24px',
@@ -181,7 +196,11 @@ export default function AIAssistant({ context, data, companyId }: AIAssistantPro
           </button>
         </div>
 
-        {!hasAccess ? (
+        {planLoading ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>Chargement...</div>
+          </div>
+        ) : !hasAccess ? (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
             <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>

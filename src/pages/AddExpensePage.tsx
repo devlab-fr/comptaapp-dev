@@ -35,6 +35,9 @@ export default function AddExpensePage() {
   const prefillDescription = searchParams.get('description') || '';
   const prefillCategoryId = searchParams.get('category_id') || '';
   const prefillSubcategoryId = searchParams.get('subcategory_id') || '';
+  const prefillReceiptUrl = searchParams.get('receipt_url') || '';
+  const prefillReceiptStoragePath = searchParams.get('receipt_storage_path') || '';
+  const prefillReceiptFilename = searchParams.get('receipt_filename') || '';
 
   const calculatedTVARate = prefillAmountHT && prefillVAT
     ? (parseFloat(prefillVAT) / parseFloat(prefillAmountHT)).toFixed(2)
@@ -45,7 +48,10 @@ export default function AddExpensePage() {
   const [categoryId, setCategoryId] = useState(prefillCategoryId || '');
   const [subcategoryId, setSubcategoryId] = useState(prefillSubcategoryId || '');
   const [amountHT, setAmountHT] = useState(prefillAmountHT || '');
+  const [amountTTC, setAmountTTC] = useState('');
   const [tvaRate, setTvaRate] = useState(calculatedTVARate);
+  const [inputMode, setInputMode] = useState<'ht' | 'ttc'>('ht');
+  const [companyVatRegime, setCompanyVatRegime] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +60,20 @@ export default function AddExpensePage() {
   const [createdDocumentId, setCreatedDocumentId] = useState<string | null>(null);
 
   useEffect(() => {
+    const loadCompanyVatRegime = async () => {
+      if (!companyId) return;
+
+      const { data, error: fetchError } = await supabase
+        .from('companies')
+        .select('vat_regime')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!fetchError && data) {
+        setCompanyVatRegime(data.vat_regime || '');
+      }
+    };
+
     const loadCategories = async () => {
       const { data, error: fetchError } = await supabase
         .from('expense_categories')
@@ -69,8 +89,15 @@ export default function AddExpensePage() {
       }
     };
 
+    loadCompanyVatRegime();
     loadCategories();
-  }, []);
+  }, [companyId]);
+
+  useEffect(() => {
+    if (companyVatRegime === 'franchise') {
+      setTvaRate('0');
+    }
+  }, [companyVatRegime]);
 
   useEffect(() => {
     const loadSubcategories = async () => {
@@ -99,6 +126,43 @@ export default function AddExpensePage() {
 
     loadSubcategories();
   }, [categoryId]);
+
+  const handleAmountHTChange = (value: string) => {
+    setAmountHT(value);
+    if (inputMode === 'ht') {
+      const ht = parseFloat(value) || 0;
+      const taux = parseFloat(tvaRate) || 0;
+      const tva = Math.round(ht * taux * 100) / 100;
+      const ttc = ht + tva;
+      setAmountTTC(ttc.toFixed(2));
+    }
+  };
+
+  const handleAmountTTCChange = (value: string) => {
+    setAmountTTC(value);
+    if (inputMode === 'ttc') {
+      const ttc = parseFloat(value) || 0;
+      const taux = parseFloat(tvaRate) || 0;
+      const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+      setAmountHT(ht.toFixed(2));
+    }
+  };
+
+  const handleTvaRateChange = (value: string) => {
+    setTvaRate(value);
+    if (inputMode === 'ht') {
+      const ht = parseFloat(amountHT) || 0;
+      const taux = parseFloat(value) || 0;
+      const tva = Math.round(ht * taux * 100) / 100;
+      const ttc = ht + tva;
+      setAmountTTC(ttc.toFixed(2));
+    } else {
+      const ttc = parseFloat(amountTTC) || 0;
+      const taux = parseFloat(value) || 0;
+      const ht = Math.round(ttc / (1 + taux) * 100) / 100;
+      setAmountHT(ht.toFixed(2));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,7 +253,7 @@ export default function AddExpensePage() {
       return;
     }
 
-    const documentData = {
+    const documentData: any = {
       company_id: companyId,
       invoice_date: date,
       total_excl_vat: amountHTNum,
@@ -198,6 +262,12 @@ export default function AddExpensePage() {
       accounting_status: 'draft',
       payment_status: 'unpaid',
     };
+
+    if (prefillReceiptUrl) {
+      documentData.receipt_url = prefillReceiptUrl;
+      documentData.receipt_storage_path = prefillReceiptStoragePath;
+      documentData.receipt_filename = prefillReceiptFilename;
+    }
 
     const { data: docData, error: docError } = await supabase
       .from('expense_documents')
@@ -242,6 +312,14 @@ export default function AddExpensePage() {
       });
       setLoading(false);
       return;
+    }
+
+    if (prefillReceiptUrl && docData.id) {
+      await supabase.from('attachments').insert({
+        company_id: companyId,
+        expense_document_id: docData.id,
+        file_path: prefillReceiptStoragePath,
+      });
     }
 
     setCreatedDocumentId(docData.id);
@@ -423,6 +501,37 @@ export default function AddExpensePage() {
           )}
 
           <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                  Mode de saisie :
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInputMode(inputMode === 'ht' ? 'ttc' : 'ht')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'white',
+                    backgroundColor: inputMode === 'ht' ? '#dc2626' : '#0ea5e9',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.9';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                >
+                  {inputMode === 'ht' ? 'HT' : 'TTC'}
+                </button>
+              </div>
+            </div>
+
             <div style={{ marginBottom: '24px' }}>
               <label
                 style={{
@@ -592,43 +701,93 @@ export default function AddExpensePage() {
                 </select>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#374151',
-                  }}
-                >
-                  Montant HT (€)
-                </label>
-                <input
-                  type="number"
-                  value={amountHT}
-                  onChange={(e) => setAmountHT(e.target.value)}
-                  required
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#dc2626';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                  }}
-                />
-              </div>
+              {inputMode === 'ht' ? (
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                    }}
+                  >
+                    Montant HT (€)
+                  </label>
+                  <input
+                    type="number"
+                    value={amountHT}
+                    onChange={(e) => handleAmountHTChange(e.target.value)}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#dc2626';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                    }}
+                  />
+                  {amountTTC && (
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                      TTC calculé : {parseFloat(amountTTC).toFixed(2)} €
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                    }}
+                  >
+                    Montant TTC (€)
+                  </label>
+                  <input
+                    type="number"
+                    value={amountTTC}
+                    onChange={(e) => handleAmountTTCChange(e.target.value)}
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#0ea5e9';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                    }}
+                  />
+                  {amountHT && (
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                      HT calculé : {parseFloat(amountHT).toFixed(2)} €
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label
@@ -642,32 +801,51 @@ export default function AddExpensePage() {
                 >
                   Taux de TVA
                 </label>
-                <select
-                  value={tvaRate}
-                  onChange={(e) => setTvaRate(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease',
-                    cursor: 'pointer',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#dc2626';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                  }}
-                >
-                  <option value="0">0% - TVA non applicable</option>
-                  <option value="0.055">5,5% - Taux réduit</option>
-                  <option value="0.10">10% - Taux intermédiaire</option>
-                  <option value="0.20">20% - Taux normal</option>
-                </select>
+                {companyVatRegime === 'franchise' ? (
+                  <input
+                    type="text"
+                    value="0% - TVA non applicable"
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      backgroundColor: '#f9fafb',
+                      color: '#6b7280',
+                      cursor: 'not-allowed',
+                    }}
+                  />
+                ) : (
+                  <select
+                    value={tvaRate}
+                    onChange={(e) => handleTvaRateChange(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease',
+                      cursor: 'pointer',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#dc2626';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                    }}
+                  >
+                    <option value="0">0% - TVA non applicable</option>
+                    <option value="0.055">5,5% - Taux réduit</option>
+                    <option value="0.10">10% - Taux intermédiaire</option>
+                    <option value="0.20">20% - Taux normal</option>
+                  </select>
+                )}
               </div>
             </div>
 

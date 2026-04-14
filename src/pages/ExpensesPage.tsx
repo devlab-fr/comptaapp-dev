@@ -722,7 +722,7 @@ export default function ExpensesPage() {
                   }}
                 >
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                           <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
@@ -783,6 +783,7 @@ export default function ExpensesPage() {
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                               <ActionsDropdown
+                                onView={() => navigate(`/app/company/${companyId}/expenses/${exp.id}`)}
                                 onEdit={() => navigate(`/app/company/${companyId}/expenses/${exp.id}/edit`)}
                                 onDelete={() => setDeleteModal({ show: true, id: exp.id })}
                                 onToggleValidation={() => handleToggleValidation(exp.id, exp.accounting_status)}
@@ -858,6 +859,7 @@ export default function ExpensesPage() {
                       vat_amount: exp.total_vat,
                       amount_incl_vat: exp.total_incl_vat,
                     }}
+                    onView={(id) => navigate(`/app/company/${companyId}/expenses/${id}`)}
                     onEdit={(id) => navigate(`/app/company/${companyId}/expenses/${id}/edit`)}
                     onDelete={(id) => setDeleteModal({ show: true, id })}
                     onToggleValidation={(id) => handleToggleValidation(id, exp.accounting_status)}

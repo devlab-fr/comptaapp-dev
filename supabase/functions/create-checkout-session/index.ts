@@ -30,11 +30,11 @@ const TIER_RANK: Record<string, number> = {
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin") ?? "";
 
-  const ALLOWED_ORIGINS = new Set([
-    "https://comptaapp-dev-2n37.bolt.host",
+  const allowedOrigins = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [
     "http://localhost:5173",
     "http://localhost:3000",
-  ]);
+  ];
+  const ALLOWED_ORIGINS = new Set(allowedOrigins);
 
   const corsHeaders = {
     "Access-Control-Allow-Origin": origin,

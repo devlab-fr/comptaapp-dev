@@ -1249,6 +1249,57 @@ export default function ViewTVAPage() {
           </p>
         </div>
 
+        {companyData?.vat_regime === 'franchise' ? (
+          <div
+            style={{
+              padding: '60px 40px',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              textAlign: 'center',
+              border: '2px solid #e5e7eb',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: '#f3f4f6',
+                marginBottom: '24px',
+              }}
+            >
+              <span style={{ fontSize: '40px' }}>ℹ️</span>
+            </div>
+            <h3
+              style={{
+                margin: '0 0 16px 0',
+                fontSize: '24px',
+                fontWeight: '600',
+                color: '#1a1a1a',
+              }}
+            >
+              Franchise en base de TVA
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '16px',
+                color: '#6b7280',
+                lineHeight: '1.6',
+                maxWidth: '600px',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}
+            >
+              Cette entreprise est en franchise en base de TVA. Aucun calcul ni déclaration de TVA ne s'applique tant que ce régime est actif.
+            </p>
+          </div>
+        ) : (
+          <>
         <div
           style={{
             padding: '16px 20px',
@@ -2178,8 +2229,11 @@ export default function ViewTVAPage() {
             </div>
           </>
         )}
+        </>
+        )}
       </main>
 
+      {companyData?.vat_regime !== 'franchise' && (
       <AIAssistant
         context="tva"
         data={{
@@ -2189,6 +2243,7 @@ export default function ViewTVAPage() {
         }}
         companyId={companyId!}
       />
+      )}
 
       {toast.show && (
         <Toast

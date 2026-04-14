@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export interface AiScanResult {
   suggested_type: 'expense' | 'revenue' | null;
   date: string | null;
@@ -17,7 +19,7 @@ export interface ScanReceiptResponse {
   requestId: string;
 }
 
-export async function scanReceipt(file: File, pdfConvertedImage?: { base64: string; mimeType: string }): Promise<ScanReceiptResponse> {
+export async function scanReceipt(file: File, pdfConvertedImage?: { base64: string; mimeType: string }, companyId?: string): Promise<ScanReceiptResponse> {
   let base64: string;
   let mimeType: string;
 
@@ -31,9 +33,21 @@ export async function scanReceipt(file: File, pdfConvertedImage?: { base64: stri
 
   const requestId = crypto.randomUUID();
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Session expirée. Veuillez vous reconnecter.');
+  }
+
+  console.log('[AI AUTH DEBUG]', {
+    hasSession: !!session,
+    hasAccessToken: !!session?.access_token,
+    tokenPreview: session?.access_token?.slice(0, 20),
+    tokenLength: session?.access_token?.length
+  });
+
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-scan-receipt`;
   const headers = {
-    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    'Authorization': `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
   };
 
@@ -47,7 +61,8 @@ export async function scanReceipt(file: File, pdfConvertedImage?: { base64: stri
       requestId,
       fileName: file.name,
       fileSize: file.size,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
+      companyId
     })
   });
 

@@ -7,13 +7,29 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://comptaapp-dev-2n37.bolt.host",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get("origin") ?? "";
+
+  const allowedOrigins = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [
+    "http://localhost:5173",
+    "http://localhost:3000",
+  ];
+
+  const ALLOWED_ORIGINS = new Set(allowedOrigins);
+
+  if (!ALLOWED_ORIGINS.has(origin)) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "CORS_FORBIDDEN", origin }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }

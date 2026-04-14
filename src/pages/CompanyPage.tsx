@@ -14,6 +14,8 @@ interface Company {
   id: string;
   name: string;
   country: string;
+  vat_regime: string;
+  activity_type: string | null;
 }
 
 interface ExpenseSummary {
@@ -48,6 +50,7 @@ export default function CompanyPage() {
   const [showLegalGate, setShowLegalGate] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [showFacturesUpsell, setShowFacturesUpsell] = useState(false);
+  const [acceptedCGULocally, setAcceptedCGULocally] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0, unpaidAmount: 0 });
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary>({ totalTTC: 0, totalHT: 0, totalTVA: 0, count: 0 });
@@ -56,6 +59,7 @@ export default function CompanyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const handleProtectedAction = (action: () => void) => {
     if (legalLoading) {
@@ -70,6 +74,7 @@ export default function CompanyPage() {
   };
 
   const onCGUAccepted = () => {
+    setAcceptedCGULocally(true);
     setShowLegalGate(false);
     if (pendingAction) {
       pendingAction();
@@ -124,7 +129,7 @@ export default function CompanyPage() {
 
       const { data, error: fetchError } = await supabase
         .from('companies')
-        .select('id, name, country')
+        .select('id, name, country, vat_regime, activity_type')
         .eq('id', companyId)
         .maybeSingle();
 
@@ -145,6 +150,10 @@ export default function CompanyPage() {
     };
 
     loadCompany();
+  }, [companyId]);
+
+  useEffect(() => {
+    setAcceptedCGULocally(false);
   }, [companyId]);
 
   const loadExpenseSummary = async () => {
@@ -287,6 +296,14 @@ export default function CompanyPage() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showFacturesUpsell]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (loading) {
     return (
       <div style={{
@@ -345,6 +362,51 @@ export default function CompanyPage() {
           .dashboard-cards { grid-template-columns: 1fr !important; }
           .quick-actions-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .kpi-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+          }
+          .summary-stats { grid-template-columns: 1fr !important; }
+          .dashboard-main { padding: 20px 16px !important; overflow-x: hidden !important; }
+          .dashboard-result-box {
+            padding: 20px 16px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .result-title { fontSize: 18px !important; margin: 0 0 12px 0 !important; letterSpacing: 0.8px !important; }
+          .result-amount { fontSize: 32px !important; margin: 0 0 6px 0 !important; }
+          .result-subtitle { fontSize: 12px !important; margin: 0 0 16px 0 !important; }
+          .kpi-card {
+            padding: 10px 14px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+          }
+          .kpi-label {
+            fontSize: 11px !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+          }
+          .kpi-value {
+            fontSize: 16px !important;
+            margin: 0 !important;
+            text-align: right !important;
+          }
+          .ai-assistant-button {
+            bottom: 80px !important;
+            right: 16px !important;
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+          }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dashboard-cards { grid-template-columns: 1fr !important; }
@@ -353,12 +415,12 @@ export default function CompanyPage() {
       `}</style>
 
       <div style={{ backgroundColor: '#f8f9fa', minHeight: '100%' }}>
-        <main style={{
+        <main className="dashboard-main" style={{
           maxWidth: '1200px',
           margin: '0 auto',
           padding: '32px 24px',
         }}>
-          {!legalLoading && !hasAccepted('cgu') && (
+          {!legalLoading && !acceptedCGULocally && !hasAccepted('cgu') && (
             <div style={{
               padding: '16px 20px',
               backgroundColor: '#fef3c7',
@@ -453,6 +515,241 @@ export default function CompanyPage() {
             </span>
           </div>
 
+          <div className="dashboard-result-box" style={{
+            padding: '32px',
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            border: '2px solid #e5e7eb',
+            marginBottom: '32px',
+            textAlign: 'center',
+            animation: 'fadeInUp 0.3s ease-out',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}>
+            <h3 className="result-title" style={{
+              margin: '0 0 20px 0',
+              fontSize: '22px',
+              fontWeight: '800',
+              color: '#1f2937',
+              textTransform: 'uppercase',
+              letterSpacing: '1.2px',
+            }}>
+              Résultat actuel
+            </h3>
+            <p className="result-amount" style={{
+              margin: '0 0 8px 0',
+              fontSize: '48px',
+              fontWeight: '800',
+              color: revenueSummary.totalTTC - expenseSummary.totalTTC > 0
+                ? '#16a34a'
+                : revenueSummary.totalTTC - expenseSummary.totalTTC < 0
+                ? '#dc2626'
+                : '#6b7280',
+            }}>
+              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC - expenseSummary.totalTTC)}
+            </p>
+            <p className="result-subtitle" style={{
+              margin: '0 0 32px 0',
+              fontSize: '13px',
+              color: '#9ca3af',
+            }}>
+              Revenus - Dépenses (période en cours)
+            </p>
+
+            <div className="kpi-cards" style={{
+              maxWidth: isMobile ? '100%' : '600px',
+              width: '100%',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? '8px' : '16px',
+              justifyContent: isMobile ? 'stretch' : 'center',
+              margin: isMobile ? undefined : '0 auto',
+              animation: 'fadeIn 0.5s ease-out 0.15s backwards',
+            }}>
+              <div className="kpi-card" style={{
+                padding: isMobile ? '10px 14px' : '16px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '12px',
+                border: '1px solid #d1fae5',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}>
+                <p className="kpi-label" style={{
+                  margin: isMobile ? 0 : '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  color: '#14532d',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  Revenus
+                </p>
+                <p className="kpi-value" style={{
+                  margin: 0,
+                  fontSize: isMobile ? '16px' : '20px',
+                  fontWeight: '700',
+                  color: '#16a34a',
+                  textAlign: isMobile ? 'right' : 'left',
+                }}>
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTTC)}
+                </p>
+              </div>
+
+              <div className="kpi-card" style={{
+                padding: isMobile ? '10px 14px' : '16px',
+                backgroundColor: '#fef2f2',
+                borderRadius: '12px',
+                border: '1px solid #fee2e2',
+                display: isMobile ? 'flex' : 'block',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}>
+                <p className="kpi-label" style={{
+                  margin: isMobile ? 0 : '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  color: '#7f1d1d',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  Dépenses
+                </p>
+                <p className="kpi-value" style={{
+                  margin: 0,
+                  fontSize: isMobile ? '16px' : '20px',
+                  fontWeight: '700',
+                  color: '#dc2626',
+                  textAlign: isMobile ? 'right' : 'left',
+                }}>
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(expenseSummary.totalTTC)}
+                </p>
+              </div>
+
+              {company.vat_regime !== 'franchise' && (
+                <div className="kpi-card" style={{
+                  padding: isMobile ? '10px 14px' : '16px',
+                  backgroundColor: '#fff7ed',
+                  borderRadius: '12px',
+                  border: '1px solid #fed7aa',
+                  display: isMobile ? 'flex' : 'block',
+                  flexDirection: isMobile ? 'row' : 'column',
+                  alignItems: isMobile ? 'center' : 'flex-start',
+                  justifyContent: isMobile ? 'space-between' : 'flex-start',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}>
+                  <p className="kpi-label" style={{
+                    margin: isMobile ? 0 : '0 0 8px 0',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    color: '#7c2d12',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    TVA
+                  </p>
+                  <p className="kpi-value" style={{
+                    margin: 0,
+                    fontSize: isMobile ? '16px' : '20px',
+                    fontWeight: '700',
+                    color: '#ea580c',
+                    textAlign: isMobile ? 'right' : 'left',
+                  }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(revenueSummary.totalTVA + expenseSummary.totalTVA)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {company.vat_regime === 'franchise' && company.activity_type && (() => {
+            const annualRevenue = revenueSummary.totalHT;
+
+            const thresholds = company.activity_type === 'service'
+              ? { base: 37500, majore: 41250 }
+              : company.activity_type === 'commerce'
+              ? { base: 85000, majore: 93500 }
+              : null;
+
+            if (!thresholds || annualRevenue < thresholds.base) {
+              return null;
+            }
+
+            const isAboveMajore = annualRevenue > thresholds.majore;
+            const isAboveBase = annualRevenue >= thresholds.base && annualRevenue <= thresholds.majore;
+
+            return (
+              <div style={{
+                padding: '16px 20px',
+                backgroundColor: isAboveMajore ? '#fef2f2' : '#fff7ed',
+                border: `2px solid ${isAboveMajore ? '#dc2626' : '#f97316'}`,
+                borderRadius: '12px',
+                marginBottom: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}>
+                <span style={{ fontSize: '24px' }}>{isAboveMajore ? '🚨' : '⚠️'}</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    margin: 0,
+                    color: isAboveMajore ? '#991b1b' : '#9a3412',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}>
+                    {isAboveBase && (
+                      <>Attention : votre chiffre d'affaires dépasse le seuil de base de la franchise en TVA. Vérifiez votre situation, car le régime peut évoluer l'année suivante.</>
+                    )}
+                    {isAboveMajore && (
+                      <>Seuil majoré dépassé : vous devez vérifier immédiatement votre situation TVA. L'application ne modifie pas automatiquement votre régime.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '32px',
+          }}>
+            <button
+              onClick={() => navigate(`/app/company/${companyId}/subscription`)}
+              style={{
+                padding: '14px 32px',
+                fontSize: '15px',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: '#2563eb',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1d4ed8';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+              }}
+            >
+              Voir les offres
+            </button>
+          </div>
+
           <div className="dashboard-cards" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -478,7 +775,7 @@ export default function CompanyPage() {
                 </h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div className="summary-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
                 <div style={{
                   padding: '14px',
                   backgroundColor: '#fef2f2',
@@ -673,7 +970,7 @@ export default function CompanyPage() {
                 </h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div className="summary-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
                 <div style={{
                   padding: '14px',
                   backgroundColor: '#f0fdf4',
@@ -879,17 +1176,17 @@ export default function CompanyPage() {
                   border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f5f3ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(139, 92, 246, 0.15)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -928,17 +1225,17 @@ export default function CompanyPage() {
                   border: '2px solid #0891b2',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#cffafe';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(8, 145, 178, 0.15)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1003,17 +1300,17 @@ export default function CompanyPage() {
                   border: '2px solid #10b981',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1045,17 +1342,17 @@ export default function CompanyPage() {
                     border: '2px solid #0ea5e9',
                     borderRadius: '12px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.3s ease-out',
                     textAlign: 'left',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#e0f2fe';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
@@ -1164,17 +1461,17 @@ export default function CompanyPage() {
                   border: '2px solid #3b82f6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#eff6ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1205,17 +1502,17 @@ export default function CompanyPage() {
                   border: '2px solid #059669',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d1fae5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1246,17 +1543,17 @@ export default function CompanyPage() {
                   border: '2px solid #7c3aed',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f3e8ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1287,17 +1584,17 @@ export default function CompanyPage() {
                   border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f5f3ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1351,17 +1648,17 @@ export default function CompanyPage() {
                   border: '2px solid #f97316',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ffedd5';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1392,17 +1689,17 @@ export default function CompanyPage() {
                   border: '2px solid #8b5cf6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ede9fe';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1456,17 +1753,17 @@ export default function CompanyPage() {
                   border: '2px solid #64748b',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1497,17 +1794,17 @@ export default function CompanyPage() {
                   border: '2px solid #3b82f6',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#eff6ff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1538,17 +1835,17 @@ export default function CompanyPage() {
                   border: '2px solid #f59e0b',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#fffbeb';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1579,17 +1876,17 @@ export default function CompanyPage() {
                   border: '2px solid #0891b2',
                   borderRadius: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.3s ease-out',
                   textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#ecfeff';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
@@ -1620,6 +1917,24 @@ export default function CompanyPage() {
             @keyframes pulse {
               0%, 100% { opacity: 0.6; }
               50% { opacity: 1; }
+            }
+            @keyframes fadeInUp {
+              from {
+                opacity: 0;
+                transform: translateY(12px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+              }
+              to {
+                opacity: 1;
+              }
             }
           `}
         </style>

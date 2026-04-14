@@ -176,17 +176,16 @@ export function buildVatBalanceSection(soldeTVA: number, isDeclared: boolean): s
 
 export function buildVatRegime(vatRegimeType?: string): string {
   if (!vatRegimeType) {
-    return 'Réel mensuel';
+    return 'Réel normal';
   }
 
   const regimes: { [key: string]: string } = {
-    'monthly': 'Réel mensuel',
-    'quarterly': 'Réel trimestriel',
-    'simplified': 'Régime simplifié',
-    'annual': 'Réel annuel',
+    'franchise': 'Franchise en base de TVA',
+    'reel_simplifie': 'Réel simplifié',
+    'reel_normal': 'Réel normal',
   };
 
-  return regimes[vatRegimeType] || 'Réel mensuel';
+  return regimes[vatRegimeType] || 'Réel normal';
 }
 
 export function buildPdfStyles(): string {

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
@@ -11,6 +11,9 @@ import AddExpensePage from './pages/AddExpensePage';
 import AddRevenuePage from './pages/AddRevenuePage';
 import EditExpensePage from './pages/EditExpensePage';
 import EditRevenuePage from './pages/EditRevenuePage';
+import ViewExpensePage from './pages/ViewExpensePage';
+import ViewRevenuePage from './pages/ViewRevenuePage';
+import ViewAccountingEntryPage from './pages/ViewAccountingEntryPage';
 import ExpensesPage from './pages/ExpensesPage';
 import RevenuesPage from './pages/RevenuesPage';
 import ViewTVAPage from './pages/ViewTVAPage';
@@ -40,6 +43,7 @@ import HistoryImportPage from './pages/HistoryImportPage';
 import CheckEmailPage from './pages/CheckEmailPage';
 import BankPage from './pages/BankPage';
 import TreasuryPage from './pages/TreasuryPage';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
   return (
@@ -71,9 +75,11 @@ export default function App() {
             <Route path="company/:companyId/ai-scan" element={<AiScanPage />} />
             <Route path="company/:companyId/expenses" element={<ExpensesPage />} />
             <Route path="company/:companyId/expenses/new" element={<AddExpensePage />} />
+            <Route path="company/:companyId/expenses/:documentId" element={<ViewExpensePage />} />
             <Route path="company/:companyId/expenses/:documentId/edit" element={<EditExpensePage />} />
             <Route path="company/:companyId/revenues" element={<RevenuesPage />} />
             <Route path="company/:companyId/revenues/new" element={<AddRevenuePage />} />
+            <Route path="company/:companyId/revenues/:documentId" element={<ViewRevenuePage />} />
             <Route path="company/:companyId/revenues/:documentId/edit" element={<EditRevenuePage />} />
             <Route path="company/:companyId/tva" element={<ViewTVAPage />} />
             <Route path="company/:companyId/resultat" element={<CompteDeResultatPage />} />
@@ -84,6 +90,7 @@ export default function App() {
             <Route path="company/:companyId/guide" element={<UserGuidePage />} />
             <Route path="company/:companyId/verification" element={<VerificationV1Page />} />
             <Route path="company/:companyId/comptabilite" element={<ComptabilitePage />} />
+            <Route path="company/:companyId/accounting-entry/:entryId" element={<ViewAccountingEntryPage />} />
             <Route path="company/:companyId/factures" element={<FacturesPage />} />
             <Route path="company/:companyId/factures/create" element={<CreateFacturePage />} />
             <Route path="company/:companyId/factures/:factureId" element={<ViewFacturePage />} />
@@ -108,7 +115,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/app" replace />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

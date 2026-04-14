@@ -47,7 +47,7 @@ export async function checkClosureStatus(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   const lockedCount = lockedEntries?.length || 0;
 
@@ -74,7 +74,7 @@ export async function checkClosureStatus(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', false);
+    .eq('is_locked', false);
 
   const unlockedCount = unlockedEntries?.length || 0;
 
@@ -149,7 +149,7 @@ async function checkBalanceEquilibree(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (!entries || entries.length === 0) {
     return { equilibree: true, totalDebit: 0, totalCredit: 0 };
@@ -203,7 +203,7 @@ async function checkJournalsUsage(
     .select('journal_id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   const usedJournalIds = new Set((entries || []).map(e => e.journal_id));
   const usedJournals = journals.filter(j => usedJournalIds.has(j.id));
@@ -226,7 +226,7 @@ export async function getAccountingStatements(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (!entries || entries.length === 0) {
     return {
@@ -343,7 +343,7 @@ export async function getAccountDetailsForStatements(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (!entries || entries.length === 0) {
     return [];

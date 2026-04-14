@@ -242,7 +242,9 @@ export default function BilanPage() {
 
       const tresorerie = totalEncaissementsTTC - totalDecaissementsTTC + openingTresorerie;
       const resultatHT = (produitsHT + catchupProduitsHT) - (chargesHT + catchupChargesHT);
-      const tvaNette = (tvaCollectee + catchupTVACollectee) - (tvaDeductible + catchupTVADeductible) + openingTVA;
+      const tvaNette = companyData?.vat_regime === 'franchise'
+        ? 0
+        : (tvaCollectee + catchupTVACollectee) - (tvaDeductible + catchupTVADeductible) + openingTVA;
 
       const actifTotal = tresorerie + openingCreances;
       const passifTotal = resultatHT + tvaNette + openingDettes;
@@ -292,7 +294,9 @@ export default function BilanPage() {
 
       rows.push(['PASSIF', '', '']);
       rows.push(['Passif', 'Résultat de l\'exercice (HT)', `="${formatCurrencyExcelFR(bilanData.passif.resultatExercice)}"`]);
-      rows.push(['Passif', 'TVA nette à payer/rembourser', `="${formatCurrencyExcelFR(bilanData.passif.dettesFiscales)}"`]);
+      if (companyData?.vat_regime !== 'franchise') {
+        rows.push(['Passif', 'TVA nette à payer/rembourser', `="${formatCurrencyExcelFR(bilanData.passif.dettesFiscales)}"`]);
+      }
       rows.push(['Passif', 'Dettes fournisseurs', `="${formatCurrencyExcelFR(bilanData.passif.dettesFournisseurs)}"`]);
       rows.push(['', 'Total Passif', `="${formatCurrencyExcelFR(bilanData.passif.total)}"`]);
       rows.push(['', '', '']);
@@ -476,10 +480,12 @@ export default function BilanPage() {
         <span class="amount">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(bilanData.passif.resultatExercice)}</span>
       </div>
 
+      ${companyData.vat_regime !== 'franchise' ? `
       <div class="line-item">
         <span class="label">TVA nette à payer/rembourser</span>
         <span class="amount">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(bilanData.passif.dettesFiscales)}</span>
       </div>
+      ` : ''}
 
       <div class="line-item">
         <span class="label">Dettes fournisseurs</span>
@@ -897,6 +903,7 @@ export default function BilanPage() {
                     </span>
                   </div>
 
+                  {companyData?.vat_regime !== 'franchise' && (
                   <div
                     style={{
                       display: 'flex',
@@ -915,6 +922,7 @@ export default function BilanPage() {
                       }).format(bilanData.passif.dettesFiscales)}
                     </span>
                   </div>
+                  )}
 
                   <div
                     style={{

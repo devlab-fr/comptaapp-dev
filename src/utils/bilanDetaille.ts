@@ -72,7 +72,7 @@ async function loadAccountBalances(
     .select('id')
     .eq('company_id', companyId)
     .eq('fiscal_year', fiscalYear)
-    .eq('locked', true);
+    .eq('is_locked', true);
 
   if (!entries || entries.length === 0) {
     return [];
