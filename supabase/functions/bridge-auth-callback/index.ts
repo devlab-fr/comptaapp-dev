@@ -21,22 +21,6 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
-async function hmacVerify(secret: string, payloadB64: string, signature: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payloadB64));
-  const expected = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return expected === signature;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -44,43 +28,19 @@ Deno.serve(async (req: Request) => {
 
   try {
     const url = new URL(req.url);
-    const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state");
-    const errorParam = url.searchParams.get("error");
+    const item_id = url.searchParams.get("item_id");
+    const user_uuid = url.searchParams.get("user_uuid");
+    const success = url.searchParams.get("success");
+    const context = url.searchParams.get("context");
 
     const appUrl = Deno.env.get("APP_URL") || "https://app.comptaapp.fr";
 
-    if (errorParam) {
-      return htmlRedirect(`${appUrl}/banque?bridge_error=${encodeURIComponent(errorParam)}`);
+    if (success !== "true") {
+      return htmlRedirect(`${appUrl}/banque?bridge_error=cancelled`);
     }
 
-    if (!code || !state) {
-      return jsonError("Paramètres manquants", 400);
-    }
-
-    const bridgeStateSecret = Deno.env.get("BRIDGE_STATE_SECRET");
-    if (!bridgeStateSecret) return jsonError("Configuration manquante", 500);
-
-    const dotIndex = state.lastIndexOf(".");
-    if (dotIndex === -1) return jsonError("State invalide", 401);
-
-    const payloadB64 = state.substring(0, dotIndex);
-    const signature = state.substring(dotIndex + 1);
-
-    const valid = await hmacVerify(bridgeStateSecret, payloadB64, signature);
-    if (!valid) return jsonError("Signature invalide", 401);
-
-    let parsed: { company_id: string; user_id: string; timestamp: number };
-    try {
-      parsed = JSON.parse(atob(payloadB64));
-    } catch {
-      return jsonError("State malformé", 401);
-    }
-
-    const { company_id, user_id, timestamp } = parsed;
-
-    if (Date.now() - timestamp > 10 * 60 * 1000) {
-      return jsonError("State expiré", 401);
+    if (!item_id || !user_uuid) {
+      return jsonError("Paramètres manquants (item_id, user_uuid)", 400);
     }
 
     const supabaseAdmin = createClient(
@@ -88,58 +48,54 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: company, error: companyError } = await supabaseAdmin
-      .from("companies")
-      .select("id")
-      .eq("id", company_id)
-      .maybeSingle();
+    let company_id: string | null = null;
 
-    if (companyError || !company) {
-      return jsonError("Company introuvable", 400);
-    }
+    if (context) {
+      const { data: membership, error: membershipError } = await supabaseAdmin
+        .from("memberships")
+        .select("company_id")
+        .eq("user_id", context)
+        .in("role", ["admin", "owner"])
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-    const { data: membership, error: membershipError } = await supabaseAdmin
-      .from("memberships")
-      .select("id")
-      .eq("company_id", company_id)
-      .eq("user_id", user_id)
-      .in("role", ["admin", "owner"])
-      .maybeSingle();
+      if (membershipError || !membership) {
+        return jsonError("Context invalide ou accès refusé", 403);
+      }
 
-    if (membershipError || !membership) {
-      return jsonError("Accès refusé", 401);
+      company_id = membership.company_id;
+    } else {
+      return jsonError("Context manquant", 400);
     }
 
     const clientId = Deno.env.get("BRIDGE_CLIENT_ID");
     const clientSecret = Deno.env.get("BRIDGE_CLIENT_SECRET");
-    const redirectUri = Deno.env.get("BRIDGE_REDIRECT_URI");
 
-    if (!clientId || !clientSecret || !redirectUri) {
+    if (!clientId || !clientSecret) {
       return jsonError("Configuration Bridge manquante", 500);
     }
 
-    const tokenResponse = await fetch("https://api.bridgeapi.io/v2/oauth/token", {
+    const bridgeHeaders = {
+      "Bridge-Version": "2021-06-01",
+      "Client-Id": clientId,
+      "Client-Secret": clientSecret,
+      "Content-Type": "application/json",
+    };
+
+    const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "authorization_code",
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-      }),
+      headers: bridgeHeaders,
+      body: JSON.stringify({ user_uuid }),
     });
 
-    if (!tokenResponse.ok) {
-      const errBody = await tokenResponse.text();
-      console.error("[bridge-auth-callback] token exchange failed:", tokenResponse.status, errBody);
-      return jsonError("Échec échange token Bridge", 502);
+    if (!authenticateRes.ok) {
+      const errBody = await authenticateRes.text();
+      console.error("[bridge-auth-callback] authenticate failed:", authenticateRes.status, errBody);
+      return jsonError("Échec authenticate Bridge", 502);
     }
 
-    const tokenData = await tokenResponse.json();
-    const { access_token, refresh_token, expires_in } = tokenData;
-
-    const tokenExpiresAt = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
+    const { access_token } = await authenticateRes.json();
 
     const accountsResponse = await fetch("https://api.bridgeapi.io/v2/accounts", {
       headers: {
@@ -171,8 +127,7 @@ Deno.serve(async (req: Request) => {
             bridge_account_id: bridgeAccountId,
             bridge_item_id: bridgeItemId,
             bridge_access_token: access_token,
-            bridge_refresh_token: refresh_token,
-            bridge_token_expires_at: tokenExpiresAt,
+            bridge_user_uuid: user_uuid,
             updated_at: new Date().toISOString(),
           },
           {
