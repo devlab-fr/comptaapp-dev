@@ -63,19 +63,36 @@ Deno.serve(async (req: Request) => {
       "Content-Type": "application/json",
     };
 
+    const authenticateBody = JSON.stringify({ external_user_id: user.id });
+    console.log("[bridge-auth-init] authenticate request", {
+      endpoint: "https://api.bridgeapi.io/v2/authenticate",
+      headers: {
+        "Bridge-Version": bridgeHeaders["Bridge-Version"],
+        "Client-Id": bridgeHeaders["Client-Id"],
+        "Content-Type": bridgeHeaders["Content-Type"],
+        "Client-Secret": bridgeHeaders["Client-Secret"] ? "[SET]" : "[MISSING]",
+      },
+      body: authenticateBody,
+    });
+
     const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
       method: "POST",
       headers: bridgeHeaders,
-      body: JSON.stringify({ external_user_id: user.id }),
+      body: authenticateBody,
+    });
+
+    const authenticateRawBody = await authenticateRes.text();
+    console.log("[bridge-auth-init] authenticate response", {
+      status: authenticateRes.status,
+      body: authenticateRawBody,
     });
 
     if (!authenticateRes.ok) {
-      const err = await authenticateRes.text();
-      console.error("[bridge-auth-init] authenticate error:", err);
       return jsonError("Erreur authenticate Bridge", 502);
     }
 
-    const { access_token } = await authenticateRes.json();
+    const authenticateJson = JSON.parse(authenticateRawBody);
+    const { access_token } = authenticateJson;
 
     const connectRes = await fetch("https://api.bridgeapi.io/v2/connect/items/add", {
       method: "POST",
