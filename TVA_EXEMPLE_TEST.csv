@@ -1,4 +1,0 @@
-Entreprise;Année;Type Période;Période;TVA Collectée (EUR);TVA Déductible (EUR);Solde TVA (EUR);Statut;Date de calcul
-Entreprise Test;2026;Mensuelle;Février;1250,50;625,25;625,25;Ouverte;15/02/2026
-Entreprise Test;2026;Mensuelle;Janvier;2500,00;1000,00;1500,00;Déclarée;31/01/2026
-"Entreprise avec; point-virgule";2026;Trimestrielle;T1;5000,00;2000,00;3000,00;Ouverte;
