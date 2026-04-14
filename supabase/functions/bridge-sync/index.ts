@@ -48,7 +48,7 @@ async function getValidToken(
   const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
     method: "POST",
     headers: {
-      "Bridge-Version": "2021-06-01",
+      "Bridge-Version": "2025-01-15",
       "Client-Id": clientId,
       "Client-Secret": clientSecret,
       "Content-Type": "application/json",
@@ -100,7 +100,7 @@ async function syncAccount(
   const txResponse = await fetch(apiUrl.toString(), {
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      "Bridge-Version": "2021-06-01",
+      "Bridge-Version": "2025-01-15",
     },
   });
 

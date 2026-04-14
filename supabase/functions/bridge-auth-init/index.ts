@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const bridgeHeaders = {
-      "Bridge-Version": "2021-06-01",
+      "Bridge-Version": "2025-01-15",
       "Client-Id": clientId,
       "Client-Secret": clientSecret,
       "Content-Type": "application/json",
