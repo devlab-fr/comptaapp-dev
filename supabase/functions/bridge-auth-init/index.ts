@@ -14,21 +14,6 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
-async function hmacSign(secret: string, payload: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -63,30 +48,58 @@ Deno.serve(async (req: Request) => {
       return jsonError("Accès refusé", 403);
     }
 
-    const bridgeStateSecret = Deno.env.get("BRIDGE_STATE_SECRET");
-    if (!bridgeStateSecret) return jsonError("Configuration manquante", 500);
-
-    const timestamp = Date.now();
-    const payload = JSON.stringify({ company_id: companyId, user_id: user.id, timestamp });
-    const payloadB64 = btoa(payload);
-    const signature = await hmacSign(bridgeStateSecret, payloadB64);
-    const state = `${payloadB64}.${signature}`;
-
     const clientId = Deno.env.get("BRIDGE_CLIENT_ID");
+    const clientSecret = Deno.env.get("BRIDGE_CLIENT_SECRET");
     const redirectUri = Deno.env.get("BRIDGE_REDIRECT_URI");
 
-    if (!clientId || !redirectUri) {
+    if (!clientId || !clientSecret || !redirectUri) {
       return jsonError("Configuration Bridge manquante", 500);
     }
 
-    const authUrl = new URL("https://api.bridgeapi.io/v2/authorize");
-    authUrl.searchParams.set("client_id", clientId);
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("redirect_uri", redirectUri);
-    authUrl.searchParams.set("state", state);
+    const bridgeHeaders = {
+      "Bridge-Version": "2021-06-01",
+      "Client-Id": clientId,
+      "Client-Secret": clientSecret,
+      "Content-Type": "application/json",
+    };
+
+    const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
+      method: "POST",
+      headers: bridgeHeaders,
+      body: JSON.stringify({ external_user_id: user.id }),
+    });
+
+    if (!authenticateRes.ok) {
+      const err = await authenticateRes.text();
+      console.error("[bridge-auth-init] authenticate error:", err);
+      return jsonError("Erreur authenticate Bridge", 502);
+    }
+
+    const { access_token } = await authenticateRes.json();
+
+    const connectRes = await fetch("https://api.bridgeapi.io/v2/connect/items/add", {
+      method: "POST",
+      headers: {
+        ...bridgeHeaders,
+        "Authorization": `Bearer ${access_token}`,
+      },
+      body: JSON.stringify({
+        country: "fr",
+        callback_url: redirectUri,
+        context: user.id,
+      }),
+    });
+
+    if (!connectRes.ok) {
+      const err = await connectRes.text();
+      console.error("[bridge-auth-init] connect error:", err);
+      return jsonError("Erreur connect Bridge", 502);
+    }
+
+    const { redirect_url } = await connectRes.json();
 
     return new Response(
-      JSON.stringify({ auth_url: authUrl.toString() }),
+      JSON.stringify({ redirect_url }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
