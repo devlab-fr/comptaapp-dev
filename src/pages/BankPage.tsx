@@ -156,7 +156,7 @@ export default function BankPage() {
         throw new Error(err.error || 'Erreur lors de la connexion Bridge');
       }
       const { auth_url } = await response.json();
-      window.location.href = auth_url;
+      window.top!.location.href = auth_url;
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur lors de la connexion bancaire');
       setConnectingBridge(false);
