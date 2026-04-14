@@ -140,6 +140,7 @@ export default function BankPage() {
   async function handleConnectBridge() {
     try {
       setConnectingBridge(true);
+      await supabase.auth.refreshSession();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bridge-auth-init`, {
@@ -155,8 +156,8 @@ export default function BankPage() {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || 'Erreur lors de la connexion Bridge');
       }
-      const { auth_url } = await response.json();
-      window.top!.location.href = auth_url;
+      const { redirect_url } = await response.json();
+      window.top!.location.href = redirect_url;
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur lors de la connexion bancaire');
       setConnectingBridge(false);
