@@ -19,8 +19,8 @@ interface BridgeAccount {
   company_id: string;
   bridge_account_id: string;
   bridge_item_id: string | null;
-  bridge_access_token: string;
-  bridge_refresh_token: string;
+  bridge_access_token: string | null;
+  bridge_user_uuid: string | null;
   bridge_token_expires_at: string | null;
   bridge_last_sync_at: string | null;
 }
@@ -32,47 +32,49 @@ async function getValidToken(
   const clientId = Deno.env.get("BRIDGE_CLIENT_ID")!;
   const clientSecret = Deno.env.get("BRIDGE_CLIENT_SECRET")!;
 
-  const needsRefresh =
+  const tokenValid =
+    account.bridge_access_token &&
     account.bridge_token_expires_at !== null &&
-    new Date(account.bridge_token_expires_at).getTime() - Date.now() < 5 * 60 * 1000;
+    new Date(account.bridge_token_expires_at).getTime() - Date.now() > 5 * 60 * 1000;
 
-  if (!needsRefresh) {
-    return account.bridge_access_token;
+  if (tokenValid) {
+    return account.bridge_access_token!;
   }
 
-  const refreshResponse = await fetch("https://api.bridgeapi.io/v2/oauth/token", {
+  if (!account.bridge_user_uuid) {
+    throw new Error(`bridge_user_uuid manquant pour le compte ${account.id} — reconnexion requise`);
+  }
+
+  const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: account.bridge_refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
+    headers: {
+      "Bridge-Version": "2021-06-01",
+      "Client-Id": clientId,
+      "Client-Secret": clientSecret,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ user_uuid: account.bridge_user_uuid }),
   });
 
-  if (!refreshResponse.ok) {
-    await supabaseAdmin
-      .from("bank_accounts")
-      .update({ bridge_access_token: null, updated_at: new Date().toISOString() })
-      .eq("id", account.id);
-    throw new Error(`Token Bridge expiré pour le compte ${account.id} — reconnexion requise`);
+  if (!authenticateRes.ok) {
+    const errBody = await authenticateRes.text();
+    console.error("[bridge-sync] authenticate failed:", authenticateRes.status, errBody);
+    throw new Error(`Ré-authentification Bridge échouée pour le compte ${account.id}`);
   }
 
-  const refreshData = await refreshResponse.json();
-  const newToken: string = refreshData.access_token;
-  const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
+  const { access_token } = await authenticateRes.json();
+  const newExpiry = new Date(Date.now() + 3600 * 1000).toISOString();
 
   await supabaseAdmin
     .from("bank_accounts")
     .update({
-      bridge_access_token: newToken,
+      bridge_access_token: access_token,
       bridge_token_expires_at: newExpiry,
       updated_at: new Date().toISOString(),
     })
     .eq("id", account.id);
 
-  return newToken;
+  return access_token;
 }
 
 async function syncAccount(
@@ -272,10 +274,9 @@ Deno.serve(async (req: Request) => {
 
     let query = supabaseAdmin
       .from("bank_accounts")
-      .select("id, company_id, bridge_account_id, bridge_item_id, bridge_access_token, bridge_refresh_token, bridge_token_expires_at, bridge_last_sync_at")
+      .select("id, company_id, bridge_account_id, bridge_item_id, bridge_access_token, bridge_user_uuid, bridge_token_expires_at, bridge_last_sync_at")
       .eq("company_id", companyId)
-      .not("bridge_account_id", "is", null)
-      .not("bridge_access_token", "is", null);
+      .not("bridge_account_id", "is", null);
 
     if (bankAccountId) {
       query = query.eq("id", bankAccountId);
