@@ -61,64 +61,40 @@ Deno.serve(async (req: Request) => {
       "Client-Id": clientId,
       "Client-Secret": clientSecret,
       "Content-Type": "application/json",
+      "Accept": "application/json",
     };
 
-    const createUserBody = JSON.stringify({ external_user_id: user.id });
-    console.log("[bridge-auth-init] create/get user request", {
-      endpoint: "https://api.bridgeapi.io/v2/users",
-      body: createUserBody,
+    const tokenBody = JSON.stringify({ external_user_id: user.id });
+    console.log("[bridge-auth-init] authorization/token request", {
+      endpoint: "https://api.bridgeapi.io/v3/aggregation/authorization/token",
+      body: tokenBody,
     });
 
-    const createUserRes = await fetch("https://api.bridgeapi.io/v2/users", {
+    const tokenRes = await fetch("https://api.bridgeapi.io/v3/aggregation/authorization/token", {
       method: "POST",
       headers: bridgeHeaders,
-      body: createUserBody,
+      body: tokenBody,
     });
 
-    const createUserRawBody = await createUserRes.text();
-    console.log("[bridge-auth-init] create/get user response", {
-      status: createUserRes.status,
-      body: createUserRawBody,
+    const tokenRawBody = await tokenRes.text();
+    console.log("[bridge-auth-init] authorization/token response", {
+      status: tokenRes.status,
+      body: tokenRawBody,
     });
 
-    if (!createUserRes.ok) {
-      return jsonError("Erreur création utilisateur Bridge", 502);
+    if (!tokenRes.ok) {
+      return jsonError("Erreur authentification Bridge", 502);
     }
 
-    const createUserJson = JSON.parse(createUserRawBody);
-    const user_uuid: string = createUserJson.uuid;
+    const tokenJson = JSON.parse(tokenRawBody);
+    const access_token: string = tokenJson.access_token;
 
-    if (!user_uuid) {
-      console.error("[bridge-auth-init] user_uuid manquant dans la réponse /v2/users", createUserRawBody);
-      return jsonError("user_uuid manquant dans la réponse Bridge", 502);
+    if (!access_token) {
+      console.error("[bridge-auth-init] access_token manquant dans la réponse authorization/token", tokenRawBody);
+      return jsonError("access_token manquant dans la réponse Bridge", 502);
     }
 
-    const authenticateBody = JSON.stringify({ user_uuid });
-    console.log("[bridge-auth-init] authenticate request", {
-      endpoint: "https://api.bridgeapi.io/v2/authenticate",
-      body: authenticateBody,
-    });
-
-    const authenticateRes = await fetch("https://api.bridgeapi.io/v2/authenticate", {
-      method: "POST",
-      headers: bridgeHeaders,
-      body: authenticateBody,
-    });
-
-    const authenticateRawBody = await authenticateRes.text();
-    console.log("[bridge-auth-init] authenticate response", {
-      status: authenticateRes.status,
-      body: authenticateRawBody,
-    });
-
-    if (!authenticateRes.ok) {
-      return jsonError("Erreur authenticate Bridge", 502);
-    }
-
-    const authenticateJson = JSON.parse(authenticateRawBody);
-    const { access_token } = authenticateJson;
-
-    const connectRes = await fetch("https://api.bridgeapi.io/v2/connect/items/add", {
+    const connectRes = await fetch("https://api.bridgeapi.io/v3/aggregation/connect-sessions", {
       method: "POST",
       headers: {
         ...bridgeHeaders,
@@ -133,11 +109,12 @@ Deno.serve(async (req: Request) => {
 
     if (!connectRes.ok) {
       const err = await connectRes.text();
-      console.error("[bridge-auth-init] connect error:", err);
+      console.error("[bridge-auth-init] connect-sessions error:", err);
       return jsonError("Erreur connect Bridge", 502);
     }
 
-    const { redirect_url } = await connectRes.json();
+    const connectJson = await connectRes.json();
+    const redirect_url: string = connectJson.redirect_url ?? connectJson.url;
 
     return new Response(
       JSON.stringify({ redirect_url }),
