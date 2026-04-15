@@ -83,7 +83,10 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!tokenRes.ok) {
-      return jsonError("Erreur authentification Bridge", 502);
+      return new Response(
+        JSON.stringify({ error: "Bridge error", status: tokenRes.status, body: tokenRawBody }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const tokenJson = JSON.parse(tokenRawBody);
