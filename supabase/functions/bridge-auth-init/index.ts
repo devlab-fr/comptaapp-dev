@@ -66,11 +66,11 @@ Deno.serve(async (req: Request) => {
 
     const tokenBody = JSON.stringify({ external_user_id: user.id });
     console.log("[bridge-auth-init] authorization/token request", {
-      endpoint: "https://api.bridgeapi.io/v3/aggregation/authorization/token",
+      endpoint: "https://api-sandbox.bridgeapi.io/v3/aggregation/authorization/token",
       body: tokenBody,
     });
 
-    const tokenRes = await fetch("https://api.bridgeapi.io/v3/aggregation/authorization/token", {
+    const tokenRes = await fetch("https://api-sandbox.bridgeapi.io/v3/aggregation/authorization/token", {
       method: "POST",
       headers: bridgeHeaders,
       body: tokenBody,
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
       return jsonError("access_token manquant dans la réponse Bridge", 502);
     }
 
-    const connectRes = await fetch("https://api.bridgeapi.io/v3/aggregation/connect-sessions", {
+    const connectRes = await fetch("https://api-sandbox.bridgeapi.io/v3/aggregation/connect-sessions", {
       method: "POST",
       headers: {
         ...bridgeHeaders,
