@@ -63,15 +63,39 @@ Deno.serve(async (req: Request) => {
       "Content-Type": "application/json",
     };
 
-    const authenticateBody = JSON.stringify({ external_user_id: user.id });
+    const createUserBody = JSON.stringify({ external_user_id: user.id });
+    console.log("[bridge-auth-init] create/get user request", {
+      endpoint: "https://api.bridgeapi.io/v2/users",
+      body: createUserBody,
+    });
+
+    const createUserRes = await fetch("https://api.bridgeapi.io/v2/users", {
+      method: "POST",
+      headers: bridgeHeaders,
+      body: createUserBody,
+    });
+
+    const createUserRawBody = await createUserRes.text();
+    console.log("[bridge-auth-init] create/get user response", {
+      status: createUserRes.status,
+      body: createUserRawBody,
+    });
+
+    if (!createUserRes.ok) {
+      return jsonError("Erreur création utilisateur Bridge", 502);
+    }
+
+    const createUserJson = JSON.parse(createUserRawBody);
+    const user_uuid: string = createUserJson.uuid;
+
+    if (!user_uuid) {
+      console.error("[bridge-auth-init] user_uuid manquant dans la réponse /v2/users", createUserRawBody);
+      return jsonError("user_uuid manquant dans la réponse Bridge", 502);
+    }
+
+    const authenticateBody = JSON.stringify({ user_uuid });
     console.log("[bridge-auth-init] authenticate request", {
       endpoint: "https://api.bridgeapi.io/v2/authenticate",
-      headers: {
-        "Bridge-Version": bridgeHeaders["Bridge-Version"],
-        "Client-Id": bridgeHeaders["Client-Id"],
-        "Content-Type": bridgeHeaders["Content-Type"],
-        "Client-Secret": bridgeHeaders["Client-Secret"] ? "[SET]" : "[MISSING]",
-      },
       body: authenticateBody,
     });
 
