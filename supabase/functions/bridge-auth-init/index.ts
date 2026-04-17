@@ -89,8 +89,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const tokenJson = JSON.parse(tokenRawBody);
-    const access_token: string = tokenJson.access_token;
+    let tokenJson: Record<string, unknown>;
+    try {
+      tokenJson = JSON.parse(tokenRawBody);
+    } catch (_parseErr) {
+      console.error("[bridge-auth-init] authorization/token non-JSON response", tokenRawBody.slice(0, 500));
+      return new Response(
+        JSON.stringify({
+          error: "Réponse Bridge non-JSON (authorization/token)",
+          raw: tokenRawBody.slice(0, 500),
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const access_token: string = tokenJson.access_token as string;
 
     if (!access_token) {
       console.error("[bridge-auth-init] access_token manquant dans la réponse authorization/token", tokenRawBody);
@@ -116,8 +128,21 @@ Deno.serve(async (req: Request) => {
       return jsonError("Erreur connect Bridge", 502);
     }
 
-    const connectJson = await connectRes.json();
-    const redirect_url: string = connectJson.redirect_url ?? connectJson.url;
+    const connectRawBody = await connectRes.text();
+    let connectJson: Record<string, unknown>;
+    try {
+      connectJson = JSON.parse(connectRawBody);
+    } catch (_parseErr) {
+      console.error("[bridge-auth-init] connect-sessions non-JSON response", connectRawBody.slice(0, 500));
+      return new Response(
+        JSON.stringify({
+          error: "Réponse Bridge non-JSON (connect-sessions)",
+          raw: connectRawBody.slice(0, 500),
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const redirect_url: string = (connectJson.redirect_url ?? connectJson.url) as string;
 
     return new Response(
       JSON.stringify({ redirect_url }),
