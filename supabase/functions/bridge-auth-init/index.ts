@@ -149,7 +149,12 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[bridge-auth-init] error:", (err as Error).message);
-    return jsonError("Erreur interne", 500);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errName = err instanceof Error ? err.name : null;
+    console.error("[bridge-auth-init] CATCH GLOBAL:", errName, errMsg);
+    return new Response(
+      JSON.stringify({ error: "internal_error", message: errMsg, name: errName }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
