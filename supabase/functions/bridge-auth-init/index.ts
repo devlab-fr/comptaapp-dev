@@ -48,6 +48,23 @@ Deno.serve(async (req: Request) => {
       return jsonError("Accès refusé", 403);
     }
 
+    // TEMP: DNS connectivity check
+    let healthResult: Record<string, unknown>;
+    try {
+      const healthRes = await fetch("https://api.bridgeapi.io/health");
+      const healthBody = await healthRes.text();
+      console.log("[bridge-auth-init] health check", { status: healthRes.status, body: healthBody });
+      healthResult = { reachable: true, status: healthRes.status, body: healthBody.slice(0, 200) };
+    } catch (healthErr) {
+      const healthMsg = healthErr instanceof Error ? healthErr.message : String(healthErr);
+      console.error("[bridge-auth-init] health check FAILED:", healthMsg);
+      return new Response(
+        JSON.stringify({ dns_check: "FAILED", error: healthMsg }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // END TEMP
+
     const clientId = Deno.env.get("BRIDGE_CLIENT_ID");
     const clientSecret = Deno.env.get("BRIDGE_CLIENT_SECRET");
     const redirectUri = Deno.env.get("BRIDGE_REDIRECT_URI");
