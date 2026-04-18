@@ -14,6 +14,21 @@ function jsonError(message: string, status: number): Response {
   });
 }
 
+async function hmacSign(secret: string, payload: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -48,130 +63,34 @@ Deno.serve(async (req: Request) => {
       return jsonError("Accès refusé", 403);
     }
 
-    // TEMP: DNS connectivity check
-    let healthResult: Record<string, unknown>;
-    try {
-      const healthRes = await fetch("https://api.bridgeapi.io/health");
-      const healthBody = await healthRes.text();
-      console.log("[bridge-auth-init] health check", { status: healthRes.status, body: healthBody });
-      healthResult = { reachable: true, status: healthRes.status, body: healthBody.slice(0, 200) };
-    } catch (healthErr) {
-      const healthMsg = healthErr instanceof Error ? healthErr.message : String(healthErr);
-      console.error("[bridge-auth-init] health check FAILED:", healthMsg);
-      return new Response(
-        JSON.stringify({ dns_check: "FAILED", error: healthMsg }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    // END TEMP
+    const bridgeStateSecret = Deno.env.get("BRIDGE_STATE_SECRET");
+    if (!bridgeStateSecret) return jsonError("Configuration manquante", 500);
+
+    const timestamp = Date.now();
+    const payload = JSON.stringify({ company_id: companyId, user_id: user.id, timestamp });
+    const payloadB64 = btoa(payload);
+    const signature = await hmacSign(bridgeStateSecret, payloadB64);
+    const state = `${payloadB64}.${signature}`;
 
     const clientId = Deno.env.get("BRIDGE_CLIENT_ID");
-    const clientSecret = Deno.env.get("BRIDGE_CLIENT_SECRET");
     const redirectUri = Deno.env.get("BRIDGE_REDIRECT_URI");
 
-    if (!clientId || !clientSecret || !redirectUri) {
+    if (!clientId || !redirectUri) {
       return jsonError("Configuration Bridge manquante", 500);
     }
 
-    const bridgeHeaders = {
-      "Bridge-Version": "2025-01-15",
-      "Client-Id": clientId,
-      "Client-Secret": clientSecret,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    };
-
-    const tokenBody = JSON.stringify({ external_user_id: user.id });
-    console.log("[bridge-auth-init] authorization/token request", {
-      endpoint: "https://api.bridgeapi.io/v3/aggregation/authorization/token",
-      body: tokenBody,
-    });
-
-    const tokenRes = await fetch("https://api.bridgeapi.io/v3/aggregation/authorization/token", {
-      method: "POST",
-      headers: bridgeHeaders,
-      body: tokenBody,
-    });
-
-    const tokenRawBody = await tokenRes.text();
-    console.log("[bridge-auth-init] authorization/token response", {
-      status: tokenRes.status,
-      body: tokenRawBody,
-    });
-
-    if (!tokenRes.ok) {
-      return new Response(
-        JSON.stringify({ error: "Bridge error", status: tokenRes.status, body: tokenRawBody }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let tokenJson: Record<string, unknown>;
-    try {
-      tokenJson = JSON.parse(tokenRawBody);
-    } catch (_parseErr) {
-      console.error("[bridge-auth-init] authorization/token non-JSON response", tokenRawBody.slice(0, 500));
-      return new Response(
-        JSON.stringify({
-          error: "Réponse Bridge non-JSON (authorization/token)",
-          raw: tokenRawBody.slice(0, 500),
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const access_token: string = tokenJson.access_token as string;
-
-    if (!access_token) {
-      console.error("[bridge-auth-init] access_token manquant dans la réponse authorization/token", tokenRawBody);
-      return jsonError("access_token manquant dans la réponse Bridge", 502);
-    }
-
-    const connectRes = await fetch("https://api.bridgeapi.io/v3/aggregation/connect-sessions", {
-      method: "POST",
-      headers: {
-        ...bridgeHeaders,
-        "Authorization": `Bearer ${access_token}`,
-      },
-      body: JSON.stringify({
-        country: "fr",
-        callback_url: redirectUri,
-        context: user.id,
-      }),
-    });
-
-    if (!connectRes.ok) {
-      const err = await connectRes.text();
-      console.error("[bridge-auth-init] connect-sessions error:", err);
-      return jsonError("Erreur connect Bridge", 502);
-    }
-
-    const connectRawBody = await connectRes.text();
-    let connectJson: Record<string, unknown>;
-    try {
-      connectJson = JSON.parse(connectRawBody);
-    } catch (_parseErr) {
-      console.error("[bridge-auth-init] connect-sessions non-JSON response", connectRawBody.slice(0, 500));
-      return new Response(
-        JSON.stringify({
-          error: "Réponse Bridge non-JSON (connect-sessions)",
-          raw: connectRawBody.slice(0, 500),
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const redirect_url: string = (connectJson.redirect_url ?? connectJson.url) as string;
+    const authUrl = new URL("https://api.bridgeapi.io/v2/authorize");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("state", state);
 
     return new Response(
-      JSON.stringify({ redirect_url }),
+      JSON.stringify({ auth_url: authUrl.toString() }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    const errName = err instanceof Error ? err.name : null;
-    console.error("[bridge-auth-init] CATCH GLOBAL:", errName, errMsg);
-    return new Response(
-      JSON.stringify({ error: "internal_error", message: errMsg, name: errName }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("[bridge-auth-init] error:", (err as Error).message);
+    return jsonError("Erreur interne", 500);
   }
 });

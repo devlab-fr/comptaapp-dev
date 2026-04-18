@@ -38,7 +38,6 @@ export default function BankPage() {
   const [initialSuggestions, setInitialSuggestions] = useState<MatchSuggestion[]>([]);
   const [autoMatchingLineId, setAutoMatchingLineId] = useState<string | null>(null);
   const [autoMatchToast, setAutoMatchToast] = useState(false);
-  const [connectingBridge, setConnectingBridge] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -135,33 +134,6 @@ export default function BankPage() {
       }
     };
     input.click();
-  }
-
-  async function handleConnectBridge() {
-    try {
-      setConnectingBridge(true);
-      await supabase.auth.refreshSession();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bridge-auth-init`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ company_id: companyId }),
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'Erreur lors de la connexion Bridge');
-      }
-      const { redirect_url } = await response.json();
-      window.top!.location.href = redirect_url;
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erreur lors de la connexion bancaire');
-      setConnectingBridge(false);
-    }
   }
 
   function handleExportStatement() {
@@ -556,13 +528,6 @@ export default function BankPage() {
             className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Importer CSV
-          </button>
-          <button
-            onClick={handleConnectBridge}
-            disabled={connectingBridge}
-            className="px-6 py-2.5 bg-white border-2 border-blue-500 text-blue-600 font-medium rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {connectingBridge ? 'Connexion...' : 'Connecter ma banque'}
           </button>
           <button
             onClick={handleExportStatement}
