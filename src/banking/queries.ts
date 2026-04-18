@@ -8,9 +8,6 @@ export interface BankAccount {
   opening_balance_cents: number;
   opening_balance_date: string | null;
   start_date: string | null;
-  bridge_account_id: string | null;
-  bridge_item_id: string | null;
-  bridge_last_sync_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,8 +30,8 @@ export interface BankStatementLine {
 
 export async function getBankAccounts(companyId: string): Promise<BankAccount[]> {
   const { data, error } = await supabase
-    .from('bank_accounts_safe')
-    .select('id, company_id, name, currency, opening_balance_cents, opening_balance_date, start_date, bridge_account_id, bridge_item_id, bridge_last_sync_at, created_at, updated_at')
+    .from('bank_accounts')
+    .select('id, company_id, name, currency, opening_balance_cents, opening_balance_date, start_date, created_at, updated_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
 
@@ -161,7 +158,7 @@ export async function calculateRealBalance(
   targetDate?: string
 ): Promise<number> {
   const { data: account, error: accountError } = await supabase
-    .from('bank_accounts_safe')
+    .from('bank_accounts')
     .select('opening_balance_cents')
     .eq('id', bankAccountId)
     .eq('company_id', companyId)
