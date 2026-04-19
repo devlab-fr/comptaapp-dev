@@ -403,6 +403,7 @@ export default function BankPage() {
         alert(data.error || 'Impossible de lancer la connexion bancaire.');
         return;
       }
+      sessionStorage.setItem('powens_callback_company_id', companyId);
       window.location.href = data.connect_url;
     } catch {
       alert('Erreur lors de la connexion bancaire.');

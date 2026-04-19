@@ -21,6 +21,9 @@ export default function BankCallbackPage() {
       return;
     }
 
+    const companyId = sessionStorage.getItem('powens_callback_company_id');
+    const bankUrl = companyId ? `/app/company/${companyId}/banque` : '/app';
+
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -40,19 +43,24 @@ export default function BankCallbackPage() {
         );
 
         if (response.ok) {
-          navigate('/banque?powens=success', { replace: true });
+          sessionStorage.removeItem('powens_callback_company_id');
+          navigate(`${bankUrl}?powens=success`, { replace: true });
         } else if (response.status === 409) {
           const json = await response.json().catch(() => ({}));
           if (json.error === 'Connection already processed' && json.current_status === 'connected') {
-            navigate('/banque?powens=success', { replace: true });
+            sessionStorage.removeItem('powens_callback_company_id');
+            navigate(`${bankUrl}?powens=success`, { replace: true });
           } else {
-            navigate('/banque?powens=error', { replace: true });
+            sessionStorage.removeItem('powens_callback_company_id');
+            navigate(`${bankUrl}?powens=error`, { replace: true });
           }
         } else {
-          navigate('/banque?powens=error', { replace: true });
+          sessionStorage.removeItem('powens_callback_company_id');
+          navigate(`${bankUrl}?powens=error`, { replace: true });
         }
       } catch {
-        navigate('/banque?powens=error', { replace: true });
+        sessionStorage.removeItem('powens_callback_company_id');
+        navigate(`${bankUrl}?powens=error`, { replace: true });
       }
     })();
   }, []);
