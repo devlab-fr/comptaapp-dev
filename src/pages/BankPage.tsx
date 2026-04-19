@@ -39,6 +39,7 @@ export default function BankPage() {
   const [autoMatchingLineId, setAutoMatchingLineId] = useState<string | null>(null);
   const [autoMatchToast, setAutoMatchToast] = useState(false);
   const [connectingPowens, setConnectingPowens] = useState(false);
+  const [syncingPowens, setSyncingPowens] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -379,6 +380,39 @@ export default function BankPage() {
     }
   }
 
+  async function handleSyncPowens() {
+    if (!companyId) return;
+    try {
+      setSyncingPowens(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/powens-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ companyId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Erreur lors de la synchronisation.');
+        return;
+      }
+      await loadAccounts();
+      await loadLines();
+    } catch {
+      alert('Erreur lors de la synchronisation bancaire.');
+    } finally {
+      setSyncingPowens(false);
+    }
+  }
+
   async function handleConnectPowens() {
     if (!companyId) return;
     try {
@@ -569,6 +603,13 @@ export default function BankPage() {
             className="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {connectingPowens ? 'Connexion...' : 'Connecter ma banque'}
+          </button>
+          <button
+            onClick={handleSyncPowens}
+            disabled={syncingPowens}
+            className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
           </button>
           <button
             onClick={handleExportStatement}
