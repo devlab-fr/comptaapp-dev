@@ -38,6 +38,7 @@ export default function BankPage() {
   const [initialSuggestions, setInitialSuggestions] = useState<MatchSuggestion[]>([]);
   const [autoMatchingLineId, setAutoMatchingLineId] = useState<string | null>(null);
   const [autoMatchToast, setAutoMatchToast] = useState(false);
+  const [connectingPowens, setConnectingPowens] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -378,6 +379,38 @@ export default function BankPage() {
     }
   }
 
+  async function handleConnectPowens() {
+    if (!companyId) return;
+    try {
+      setConnectingPowens(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/powens-connect-init`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ companyId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.connect_url) {
+        alert(data.error || 'Impossible de lancer la connexion bancaire.');
+        return;
+      }
+      window.location.href = data.connect_url;
+    } catch {
+      alert('Erreur lors de la connexion bancaire.');
+    } finally {
+      setConnectingPowens(false);
+    }
+  }
+
   async function handleSaveStartDate() {
     if (!selectedAccountId || !companyId) return;
 
@@ -528,6 +561,13 @@ export default function BankPage() {
             className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Importer CSV
+          </button>
+          <button
+            onClick={handleConnectPowens}
+            disabled={connectingPowens}
+            className="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {connectingPowens ? 'Connexion...' : 'Connecter ma banque'}
           </button>
           <button
             onClick={handleExportStatement}
