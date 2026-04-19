@@ -44,6 +44,7 @@ import CheckEmailPage from './pages/CheckEmailPage';
 import BankPage from './pages/BankPage';
 import TreasuryPage from './pages/TreasuryPage';
 import LandingPage from './pages/LandingPage';
+import BankCallbackPage from './pages/BankCallbackPage';
 
 export default function App() {
   return (
@@ -99,6 +100,14 @@ export default function App() {
             <Route path="company/:companyId/tresorerie" element={<TreasuryPage />} />
             <Route path="company/:companyId/subscription" element={<SubscriptionPage />} />
           </Route>
+          <Route
+            path="/banque/callback"
+            element={
+              <ProtectedRoute>
+                <BankCallbackPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/billing/success"
             element={
