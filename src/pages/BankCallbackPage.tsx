@@ -41,6 +41,13 @@ export default function BankCallbackPage() {
 
         if (response.ok) {
           navigate('/banque?powens=success', { replace: true });
+        } else if (response.status === 409) {
+          const json = await response.json().catch(() => ({}));
+          if (json.error === 'Connection already processed' && json.current_status === 'connected') {
+            navigate('/banque?powens=success', { replace: true });
+          } else {
+            navigate('/banque?powens=error', { replace: true });
+          }
         } else {
           navigate('/banque?powens=error', { replace: true });
         }
