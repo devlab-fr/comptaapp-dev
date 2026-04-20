@@ -40,6 +40,8 @@ export default function BankPage() {
   const [autoMatchToast, setAutoMatchToast] = useState(false);
   const [connectingPowens, setConnectingPowens] = useState(false);
   const [syncingPowens, setSyncingPowens] = useState(false);
+  const [disconnectingPowens, setDisconnectingPowens] = useState(false);
+  const [hasPowensConnection, setHasPowensConnection] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,6 +86,13 @@ export default function BankPage() {
       if (data.length > 0 && !selectedAccountId) {
         setSelectedAccountId(data[0].id);
       }
+      const { data: conn } = await supabase
+        .from('powens_connections')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('status', 'connected')
+        .maybeSingle();
+      setHasPowensConnection(!!conn);
     } catch (err) {
       console.error('Error loading accounts:', err);
     } finally {
@@ -413,6 +422,43 @@ export default function BankPage() {
     }
   }
 
+  async function handleDisconnectPowens() {
+    if (!companyId) return;
+    const confirmed = window.confirm(
+      'Déconnecter votre banque ?\nLa synchronisation sera arrêtée.\nVos données seront conservées.'
+    );
+    if (!confirmed) return;
+    try {
+      setDisconnectingPowens(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/powens-disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ companyId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Erreur lors de la déconnexion.');
+        return;
+      }
+      await loadAccounts();
+      alert('Banque déconnectée avec succès.');
+    } catch {
+      alert('Erreur lors de la déconnexion bancaire.');
+    } finally {
+      setDisconnectingPowens(false);
+    }
+  }
+
   async function handleConnectPowens() {
     if (!companyId) return;
     try {
@@ -604,13 +650,24 @@ export default function BankPage() {
           >
             {connectingPowens ? 'Connexion...' : 'Connecter ma banque'}
           </button>
-          <button
-            onClick={handleSyncPowens}
-            disabled={syncingPowens}
-            className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
-          </button>
+          {hasPowensConnection && (
+            <button
+              onClick={handleSyncPowens}
+              disabled={syncingPowens}
+              className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
+            </button>
+          )}
+          {hasPowensConnection && (
+            <button
+              onClick={handleDisconnectPowens}
+              disabled={disconnectingPowens}
+              className="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {disconnectingPowens ? 'Déconnexion...' : 'Déconnecter banque'}
+            </button>
+          )}
           <button
             onClick={handleExportStatement}
             disabled={lines.length === 0}
