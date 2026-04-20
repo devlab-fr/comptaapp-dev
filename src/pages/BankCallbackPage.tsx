@@ -44,11 +44,27 @@ export default function BankCallbackPage() {
 
         if (response.ok) {
           sessionStorage.removeItem('powens_callback_company_id');
+          if (companyId && token) {
+            const supabaseUrlSync = import.meta.env.VITE_SUPABASE_URL;
+            fetch(`${supabaseUrlSync}/functions/v1/powens-sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ companyId }),
+            }).catch(() => {});
+          }
           navigate(`${bankUrl}?powens=success`, { replace: true });
         } else if (response.status === 409) {
           const json = await response.json().catch(() => ({}));
           if (json.error === 'Connection already processed' && json.current_status === 'connected') {
             sessionStorage.removeItem('powens_callback_company_id');
+            if (companyId && token) {
+              const supabaseUrlSync = import.meta.env.VITE_SUPABASE_URL;
+              fetch(`${supabaseUrlSync}/functions/v1/powens-sync`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ companyId }),
+              }).catch(() => {});
+            }
             navigate(`${bankUrl}?powens=success`, { replace: true });
           } else {
             sessionStorage.removeItem('powens_callback_company_id');
