@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getBankAccounts, getBankStatementLines, updateReconciliation, BankAccount, BankStatementLine } from '../banking/queries';
 import { importCSVToBank } from '../banking/csvImport';
 import { exportBankStatementCSV, exportReconciliationCSV, downloadCSV } from '../banking/csvExport';
@@ -16,6 +16,7 @@ import UpgradePrompt from '../components/UpgradePrompt';
 export default function BankPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { canUse, loading: planLoading } = usePlan(companyId);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -51,6 +52,12 @@ export default function BankPage() {
       setLoading(false);
     }
   }, [companyId]);
+
+  useEffect(() => {
+    if (companyId && searchParams.get('powens') === 'success') {
+      loadAccounts();
+    }
+  }, [companyId, searchParams]);
 
   useEffect(() => {
     if (selectedAccountId && companyId) {
