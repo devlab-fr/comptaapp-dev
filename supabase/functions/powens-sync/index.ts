@@ -138,7 +138,16 @@ Deno.serve(async (req: Request) => {
       balance: number;
       currency: { id: string };
       type: string;
+      iban?: string | null;
+      number?: string | null;
+      original_id?: string | null;
     }> = accountsData.accounts ?? [];
+
+    const normalizeIban = (value: string | null | undefined): string | null => {
+      if (!value) return null;
+      const cleaned = value.replace(/[\s-]/g, "").toUpperCase();
+      return cleaned.length > 0 ? cleaned : null;
+    };
 
     let accountsCount = 0;
     const syncedBankAccountIds: Array<{ bankAccountId: string; powensAccountId: number }> = [];
@@ -152,36 +161,48 @@ Deno.serve(async (req: Request) => {
         .eq("powens_connection_id", pa.id)
         .maybeSingle();
 
+      const normalizedIban = normalizeIban(pa.iban);
+
       let bankAccountId: string;
 
       if (existing) {
+        const updatePayload: Record<string, unknown> = {
+          name: pa.name,
+          currency: pa.currency?.id ?? "EUR",
+          powens_user_id: powens_user_id,
+          powens_auth_token: powens_auth_token,
+          powens_connection_id: pa.id,
+          powens_last_sync_at: now,
+          updated_at: now,
+        };
+        if (normalizedIban) {
+          updatePayload.iban = normalizedIban;
+        }
+
         await serviceClient
           .from("bank_accounts")
-          .update({
-            name: pa.name,
-            currency: pa.currency?.id ?? "EUR",
-            powens_user_id: powens_user_id,
-            powens_auth_token: powens_auth_token,
-            powens_connection_id: pa.id,
-            powens_last_sync_at: now,
-            updated_at: now,
-          })
+          .update(updatePayload)
           .eq("id", existing.id);
 
         bankAccountId = existing.id;
       } else {
+        const insertPayload: Record<string, unknown> = {
+          company_id: companyId,
+          name: pa.name,
+          currency: pa.currency?.id ?? "EUR",
+          opening_balance_cents: Math.round((pa.balance ?? 0) * 100),
+          powens_user_id: powens_user_id,
+          powens_auth_token: powens_auth_token,
+          powens_connection_id: pa.id,
+          powens_last_sync_at: now,
+        };
+        if (normalizedIban) {
+          insertPayload.iban = normalizedIban;
+        }
+
         const { data: inserted, error: insertErr } = await serviceClient
           .from("bank_accounts")
-          .insert({
-            company_id: companyId,
-            name: pa.name,
-            currency: pa.currency?.id ?? "EUR",
-            opening_balance_cents: Math.round((pa.balance ?? 0) * 100),
-            powens_user_id: powens_user_id,
-            powens_auth_token: powens_auth_token,
-            powens_connection_id: pa.id,
-            powens_last_sync_at: now,
-          })
+          .insert(insertPayload)
           .select("id")
           .single();
 
