@@ -154,12 +154,25 @@ Deno.serve(async (req: Request) => {
     const now = new Date().toISOString();
 
     for (const pa of powensAccounts) {
-      const { data: existing } = await serviceClient
+      let { data: existing } = await serviceClient
         .from("bank_accounts")
         .select("id")
         .eq("company_id", companyId)
-        .eq("powens_connection_id", pa.id)
+        .eq("powens_account_id", pa.id)
         .maybeSingle();
+
+      if (!existing) {
+        const { data: legacy } = await serviceClient
+          .from("bank_accounts")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("powens_connection_id", powens_connection_id)
+          .is("powens_account_id", null)
+          .maybeSingle();
+        if (legacy) {
+          existing = legacy;
+        }
+      }
 
       const normalizedIban = normalizeIban(pa.iban);
 
@@ -171,7 +184,8 @@ Deno.serve(async (req: Request) => {
           currency: pa.currency?.id ?? "EUR",
           powens_user_id: powens_user_id,
           powens_auth_token: powens_auth_token,
-          powens_connection_id: pa.id,
+          powens_connection_id: powens_connection_id,
+          powens_account_id: pa.id,
           powens_last_sync_at: now,
           updated_at: now,
         };
@@ -193,7 +207,8 @@ Deno.serve(async (req: Request) => {
           opening_balance_cents: Math.round((pa.balance ?? 0) * 100),
           powens_user_id: powens_user_id,
           powens_auth_token: powens_auth_token,
-          powens_connection_id: pa.id,
+          powens_connection_id: powens_connection_id,
+          powens_account_id: pa.id,
           powens_last_sync_at: now,
         };
         if (normalizedIban) {
