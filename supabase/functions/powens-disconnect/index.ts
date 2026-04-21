@@ -62,12 +62,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: connection, error: connError } = await serviceClient
+    const { data: connections, error: connError } = await serviceClient
       .from("powens_connections")
       .select("id")
       .eq("company_id", companyId)
       .eq("status", "connected")
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const connection = connections && connections.length > 0 ? connections[0] : null;
 
     if (connError || !connection) {
       return new Response(JSON.stringify({ error: "No active connection found" }), {
