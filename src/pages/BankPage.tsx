@@ -681,24 +681,20 @@ export default function BankPage() {
           >
             {connectingPowens ? 'Connexion...' : 'Connecter ma banque'}
           </button>
-          {hasPowensConnection && (
-            <button
-              onClick={handleSyncPowens}
-              disabled={syncingPowens}
-              className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
-            </button>
-          )}
-          {hasPowensConnection && (
-            <button
-              onClick={handleDisconnectPowens}
-              disabled={disconnectingPowens}
-              className="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {disconnectingPowens ? 'Déconnexion...' : 'Déconnecter banque'}
-            </button>
-          )}
+          <button
+            onClick={handleSyncPowens}
+            disabled={!hasPowensConnection || syncingPowens}
+            className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
+          </button>
+          <button
+            onClick={handleDisconnectPowens}
+            disabled={!hasPowensConnection || disconnectingPowens}
+            className="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {disconnectingPowens ? 'Déconnexion...' : 'Déconnecter banque'}
+          </button>
           <button
             onClick={handleExportStatement}
             disabled={lines.length === 0}
