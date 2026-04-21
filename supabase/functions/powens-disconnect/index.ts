@@ -66,13 +66,11 @@ Deno.serve(async (req: Request) => {
       .from("powens_connections")
       .select("id")
       .eq("company_id", companyId)
-      .eq("status", "connected")
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("status", "connected");
 
-    const connection = connections && connections.length > 0 ? connections[0] : null;
+    if (connError) throw connError;
 
-    if (connError || !connection) {
+    if (!connections || connections.length === 0) {
       return new Response(JSON.stringify({ error: "No active connection found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -82,10 +80,21 @@ Deno.serve(async (req: Request) => {
     const { error: updateConnError } = await serviceClient
       .from("powens_connections")
       .update({ status: "disconnected" })
-      .eq("id", connection.id);
+      .eq("company_id", companyId)
+      .eq("status", "connected");
 
-    if (updateConnError) {
-      throw updateConnError;
+    if (updateConnError) throw updateConnError;
+
+    const { data: remaining, error: checkError } = await serviceClient
+      .from("powens_connections")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("status", "connected");
+
+    if (checkError) throw checkError;
+
+    if (remaining && remaining.length > 0) {
+      throw new Error("Disconnect incomplete: connected rows still exist");
     }
 
     const { error: updateBankError } = await serviceClient
