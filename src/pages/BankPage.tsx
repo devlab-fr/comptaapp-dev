@@ -43,7 +43,13 @@ export default function BankPage() {
   const [syncingPowens, setSyncingPowens] = useState(false);
   const [disconnectingPowens, setDisconnectingPowens] = useState(false);
   const [hasPowensConnection, setHasPowensConnection] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function showFeedback(text: string, type: 'success' | 'error') {
+    setToastMessage({ text, type });
+  }
 
   useEffect(() => {
     if (companyId) {
@@ -56,6 +62,7 @@ export default function BankPage() {
   useEffect(() => {
     if (companyId && searchParams.get('powens') === 'success') {
       loadAccounts();
+      showFeedback('Banque connectée avec succès.', 'success');
     }
   }, [companyId, searchParams]);
 
@@ -404,7 +411,7 @@ export default function BankPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        showFeedback('Session expirée. Veuillez vous reconnecter.', 'error');
         return;
       }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -416,32 +423,33 @@ export default function BankPage() {
         },
         body: JSON.stringify({ companyId }),
       });
-      const data = await response.json();
+      await response.json();
       if (!response.ok) {
-        alert(data.error || 'Erreur lors de la synchronisation.');
+        showFeedback('Erreur lors de la synchronisation bancaire.', 'error');
         return;
       }
       await loadAccounts();
       await loadLines();
     } catch {
-      alert('Erreur lors de la synchronisation bancaire.');
+      showFeedback('Erreur lors de la synchronisation bancaire.', 'error');
     } finally {
       setSyncingPowens(false);
     }
   }
 
-  async function handleDisconnectPowens() {
+  function handleDisconnectPowens() {
+    setShowDisconnectConfirm(true);
+  }
+
+  async function confirmDisconnectPowens() {
     if (!companyId) return;
-    const confirmed = window.confirm(
-      'Déconnecter votre banque ?\nLa synchronisation sera arrêtée.\nVos données seront conservées.'
-    );
-    if (!confirmed) return;
+    setShowDisconnectConfirm(false);
     try {
       setDisconnectingPowens(true);
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        showFeedback('Session expirée. Veuillez vous reconnecter.', 'error');
         return;
       }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -453,15 +461,15 @@ export default function BankPage() {
         },
         body: JSON.stringify({ companyId }),
       });
-      const data = await response.json();
+      await response.json();
       if (!response.ok) {
-        alert(data.error || 'Erreur lors de la déconnexion.');
+        showFeedback('Erreur lors de la déconnexion bancaire.', 'error');
         return;
       }
       await loadAccounts();
-      alert('Banque déconnectée avec succès.');
+      showFeedback('Banque déconnectée avec succès.', 'success');
     } catch {
-      alert('Erreur lors de la déconnexion bancaire.');
+      showFeedback('Erreur lors de la déconnexion bancaire.', 'error');
     } finally {
       setDisconnectingPowens(false);
     }
@@ -474,7 +482,7 @@ export default function BankPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        showFeedback('Session expirée. Veuillez vous reconnecter.', 'error');
         return;
       }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -488,13 +496,13 @@ export default function BankPage() {
       });
       const data = await response.json();
       if (!response.ok || !data.connect_url) {
-        alert(data.error || 'Impossible de lancer la connexion bancaire.');
+        showFeedback('Impossible de lancer la connexion bancaire.', 'error');
         return;
       }
       sessionStorage.setItem('powens_callback_company_id', companyId);
       window.location.href = data.connect_url;
     } catch {
-      alert('Erreur lors de la connexion bancaire.');
+      showFeedback('Erreur lors de la connexion bancaire.', 'error');
     } finally {
       setConnectingPowens(false);
     }
@@ -587,7 +595,20 @@ export default function BankPage() {
         </div>
 
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Banque</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900">Banque</h1>
+            {hasPowensConnection ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>
+                Banque connectée
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
+                Banque déconnectée
+              </span>
+            )}
+          </div>
           <Link
             to={`/app/company/${companyId}/tresorerie`}
             className="px-3.5 py-2 border-2 border-blue-500 text-blue-600 bg-blue-500/5 rounded-lg hover:bg-blue-500/10 transition-all duration-150 font-medium"
@@ -892,9 +913,46 @@ export default function BankPage() {
           />
         )}
 
+        {toastMessage && (
+          <Toast
+            message={toastMessage.text}
+            type={toastMessage.type}
+            onClose={() => setToastMessage(null)}
+          />
+        )}
+
         {autoMatchToast && (
           <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg">
             Rapprochement automatique effectué
+          </div>
+        )}
+
+        {showDisconnectConfirm && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+            onClick={() => setShowDisconnectConfirm(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-[90%]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Déconnecter la banque ?</h3>
+              <p className="text-sm text-gray-600 mb-6">La synchronisation sera arrêtée. Vos données resteront conservées.</p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDisconnectConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirmDisconnectPowens}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Confirmer
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
