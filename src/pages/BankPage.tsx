@@ -594,8 +594,8 @@ export default function BankPage() {
           <BackButton />
         </div>
 
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-bold text-gray-900">Banque</h1>
             {hasPowensConnection ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
@@ -611,7 +611,7 @@ export default function BankPage() {
           </div>
           <Link
             to={`/app/company/${companyId}/tresorerie`}
-            className="px-3.5 py-2 border-2 border-blue-500 text-blue-600 bg-blue-500/5 rounded-lg hover:bg-blue-500/10 transition-all duration-150 font-medium"
+            className="self-start sm:self-auto px-3.5 py-2 border-2 border-blue-500 text-blue-600 bg-blue-500/5 rounded-lg hover:bg-blue-500/10 transition-all duration-150 font-medium whitespace-nowrap"
           >
             Voir Trésorerie →
           </Link>
@@ -619,11 +619,11 @@ export default function BankPage() {
 
         <div className="mb-6 bg-white rounded-xl shadow-md border border-gray-100 p-6">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Compte bancaire</h2>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <select
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="w-full sm:flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
@@ -635,7 +635,7 @@ export default function BankPage() {
             </select>
             <button
               onClick={handleCreateAccount}
-              className="px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors whitespace-nowrap font-medium"
+              className="w-full sm:w-auto px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors whitespace-nowrap font-medium"
             >
               + Nouveau compte
             </button>
@@ -666,46 +666,46 @@ export default function BankPage() {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3">
           <button
             onClick={handleImportCSV}
             disabled={!selectedAccountId}
-            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 sm:px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             Importer CSV
           </button>
           <button
             onClick={handleConnectPowens}
             disabled={connectingPowens}
-            className="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 sm:px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {connectingPowens ? 'Connexion...' : 'Connecter ma banque'}
           </button>
           <button
             onClick={handleSyncPowens}
             disabled={!hasPowensConnection || syncingPowens}
-            className="px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 sm:px-6 py-2.5 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {syncingPowens ? 'Synchronisation...' : 'Synchroniser'}
           </button>
           <button
             onClick={handleDisconnectPowens}
             disabled={!hasPowensConnection || disconnectingPowens}
-            className="px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 sm:px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {disconnectingPowens ? 'Déconnexion...' : 'Déconnecter banque'}
           </button>
           <button
             onClick={handleExportStatement}
             disabled={lines.length === 0}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             Export relevé
           </button>
           <button
             onClick={handleExportReconciliation}
             disabled={lines.length === 0}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="col-span-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             Export rapprochement
           </button>
