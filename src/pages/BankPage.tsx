@@ -98,8 +98,9 @@ export default function BankPage() {
         .select('id')
         .eq('company_id', companyId)
         .eq('status', 'connected')
-        .maybeSingle();
-      setHasPowensConnection(!!conn);
+        .order('created_at', { ascending: false })
+        .limit(1);
+      setHasPowensConnection(Array.isArray(conn) && conn.length > 0);
     } catch (err) {
       console.error('Error loading accounts:', err);
     } finally {
