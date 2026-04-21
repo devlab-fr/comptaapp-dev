@@ -606,7 +606,9 @@ export default function BankPage() {
             >
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.name}
+                  {acc.iban
+                    ? `${acc.name} — ${acc.iban.slice(0, 4)}****${acc.iban.slice(-5)}`
+                    : acc.name}
                 </option>
               ))}
             </select>

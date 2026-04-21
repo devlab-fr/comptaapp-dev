@@ -8,6 +8,7 @@ export interface BankAccount {
   opening_balance_cents: number;
   opening_balance_date: string | null;
   start_date: string | null;
+  iban: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,7 +32,7 @@ export interface BankStatementLine {
 export async function getBankAccounts(companyId: string): Promise<BankAccount[]> {
   const { data, error } = await supabase
     .from('bank_accounts')
-    .select('id, company_id, name, currency, opening_balance_cents, opening_balance_date, start_date, created_at, updated_at')
+    .select('id, company_id, name, currency, opening_balance_cents, opening_balance_date, start_date, iban, created_at, updated_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
 
