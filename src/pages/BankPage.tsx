@@ -45,6 +45,8 @@ export default function BankPage() {
   const [hasPowensConnection, setHasPowensConnection] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const menuRef = useRef<HTMLDivElement>(null);
 
   function showFeedback(text: string, type: 'success' | 'error') {
@@ -532,6 +534,15 @@ export default function BankPage() {
     }
   }
 
+  const totalPages = Math.max(1, Math.ceil(lines.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedLines = lines.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  function handlePageSizeChange(size: number) {
+    setPageSize(size);
+    setCurrentPage(1);
+  }
+
   function formatAmount(cents: number): string {
     const amount = cents / 100;
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
@@ -731,7 +742,7 @@ export default function BankPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {lines.map((line) => (
+              {pagedLines.map((line) => (
                 <tr key={line.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(line.date)}
@@ -880,6 +891,48 @@ export default function BankPage() {
             </div>
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Lignes par page :</span>
+              {[10, 25, 50, 100].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handlePageSizeChange(size)}
+                  className={`px-2.5 py-1 rounded border text-sm font-medium transition-colors ${
+                    pageSize === size
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                Page {safePage} / {totalPages} &nbsp;·&nbsp; {lines.length} ligne{lines.length > 1 ? 's' : ''}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Préc.
+                </button>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Suiv. →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <CreateBankAccountDialog
           open={showCreateDialog}
